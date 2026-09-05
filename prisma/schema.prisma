@@ -1,0 +1,1708 @@
+// =====================================================================
+// HEROIC LMS — Prisma Schema
+// Naming: internal model names use standard LMS vocabulary (Course,
+// Module, Lesson, Quiz, Assignment) for maintainability; the product's
+// hero-themed labels (Mission, Operation, Patrol, Encounter, Challenge)
+// are applied purely in the UI layer via a terminology mapping table
+// (see src/lib/terminology.ts, added in the front-end phase). Keeping
+// the schema in plain English avoids painting ourselves into a corner
+// if the theme ever changes, and keeps queries/migrations readable.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+  SUSPENDED
+}
+
+enum LessonResourceType {
+  PDF
+  LINK
+  FILE
+  IMAGE
+}
+
+enum QuestionType {
+  MCQ
+  MULTIPLE_SELECT
+  TRUE_FALSE
+  FILL_IN_BLANK
+  SHORT_ANSWER
+  ESSAY
+  // Graded by comparing to Question.numericAnswer within
+  // Question.numericTolerance — never by asking an AI to judge the
+  // answer at grading time (see lib/grading.ts).
+  NUMERICAL
+}
+
+// Named QuestionDifficultyLevel, not QuestionDifficulty — that name is
+// already taken by an unrelated computed analytics type in
+// server/services/exam-analytics.ts (per-question "how hard did this
+// turn out to be based on results" stat), which predates this enum.
+// Reusing the name would either collide on import in that file or
+// silently shadow one of the two.
+enum QuestionDifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AssessmentKind {
+  QUIZ
+  EXAM
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+  GRADED
+  DISQUALIFIED
+}
+
+// Explainable, additive risk level for the Exam Integrity system.
+// Deliberately separate from AttemptStatus — an attempt can be
+// GRADED and HIGH_RISK at the same time; risk is a flag for teacher
+// review, not a grading outcome. No single event ever jumps straight
+// to DISQUALIFIED except an explicit disqualifying rule (e.g. the
+// existing tab-switch threshold, or a teacher-configured
+// auto-disqualify on fullscreen exit) — see lib/exam-integrity.ts.
+enum ExamRiskLevel {
+  NORMAL
+  REVIEW
+  HIGH_RISK
+  DISQUALIFIED
+}
+
+// What happens when a student exits fullscreen on an exam that
+// requires it. Mirrors the "teacher chooses the level" requirement in
+// PHASE 20 — a fullscreenRequired exam with no explicit choice
+// defaults to WARNING (least disruptive), same defaulting philosophy
+// as every other new security field on Assessment below.
+enum FullscreenExitAction {
+  WARNING
+  FLAG
+  AUTO_DISQUALIFY
+}
+
+// One row per exam-integrity signal. Deliberately its own table
+// rather than reusing ActivityLog: ActivityLog is a fixed-enum,
+// low-volume admin audit log used across the whole site, and exam
+// telemetry (QUESTION_OPENED, ANSWER_SELECTED, etc.) is a different
+// shape and a different, higher write volume that shouldn't share an
+// index or a namespace with unrelated admin events.
+enum ExamIntegrityEventType {
+  EXAM_STARTED
+  EXAM_SUBMITTED
+
+  QUESTION_OPENED
+  ANSWER_SELECTED
+  ANSWER_CHANGE_ATTEMPT
+  ANSWER_LOCKED
+
+  QUESTION_MARKED
+  QUESTION_UNMARKED
+
+  TAB_SWITCH
+  WINDOW_BLUR
+  WINDOW_FOCUS
+
+  FULLSCREEN_ENTER
+  FULLSCREEN_EXIT
+
+  COPY
+  PASTE
+  CUT
+
+  CONNECTION_LOST
+  CONNECTION_RESTORED
+
+  SESSION_ANOMALY
+
+  SCREEN_CAPTURE_ATTEMPT
+
+  TIME_ANOMALY
+
+  DISQUALIFIED
+}
+
+enum AssignmentSubmissionStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  LATE
+  GRADED
+  RETURNED
+}
+
+enum CertificateStatus {
+  PENDING
+  ISSUED
+  REVOKED
+}
+
+enum NotificationType {
+  ANNOUNCEMENT
+  GRADE_POSTED
+  ENROLLMENT
+  CERTIFICATE_ISSUED
+  EXAM_REMINDER
+  ASSIGNMENT_DUE
+  STREAK_RISK
+  ACHIEVEMENT_UNLOCKED
+  SYSTEM
+  PAYMENT_AWAITING_VERIFICATION
+  PAYMENT_VERIFIED
+  PAYMENT_REJECTED
+  LIVE_CLASS_REMINDER
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  LOGIN
+  GRADE
+  ENROLL
+  ISSUE_CERTIFICATE
+  ROLE_CHANGE
+  SETTINGS_CHANGE
+  PAYMENT_SUBMITTED
+  PAYMENT_VERIFIED
+  PAYMENT_REJECTED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// Admin-managed price adjustment layered on top of Course.priceCents —
+// the course's own price field is never overwritten, so "original
+// price" is always just course.priceCents with no separate snapshot to
+// keep in sync. At most one discount per course (courseId is unique);
+// editing a discount updates this same row rather than creating a
+// history of past discounts, matching "create/edit a discount" as
+// specified rather than a promo-code/campaign system.
+//
+// Whether a discount currently *applies* is never a stored boolean —
+// it's always derived from (isActive, startsAt, endsAt, now) at read
+// time, in one place: computeDiscountedPriceCents() /
+// isDiscountCurrentlyActive() in src/lib/payments/discount.ts. Every
+// price display and the checkout calculation both call through that
+// same function so they can't drift apart.
+model CourseDiscount {
+  id             String       @id @default(cuid())
+  courseId       String       @unique
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  type           DiscountType
+
+  // Exactly one of these is meaningful, matching `type` — enforced in
+  // application-layer validation (Zod), not by a DB CHECK constraint,
+  // consistent with how the rest of this schema keeps that kind of
+  // cross-field rule in the Zod layer (see e.g. batchCreateSchema's
+  // endDate >= startDate .refine()) rather than in Postgres.
+  percentOff     Int? // 1-100, required when type = PERCENTAGE
+  amountOffCents Int? // >=0, required when type = FIXED — same unit/currency as Course.priceCents
+
+  isActive       Boolean      @default(true)
+  startsAt       DateTime? // null = active immediately once isActive
+  endsAt         DateTime? // null = never expires on its own
+
+  createdById    String
+  createdBy      User         @relation("DiscountCreatedBy", fields: [createdById], references: [id])
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([courseId])
+}
+
+// Manual bKash payments (Phase 11). Mirrors the real-world lifecycle:
+// a student submits evidence of a payment they already sent, and that
+// evidence is either verified by an admin or by a future trusted
+// automatic source — never by anything the browser or an API client
+// claims about itself.
+enum PaymentStatus {
+  PENDING // row created, student hasn't submitted a TXID yet
+  AWAITING_VERIFICATION // TXID submitted, waiting on a human or the bridge
+  PAID
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  MANUAL_BKASH
+  BKASH_API
+  SSLCOMMERZ
+  STRIPE
+}
+
+enum VerificationMethod {
+  MANUAL_ADMIN
+  AUTOMATIC_API
+}
+
+// ---------------------------------------------------------------------
+// IDENTITY & ACCESS
+// ---------------------------------------------------------------------
+
+model User {
+  id                String   @id @default(cuid())
+  questionAnswers   QuestionAnswer[]
+  clerkId           String   @unique
+  email             String   @unique
+  firstName         String
+  lastName          String
+  avatarUrl         String?
+  role              Role     @default(STUDENT)
+  bio               String?  @db.Text
+  headline          String? // e.g. "Full-Stack Instructor"
+  isActive          Boolean  @default(true)
+  isSuspended       Boolean  @default(false)
+  timezone          String   @default("UTC")
+  locale            String   @default("en")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastLoginAt       DateTime?
+
+  // Relations by role
+  teacherProfile    TeacherProfile?
+  studentProfile    StudentProfile?
+
+  // Content authored (as teacher)
+  coursesAuthored   Course[]            @relation("CourseTeacher")
+
+  // Enrollment / engagement (as student)
+  enrollments       Enrollment[]
+  progresses        LessonProgress[]
+  quizAttempts      AssessmentAttempt[]
+  assignmentSubs    AssignmentSubmission[]
+  certificates      Certificate[]
+  bookmarks         Bookmark[]
+  notes             LessonNote[]
+  notifications     Notification[]
+  discussionPosts   DiscussionPost[]
+  wishlist          Wishlist[]
+
+  // Payments (as buyer, and as the admin who verified/rejected others')
+  payments          Payment[]           @relation("PaymentBuyer")
+  paymentsVerified  Payment[]           @relation("PaymentVerifier")
+  discountsCreated  CourseDiscount[]    @relation("DiscountCreatedBy")
+  rewardEvents      RewardEvent[]
+  coinTransactions  ProggyCoinTransaction[]
+  coinPurchases     CoinPurchase[]
+  uploads           Upload[]
+  driveConnectionsMade GoogleDriveConnection[]
+  questionsCreated  Question[]
+
+  // Gamification
+  heroStats         HeroStats?
+  achievements      UserAchievement[]
+
+  // Admin/audit
+  activityLogs      ActivityLog[]
+  rolesAssignedByMe RoleChangeLog[]     @relation("RoleAssignedBy")
+  rolesAssignedToMe RoleChangeLog[]     @relation("RoleAssignedTo")
+
+  // Content authored (as blog admin)
+  blogPostsAuthored BlogPost[]
+
+  batchMemberships  BatchMember[]
+
+  // Telegram bot integration
+  telegramLink      TelegramLink?
+  telegramLinkTokens TelegramLinkToken[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model TeacherProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expertiseTags  String[] // e.g. ["React", "System Design"]
+  yearsExperience Int?
+  socialLinks    Json? // { twitter, linkedin, website }
+  payoutEmail    String?
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model StudentProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interests        String[]
+  goals            String?  @db.Text
+  weeklyGoalMinutes Int     @default(150)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model RoleChangeLog {
+  id           String   @id @default(cuid())
+  targetUserId String
+  targetUser   User     @relation("RoleAssignedTo", fields: [targetUserId], references: [id], onDelete: Cascade)
+  changedById  String
+  changedBy    User     @relation("RoleAssignedBy", fields: [changedById], references: [id])
+  fromRole     Role
+  toRole       Role
+  reason       String?
+  createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------
+// CATALOG: COURSE -> MODULE -> CHAPTER -> LESSON
+// ---------------------------------------------------------------------
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?  @db.Text
+  iconKey     String? // references an original in-house icon, never third-party art
+  displayOrder Int     @default(0)
+  isActive    Boolean  @default(true)
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  courses     Course[]
+  blogPosts   BlogPost[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([displayOrder])
+}
+
+model Course {
+  id               String       @id @default(cuid())
+  slug             String       @unique
+  title            String
+  subtitle         String?
+  description      String       @db.Text
+  thumbnailUrl     String?
+  trailerYoutubeId String? // optional YouTube preview video
+  level            CourseLevel  @default(ALL_LEVELS)
+  language         String       @default("en")
+  status           CourseStatus @default(DRAFT)
+  priceCents       Int          @default(0)
+  currency         String       @default("USD")
+  isFree           Boolean      @default(false)
+  durationMinutes  Int          @default(0) // denormalized total, recalculated on publish
+  xpReward         Int          @default(0) // total XP for full completion
+
+  teacherId        String
+  teacher          User         @relation("CourseTeacher", fields: [teacherId], references: [id])
+
+  categoryId       String?
+  category         Category?    @relation(fields: [categoryId], references: [id])
+
+  modules          Module[]
+  enrollments      Enrollment[]
+  certificates     Certificate[]
+  wishlistedBy     Wishlist[]
+  announcements    Announcement[]
+  calendarEvents   CalendarEvent[]
+  batches          Batch[]
+  reviews          CourseReview[]
+  assessments      Assessment[]
+  questionBank     Question[]
+  payments         Payment[]
+  discussionPosts  DiscussionPost[]
+  courseAssignments Assignment[]
+
+  // At most one discount per course — admin-managed, layered on top of
+  // priceCents rather than mutating it, so the original price is never
+  // lost and every other read of priceCents (analytics, past Payment
+  // snapshots, etc.) keeps meaning exactly what it always has.
+  discount         CourseDiscount?
+
+  // Course-level exam/quiz feature gate (storage spec: "COURSE EXAM
+  // TOGGLE"). Off by default — a course doesn't get an Exams tab, and
+  // teachers can't publish an assessment for it, until the teacher
+  // deliberately turns this on. Enforced server-side in
+  // assessment-actions.ts / attempt-actions.ts, never just a hidden UI
+  // tab — see assertExamsEnabledForCourse().
+  examsEnabled     Boolean      @default(false)
+
+  publishedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([status])
+  @@index([teacherId])
+  @@index([categoryId])
+}
+
+model CourseReview {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  rating    Int // 1-5
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, userId])
+}
+
+model Module {
+  id        String    @id @default(cuid())
+  courseId  String
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  summary   String?   @db.Text
+  order     Int
+  chapters  Chapter[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([courseId])
+}
+
+model Chapter {
+  id        String        @id @default(cuid())
+  moduleId  String
+  module    Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  groups    LessonGroup[]
+  // Exams placed directly at chapter level — PHASE 4/18 of the Exam
+  // Management spec: "prefer a relationship/reference from the course
+  // hierarchy to the Assessment" rather than requiring a fake Lesson.
+  // Optional and additive; every existing chapter has none, same as
+  // before this field existed.
+  assessments Assessment[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([moduleId])
+}
+
+// A teacher-defined grouping of lessons within a Chapter — e.g. "Foundation
+// Class", "Archive Class", "Live Batch". Title and order are entirely
+// teacher-authored per chapter (no fixed enum), so this is what drives the
+// "class type" step in student navigation: Subject -> Chapter -> Class Type
+// -> Lessons. A chapter can have as many or as few of these as the teacher
+// wants, in whatever order they choose.
+model LessonGroup {
+  id        String   @id @default(cuid())
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  lessons   Lesson[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chapterId])
+}
+
+model Lesson {
+  id              String      @id @default(cuid())
+  groupId         String
+  group           LessonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?     @db.Text
+  youtubeVideoId  String? // extracted from pasted YouTube URL
+  durationSeconds Int         @default(0)
+  order           Int
+  isPreview       Boolean     @default(false) // free preview lesson
+  isPublished     Boolean     @default(true)
+  // Null for an ordinary recorded lesson. Set (scheduledStart at
+  // minimum) for a live class — see lib/live-classes.ts for how status
+  // (Upcoming/Live/Ended) is derived, and the patrol page for how a
+  // scheduled lesson renders LiveClassPlayer instead of the normal
+  // recorded VideoPlayer/progress-tracking flow.
+  scheduledStart  DateTime?
+  scheduledEnd    DateTime?
+
+  resources       LessonResource[]
+  progresses      LessonProgress[]
+  notes           LessonNote[]
+  bookmarks       Bookmark[]
+  discussionPosts DiscussionPost[]
+  assessments     Assessment[]
+  assignments     Assignment[]
+  storeItems      CoinStoreItem[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([groupId])
+}
+
+enum UploadContext {
+  LESSON_RESOURCE
+  ASSIGNMENT_SUBMISSION
+  AVATAR
+  CERTIFICATE
+  COMMUNITY_IMAGE
+  OTHER
+}
+
+// Which storage backend actually holds the bytes for this Upload row.
+// Added alongside the Google Drive storage system — existing rows
+// implicitly stay UPLOADTHING via the default, so no backfill migration
+// is required. UploadThing also doubles as the automatic fallback
+// provider when Google Drive is disconnected or erroring (see
+// lib/storage/index.ts) rather than introducing a third "local disk"
+// fallback path.
+enum StorageProvider {
+  UPLOADTHING
+  GOOGLE_DRIVE
+}
+
+// Server-side record of every file UploadThing accepts, created the
+// moment the upload completes (from trusted metadata set in the
+// route's own middleware — never from anything the client asserts
+// afterward). Downstream actions that accept a file "url" from the
+// client (attaching a lesson resource, submitting an assignment) must
+// look the URL up here and verify uploaderId + context match before
+// trusting it — never accept a client-supplied URL directly. This is
+// what prevents one user from attaching another user's upload, or
+// submitting an arbitrary non-uploaded URL as "proof" of work.
+model Upload {
+  id          String          @id @default(cuid())
+  uploaderId  String
+  uploader    User            @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  context     UploadContext
+  provider    StorageProvider @default(UPLOADTHING)
+  // Set only for provider=GOOGLE_DRIVE — the Drive file ID, needed for
+  // streaming/deleting via the Drive API. Null for UploadThing rows,
+  // which don't have (or need) a separate provider-side ID beyond `key`.
+  driveFileId String?
+  key         String          @unique
+  url         String          @unique
+  name        String
+  sizeBytes   Int
+  fileType    String
+  // Set once the upload is actually attached to something (a lesson
+  // resource, a submission) — lets downstream checks reject reusing the
+  // same upload for two different resources/submissions if that's ever
+  // undesired, and gives an audit trail of what an upload became.
+  consumedAt  DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@index([uploaderId])
+  @@index([context])
+  @@index([provider])
+}
+
+enum DriveConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  // Set when a Drive operation fails in a way that suggests the
+  // connection itself is broken (revoked access, invalid refresh
+  // token) rather than a one-off network blip — surfaced as a banner
+  // on the admin Storage page so a stale "Connected" status is never
+  // silently wrong.
+  ERROR
+}
+
+// Singleton row (like SiteSettings) — Proggaa uses exactly ONE
+// dedicated Google account for all student/user-upload storage, never
+// a per-user Drive connection. The admin connects it once from
+// Admin → Storage; see lib/storage/google-drive.ts.
+model GoogleDriveConnection {
+  id             String                 @id @default("singleton")
+  status         DriveConnectionStatus  @default(DISCONNECTED)
+  connectedEmail String?
+  // AES-256-GCM ciphertext (iv + authTag + ciphertext, base64) — never
+  // the raw refresh token. Decrypted only server-side, only for the
+  // duration of a single Drive API call. See lib/storage/token-crypto.ts.
+  refreshTokenEncrypted String?          @db.Text
+  connectedById  String?
+  connectedBy    User?                  @relation(fields: [connectedById], references: [id], onDelete: SetNull)
+  connectedAt    DateTime?
+  lastErrorAt    DateTime?
+  lastErrorMessage String?
+  // Drive folder IDs, cached once at first connect so every subsequent
+  // upload skips a "does this folder already exist" search — see
+  // ensureFolderStructure() in lib/storage/google-drive.ts, which fills
+  // these in idempotently (reuses existing folders by ID if already
+  // set, or by name-under-parent if a reconnect happens after a manual
+  // disconnect, rather than ever creating duplicates).
+  rootFolderId              String?
+  profilePicturesFolderId   String?
+  assignmentsFolderId       String?
+  certificatesFolderId      String?
+  communityFolderId         String?
+  otherFolderId             String?
+  updatedAt      DateTime               @updatedAt
+}
+
+model LessonResource {
+  id        String             @id @default(cuid())
+  lessonId  String
+  lesson    Lesson             @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  type      LessonResourceType
+  title     String
+  url       String // storage URL for PDFs/files
+  createdAt DateTime           @default(now())
+
+  @@index([lessonId])
+}
+
+model LessonProgress {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId       String
+  lesson         Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  watchedSeconds Int       @default(0)
+  isCompleted    Boolean   @default(false)
+  completedAt    DateTime?
+  lastPositionSec Int      @default(0) // resume playback position
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+}
+
+model LessonNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  timestampSec Int?  // optional "note at 3:42" marker
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, lessonId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
+
+// ---------------------------------------------------------------------
+// ENROLLMENT / BATCHES
+// ---------------------------------------------------------------------
+
+model Batch {
+  id         String        @id @default(cuid())
+  courseId   String
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name       String
+  startDate  DateTime
+  endDate    DateTime?
+  capacity   Int?
+  members    BatchMember[]
+  createdAt  DateTime      @default(now())
+
+  @@index([courseId])
+}
+
+model BatchMember {
+  id        String   @id @default(cuid())
+  batchId   String
+  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([batchId, userId])
+}
+
+model Enrollment {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId      String
+  course        Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  status        EnrollmentStatus @default(ACTIVE)
+  progressPct   Float            @default(0)
+  enrolledAt    DateTime         @default(now())
+  completedAt   DateTime?
+
+  // Set only when this enrollment was unlocked by a paid Payment (free
+  // missions enroll with this left null). One-to-one from the Payment
+  // side (@@unique below on Payment.enrollmentId isn't needed — a
+  // Payment points forward to the Enrollment it created instead, see
+  // Payment.enrollmentId).
+  payment       Payment?
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+}
+
+// ---------------------------------------------------------------------
+// ASSESSMENTS: QUIZZES & ONLINE EXAMS
+// ---------------------------------------------------------------------
+
+model Assessment {
+  id                    String         @id @default(cuid())
+  lessonId              String?
+  lesson                Lesson?        @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  courseId              String? // exams can be course-level, not tied to one lesson
+  course                Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // Optional chapter-level placement (Exam Management PHASE 4/18) — an
+  // exam can sit directly under "Course → Subject → Chapter" in the
+  // student's learning path without needing a Lesson/Patrol row at all.
+  // Independent of lessonId: an exam may have neither (course-level),
+  // just chapterId (chapter-level), or just lessonId (today's existing
+  // behavior) — never required to have both.
+  chapterId             String?
+  chapter               Chapter?       @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  title                 String
+  kind                  AssessmentKind @default(QUIZ)
+  instructions          String?        @db.Text
+
+  timeLimitSeconds      Int? // null = untimed
+  autoSubmitOnExpiry    Boolean        @default(true)
+  randomizeQuestions    Boolean        @default(false)
+  questionBankSize      Int? // pull N random questions from pool
+  negativeMarkingRatio  Float          @default(0) // e.g. 0.25 = -1/4 per wrong answer
+  fullscreenRequired    Boolean        @default(false)
+  tabSwitchDetection    Boolean        @default(false)
+  maxAttempts           Int            @default(1)
+
+  // --- Exam Integrity & Security settings (all additive, all default
+  // to today's behavior — an exam created before this feature existed
+  // behaves identically until a teacher opts in). See PHASE 20. ---
+  // Once a student selects an answer, the server rejects any request
+  // to change it — see saveAnswer() in attempt-actions.ts. Mark-for-
+  // review is unaffected by locking (a locked answer can still be
+  // marked). Default false preserves every existing exam's behavior.
+  lockAnswersAfterSelection Boolean              @default(false)
+  detectCopyPaste           Boolean              @default(false)
+  detectScreenshotAttempts  Boolean              @default(false)
+  detectSessionAnomalies    Boolean              @default(false)
+  // Only consulted when fullscreenRequired is true. WARNING = today's
+  // behavior (client re-requests fullscreen, nothing else happens).
+  fullscreenExitAction      FullscreenExitAction @default(WARNING)
+  passPercentage        Float          @default(60)
+  showResultsInstantly  Boolean        @default(true)
+  requiresTeacherReview Boolean        @default(false) // true if essay/short-answer present
+
+  // Proggy Coin reward for a "Special Exam" — awarded once per student
+  // on a passing attempt, hooked in right alongside the existing XP
+  // award in attempt-actions.ts's submitAttempt (same place, same
+  // isPassed check). coinReward: 0 = no reward configured.
+  // minimumScoreForCoinReward is a SEPARATE, optionally-higher bar than
+  // passPercentage — a teacher might want "pass the exam" to require
+  // 60% but "earn the coin bonus" to require 80%. Null means the coin
+  // threshold is just passPercentage (whatever already counts as
+  // isPassed). rewardCoinsOnce exists for future configurability, same
+  // as Assignment.rewardOncePerStudent — current behavior is always
+  // once-per-student via ProggyCoinTransaction's unique constraint.
+  coinReward                Int     @default(0)
+  minimumScoreForCoinReward Float?
+  rewardCoinsOnce           Boolean @default(true)
+
+  // --- Live Exam mode (optional; isLiveExam=false means none of this
+  // applies and the assessment behaves exactly as before) ---
+  // Three deliberately separate concepts, per spec: the live monitoring
+  // window (when it shows on the teacher's LIVE EXAMS dashboard), the
+  // student access window (when a student can START a new attempt —
+  // wider than monitoring; e.g. late starters at 11:30 into a 10-1
+  // access window even after 10-11 monitoring ended), and the
+  // individual attempt duration (already modeled by the existing
+  // timeLimitSeconds — one attempt started at 12:50 can run past the
+  // 1:00 access close). None of these fields impose a submission
+  // deadline by themselves; see lib/live-exam.ts for how they combine.
+  isLiveExam            Boolean        @default(false)
+  monitoringStartsAt    DateTime?
+  monitoringEndsAt      DateTime?
+  accessOpensAt         DateTime?
+  accessClosesAt        DateTime?
+  // Explicit teacher action, not a computed time-based state — see
+  // getLiveExamStatus() in lib/live-exam.ts.
+  archivedAt            DateTime?
+
+  questionLinks         AssessmentQuestion[]
+  attempts              AssessmentAttempt[]
+
+  publishedAt           DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([lessonId])
+  @@index([chapterId])
+  @@index([courseId])
+}
+
+// Bank questions are owned by a course and reusable across every exam in
+// that course — NOT owned by a single exam. Before this model existed,
+// Question had a required 1:1 `assessmentId`, so the same question
+// couldn't be reused in a second exam without a full duplicate row. A
+// question's position within one specific exam (and whether it's in
+// that exam at all) now lives entirely on AssessmentQuestion below;
+// nothing here says which exam(s), if any, currently include it.
+model Question {
+  id            String        @id @default(cuid())
+  courseId      String
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creatorId     String
+  creator       User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  type          QuestionType
+  prompt        String        @db.Text
+  points        Int           @default(1)
+  explanation   String?       @db.Text // shown after grading
+  difficulty    QuestionDifficultyLevel @default(MEDIUM)
+  topic         String?       // e.g. "Recursion", "CSS Layout" — optional label
+                               // mentors can set per question; powers the
+                               // weak-topic rollup in student/mentor exam analytics
+  tags          String[]      @default([])
+
+  // NUMERICAL only. Grading always compares a submitted number against
+  // THIS stored value ± tolerance — an AI is never the authoritative
+  // grader for a numerical answer, even for AI-generated/parameterized
+  // questions (see lib/grading.ts and the parameterized-question phase).
+  numericAnswer    Float?
+  numericTolerance Float?      @default(0)
+  numericUnit      String?     // e.g. "A", "kg" — display only, never compared
+
+  options       QuestionOption[]
+  answers       QuestionAnswer[]
+  assessmentLinks AssessmentQuestion[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([courseId])
+  @@index([creatorId])
+  @@index([type])
+  @@index([difficulty])
+}
+
+// The actual "question #N in this exam" relationship — what used to be
+// Question.assessmentId + Question.order before questions became
+// reusable. A bank Question can appear in many Assessments; the same
+// Assessment can't contain a given Question twice (@@unique).
+model AssessmentQuestion {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionId   String
+  // Restrict, not Cascade: deleting a bank question that's still used in
+  // ANY exam must fail loudly (teacher has to detach it from every exam
+  // first) rather than silently vanishing from an exam mid-use.
+  question     Question   @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  order        Int
+
+  @@unique([assessmentId, questionId])
+  @@index([assessmentId])
+  @@index([questionId])
+}
+
+// Used for MCQ / Multiple Select / True-False
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String
+  isCorrect  Boolean  @default(false)
+  order      Int
+
+  @@index([questionId])
+}
+
+model AssessmentAttempt {
+  id             String        @id @default(cuid())
+  assessmentId   String
+  assessment     Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         AttemptStatus @default(IN_PROGRESS)
+  attemptNumber  Int           @default(1)
+
+  startedAt      DateTime      @default(now())
+  submittedAt    DateTime?
+  timeSpentSec   Int?
+  tabSwitchCount Int           @default(0)
+  wasDisqualified Boolean      @default(false)
+  questionOrder  Json? // ordered array of Question IDs selected for this attempt
+
+  rawScore       Float?
+  maxScore       Float?
+  percentage     Float?
+  isPassed       Boolean?
+
+  // The exact question set + order shown for this attempt — computed once
+  // at start time (respecting randomizeQuestions / questionBankSize) and
+  // persisted so a page refresh or resumed session sees the same exam,
+  // not a freshly reshuffled one.
+  selectedQuestionIds String[] @default([])
+
+  // --- Exam Integrity & Security (additive; null/0/NORMAL for every
+  // attempt that predates this feature or whose exam has no security
+  // settings enabled) ---
+  // Explainable, recomputed-on-write summary of the events below — see
+  // computeRisk() in lib/exam-integrity.ts. Never the sole basis for
+  // an automatic disqualification; PHASE 14 is explicit that no single
+  // event proves cheating, so riskLevel is a review signal, not a verdict.
+  riskLevel              ExamRiskLevel @default(NORMAL)
+  riskReasons            String[]      @default([])
+  fullscreenExitCount    Int           @default(0)
+  copyPasteCount         Int           @default(0)
+  screenshotAttemptCount Int           @default(0)
+  lockViolationCount     Int           @default(0)
+  sessionAnomalyCount    Int           @default(0)
+  timeAnomalyCount       Int           @default(0)
+  // Coarse client fingerprint (userAgent + viewport, NOT device
+  // fingerprinting/tracking libraries) captured at EXAM_STARTED and
+  // compared against later requests on the same attempt to flag
+  // PHASE 13 session anomalies. Never the sole basis for
+  // disqualification — see PHASE 13's explicit "not solely from IP
+  // changes" instruction.
+  sessionFingerprint     String?
+
+  answers          QuestionAnswer[]
+  integrityEvents  ExamIntegrityEvent[]
+
+  @@unique([assessmentId, userId, attemptNumber])
+  @@index([assessmentId, userId])
+}
+
+model QuestionAnswer {
+  id             String             @id @default(cuid())
+  attemptId      String
+  attempt        AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question           @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  selectedOptionIds String[] // for MCQ / multi-select / true-false
+  textAnswer        String?  @db.Text // fill-in-blank / short-answer / essay
+
+  // Captured once, the moment the student actually answers — the exact
+  // prompt/options text/points/correct-answer they saw at that moment.
+  // Grading correctness itself doesn't depend on this (isCorrect and
+  // pointsAwarded below are computed and stored at grading time, so a
+  // question edited afterward can't retroactively change a score) — but
+  // without this, a student reviewing "my past answers" after a mentor
+  // edits the question wording would see the EDITED text next to their
+  // OLD answer, which is misleading at best. Nullable because existing
+  // answers predate this field; new answers always populate it.
+  questionSnapshot Json?
+
+  isAutoGraded    Boolean  @default(true)
+  isCorrect       Boolean?
+  pointsAwarded    Float?
+  teacherFeedback  String? @db.Text
+  gradedAt         DateTime?
+
+  // --- Exam Integrity & Security (additive) ---
+  // Promoted from client-only state (see exam-runner.tsx history) to a
+  // real column because PHASE 4/16 require mark/unmark actions to show
+  // up in the teacher-facing question history and timeline. Still
+  // carries no grading meaning — grading logic never reads this field.
+  markedForReview  Boolean   @default(false)
+  // True once this answer has been selected under a
+  // lockAnswersAfterSelection exam. Independent of markedForReview —
+  // a locked answer may still be marked. See saveAnswer().
+  isLocked         Boolean   @default(false)
+  lockViolations   Int       @default(0)
+  // Append-only log of every accepted selection change, oldest first:
+  // [{ selectedOptionIds, textAnswer, at }]. Used for PHASE 18's
+  // per-question answer history. Rejected (locked) changes are NOT
+  // appended here — those are ANSWER_CHANGE_ATTEMPT integrity events.
+  changeHistory    Json?
+  firstOpenedAt    DateTime?
+  lastOpenedAt     DateTime?
+  // Accumulated locally on the client while a question is visible and
+  // flushed periodically/on question-change — see recordQuestionTime()
+  // — rather than written on every keystroke, per PHASE 24.
+  timeSpentSec     Int       @default(0)
+
+  @@unique([attemptId, questionId])
+}
+
+// One row per exam-integrity signal (PHASE 3). Kept separate from
+// ActivityLog — see the enum comment above for why.
+model ExamIntegrityEvent {
+  id        String                 @id @default(cuid())
+  attemptId String
+  attempt   AssessmentAttempt      @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  type      ExamIntegrityEventType
+  metadata  Json?
+  createdAt DateTime               @default(now())
+
+  @@index([attemptId, createdAt])
+  @@index([attemptId, type])
+}
+
+// ---------------------------------------------------------------------
+// ASSIGNMENTS
+// ---------------------------------------------------------------------
+
+model Assignment {
+  id           String       @id @default(cuid())
+  lessonId     String?
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  // Mirrors Assessment's existing lessonId/courseId dual pattern
+  // ("exams can be course-level, not tied to one lesson") — a
+  // teacher-created coin-reward Challenge is often course-wide, not
+  // pinned to one lesson, so the same escape hatch applies here.
+  courseId     String?
+  course       Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String       @db.Text
+  startsAt     DateTime?
+  dueAt        DateTime?
+  maxPoints    Int          @default(100)
+  rubric       Json? // [{ criterion, points, description }]
+  allowLateSubmission Boolean @default(true)
+  isPublished  Boolean      @default(true)
+
+  // Proggy Coin reward, awarded once per student on a graded PASSING
+  // submission — same GRADED_PASS event assignment-actions.ts already
+  // awards XP on (see awardXp(..., XP_REWARDS.ASSIGNMENT_GRADED_PASS)
+  // in submitAssignmentGrade). coinReward: 0 = no reward configured.
+  // xpReward is a teacher-configurable ADDITION on top of the
+  // existing fixed XP_REWARDS.ASSIGNMENT_GRADED_PASS amount, not a
+  // replacement for it. maxRewardClaims caps how many students total
+  // can earn the reward (null = unlimited); rewardOncePerStudent
+  // exists for future configurability, but the current implementation
+  // always enforces once-per-student regardless, via
+  // ProggyCoinTransaction's own unique constraint — not just this flag.
+  coinReward            Int      @default(0)
+  xpReward              Int      @default(0)
+  maxRewardClaims       Int?
+  rewardOncePerStudent  Boolean  @default(true)
+  coinRewardClaimsCount Int      @default(0)
+
+  submissions  AssignmentSubmission[]
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([lessonId])
+  @@index([courseId])
+}
+
+model AssignmentSubmission {
+  id            String                     @id @default(cuid())
+  assignmentId  String
+  assignment    Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  userId        String
+  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileUrls      String[]
+  comment       String?                    @db.Text
+  status        AssignmentSubmissionStatus @default(NOT_SUBMITTED)
+
+  submittedAt   DateTime?
+  grade         Float?
+  feedback      String?                    @db.Text
+  rubricScores  Json? // [{ criterion, pointsAwarded }]
+  gradedAt      DateTime?
+  gradedById    String?
+
+  @@unique([assignmentId, userId])
+  @@index([assignmentId])
+}
+
+// ---------------------------------------------------------------------
+// CERTIFICATES
+// ---------------------------------------------------------------------
+
+model Certificate {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId       String
+  course         Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  status         CertificateStatus @default(PENDING)
+  certificateNo  String            @unique // human-readable verification code
+  pdfUrl         String?
+  issuedAt       DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime          @default(now())
+
+  @@unique([userId, courseId])
+}
+
+// ---------------------------------------------------------------------
+// GAMIFICATION
+// ---------------------------------------------------------------------
+
+// Manual bKash payments + future automatic-verification bridge.
+// Two independent verification paths write to the SAME row:
+//   - an admin clicking Verify/Reject in /admin/payments (MANUAL_ADMIN)
+//   - a trusted device posting to /api/payment-bridge/bkash (AUTOMATIC_API,
+//     only when SiteSettings.autoVerifyPayments is on)
+// Either path, on success, atomically flips status -> PAID and creates
+// the Enrollment in the same transaction — see
+// src/server/actions/payment-actions.ts.
+model Payment {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation("PaymentBuyer", fields: [userId], references: [id], onDelete: Restrict)
+  courseId          String
+  course            Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+
+  // Snapshot of the price at submission time, always re-derived
+  // server-side from Course.priceCents (minus any currently-active
+  // CourseDiscount, computed via computeDiscountedPriceCents — see
+  // startBkashPayment) — never trusted from the client.
+  amountCents       Int
+  currency          String              @default("BDT")
+
+  provider          PaymentProvider     @default(MANUAL_BKASH)
+  paymentReference  String              @unique // e.g. "PRG-8F42K7", generated server-side
+  transactionId     String?             @unique // bKash TXID, set once the student submits it
+  payerPhone        String?             // bKash number the student paid FROM (optional, informational only)
+
+  status            PaymentStatus       @default(PENDING)
+  verificationMethod VerificationMethod?
+  verifiedById      String?
+  verifiedBy        User?               @relation("PaymentVerifier", fields: [verifiedById], references: [id])
+  verifiedAt        DateTime?
+  rejectionReason   String?
+
+  // Populated only for AUTOMATIC_API rows (the future Android Payment
+  // Bridge / bKash API). `eventId` is the bridge's idempotency key —
+  // unique so a retried notification can never be double-processed.
+  source            String?             // e.g. "web", "android-bridge"
+  deviceId          String?
+  eventId           String?             @unique
+  rawEvent          Json?               // opaque evidence payload for audit, never trusted for amounts
+
+  // Set the moment this payment creates an enrollment (manual or auto).
+  enrollmentId      String?             @unique
+  enrollment        Enrollment?         @relation(fields: [enrollmentId], references: [id])
+
+  expiresAt         DateTime?           // PENDING rows older than this can be swept to EXPIRED
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@index([provider])
+}
+
+// Revocable auth for the future Proggaa Payment Bridge (Android app).
+// The bridge authenticates with a bearer token; only its SHA-256 hash is
+// stored, matching how no other secret is kept in reversible form here.
+model PaymentBridgeDevice {
+  id          String    @id @default(cuid())
+  name        String // human label, e.g. "Admin's Pixel 8"
+  tokenHash   String    @unique
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime?
+  revokedAt   DateTime?
+
+  @@index([isActive])
+}
+
+// Durable idempotency ledger for XP awards. The unique constraint below
+// is the actual safety mechanism — not application logic checking "was
+// this already awarded" (that's a TOCTOU race by construction). Every
+// awardXp() call goes through this: if a row for
+// (sourceType, sourceId, rewardType, userId) already exists, the insert
+// fails on the unique constraint and awardXp treats that as "already
+// awarded, skip" rather than incrementing XP again. This is what makes
+// retries, double-clicks, concurrent requests, and re-grading safe.
+model RewardEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceType String // e.g. "LESSON", "ASSESSMENT_ATTEMPT", "ASSIGNMENT_SUBMISSION", "COURSE"
+  sourceId   String // the id of that lesson/attempt/submission/course
+  rewardType String // e.g. "LESSON_COMPLETE", "EXAM_PASSED" — matches XP_REWARDS keys
+  amount     Int
+  createdAt  DateTime @default(now())
+
+  @@unique([sourceType, sourceId, rewardType, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------
+// PROGGY COINS — a spendable currency, separate from XP. XP = "how far
+// have I progressed" (level, achievements, leaderboard); Coins = "what
+// can I afford" (store purchases). Spending coins never touches xp or
+// level. See lib/gamification/coins.ts for the only code paths that
+// write coinBalance or these tables.
+// ---------------------------------------------------------------------
+
+enum CoinTransactionType {
+  CHALLENGE_REWARD // Assignment.coinReward, on a graded passing submission
+  EXAM_REWARD // Assessment.coinReward, on a passing attempt
+  STORE_PURCHASE // negative — spent on a CoinStoreItem
+  ADMIN_ADJUSTMENT // manual admin correction, always carries a reason
+}
+
+model ProggyCoinTransaction {
+  id     String              @id @default(cuid())
+  userId String
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount Int // positive = earned, negative = spent
+  type   CoinTransactionType
+  reason String // human-readable label shown in the wallet, e.g. "Weekly Physics Challenge"
+
+  // Idempotency for EARN events, same mechanism as RewardEvent: a
+  // duplicate award attempt for the same (sourceType, sourceId, type,
+  // userId) hits the unique constraint below and is a safe no-op —
+  // NOT an "if already awarded" check in application code, for the
+  // same TOCTOU reason RewardEvent's own comment explains. Left null
+  // for STORE_PURCHASE (CoinPurchase's own unique constraint already
+  // prevents re-buying a one-time item) and ADMIN_ADJUSTMENT
+  // (deliberately repeatable — an admin may need to make more than one
+  // adjustment for the same student).
+  sourceType String?
+  sourceId   String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([sourceType, sourceId, type, userId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum StoreItemType {
+  PDF
+  EXCLUSIVE_CLASS
+  STICKER
+}
+
+model CoinStoreItem {
+  id          String        @id @default(cuid())
+  title       String
+  description String        @db.Text
+  type        StoreItemType
+  priceCoins  Int
+  thumbnailUrl String?
+  isPublished Boolean       @default(true)
+
+  // Points at existing content — never a duplicate copy. Exactly one
+  // of these is meaningful, matching `type`:
+  //   PDF             -> resourceUrl (an existing uploaded file's URL)
+  //   EXCLUSIVE_CLASS  -> lessonId (an existing Lesson; access is
+  //                       granted the same way any gated content is —
+  //                       checked via CoinPurchase, see the lesson
+  //                       access note in the patrol page)
+  //   STICKER         -> resourceUrl repurposed to hold the sticker's
+  //                       image path (purely decorative, no access
+  //                       gating involved); lessonId stays null
+  resourceUrl String?
+  lessonId    String?
+  lesson      Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchases CoinPurchase[]
+
+  @@index([isPublished])
+}
+
+model CoinPurchase {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       CoinStoreItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  coinsSpent Int
+  createdAt  DateTime      @default(now())
+
+  // Every store item is a one-time unlock (matches every content type
+  // in scope — a PDF or class-access grant isn't consumable) — this is
+  // what makes "already owns it" a real database guarantee, not just
+  // an application-level check.
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+}
+
+model HeroStats {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xp              Int      @default(0)
+  level           Int      @default(1)
+  currentStreak   Int      @default(0)
+  longestStreak   Int      @default(0)
+  lastActivityDate DateTime?
+  // Proggy Coins — a SEPARATE spendable currency from XP, deliberately
+  // stored the same way XP is (a cached balance kept in sync with its
+  // own ledger, ProggyCoinTransaction, rather than SUM()'d on every
+  // read). Spending coins never touches xp/level — see awardCoins/
+  // spendCoins in lib/gamification/coins.ts, which are the only two
+  // places this field is ever written.
+  coinBalance     Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  @@index([xp])
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  key         String            @unique // e.g. "first-mission-complete"
+  name        String
+  description String
+  iconKey     String // original in-house icon, never third-party art
+  xpBonus     Int               @default(0)
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+// ---------------------------------------------------------------------
+// COMMUNICATION
+// ---------------------------------------------------------------------
+
+model Announcement {
+  id        String   @id @default(cuid())
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  body      String   @db.Text
+  isGlobal  Boolean  @default(false) // site-wide, posted by admin
+  createdById String
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+}
+
+model CalendarEvent {
+  id          String    @id @default(cuid())
+  courseId    String?
+  course      Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?   @db.Text
+  startAt     DateTime
+  endAt       DateTime?
+  isGlobal    Boolean   @default(false) // platform-wide, created by admin — same convention as Announcement.isGlobal
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([courseId])
+  @@index([startAt])
+}
+
+model DiscussionPost {
+  id        String   @id @default(cuid())
+  // Exactly one of lessonId/courseId is set: lesson-scoped posts (the
+  // per-lesson Q&A thread) set lessonId; general mission-level posts
+  // from the Community hub set courseId instead. Enforced in the
+  // server actions that create these, not at the DB level — Prisma
+  // doesn't support a CHECK constraint here without dropping to raw SQL.
+  lessonId  String?
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    DiscussionPost?  @relation("PostThread", fields: [parentId], references: [id])
+  replies   DiscussionPost[] @relation("PostThread")
+  content   String   @db.Text
+  isPinned  Boolean  @default(false)
+  isHidden  Boolean  @default(false) // moderation
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lessonId])
+  @@index([courseId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  linkUrl   String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+// ---------------------------------------------------------------------
+// PLATFORM ADMIN / AUDIT
+// ---------------------------------------------------------------------
+
+model ActivityLog {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     ActivityAction
+  entityType String // e.g. "Course", "User"
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime       @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+}
+
+model SiteSettings {
+  id              String   @id @default("singleton")
+  siteName        String   @default("Proggaa")
+  logoUrl         String?
+  faviconUrl      String?
+  primaryColor    String   @default("#7C3AED")
+  supportEmail    String?
+  maintenanceMode Boolean  @default(false)
+  // Shown on the maintenance page when maintenanceMode is on. Both
+  // optional — MaintenancePage falls back to its existing static
+  // copy when these are unset, so turning maintenance mode on
+  // never breaks that page even before an admin fills these in.
+  maintenanceMessage            String? @db.Text
+  maintenanceEstimatedRestore   String? // free text, e.g. "back by 6pm UTC" — deliberately not a Date, admins rarely know an exact time
+
+  // Manual bKash payments (Phase 11)
+  bkashNumber          String? // the number students send payment to, shown on the payment page
+  bkashInstructions    String? @db.Text // optional extra step-by-step copy, admin-editable
+  // The admin kill switch from the spec: server-side gate on every
+  // automatic-verification request from /api/payment-bridge/bkash.
+  // Manual admin verification in /admin/payments always works regardless
+  // of this flag. Flipping it never touches existing Payment rows —
+  // see submitBkashEvent() in payment-actions.ts, which only ever looks
+  // at *new* incoming events.
+  autoVerifyPayments   Boolean @default(false)
+
+  updatedAt       DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------
+// Admin Control Center — runtime configuration, feature flags, and the
+// external-destination registry. These are genuinely new subsystems
+// (no key-value settings, flag, or link-manager table existed before),
+// so they're new models rather than an extension of SiteSettings —
+// SiteSettings stays a small fixed-shape singleton for the handful of
+// branding/payment fields it already owns; these are open-ended
+// registries with per-entry type/validation/audit metadata that a
+// singleton row can't represent.
+//
+// All three share the same "who/when changed this" shape, denormalized
+// (updatedById/updatedByName as plain strings, not a User relation) so
+// touching this file never requires touching the User model or picking
+// an onDelete policy for admin accounts.
+//
+// Actual old/new-value audit trail piggybacks on the EXISTING
+// ActivityLog model (action: SETTINGS_CHANGE for settings/flags,
+// CREATE/UPDATE/DELETE for destinations) — see control-center-actions.ts
+// — rather than a second audit table.
+// ---------------------------------------------------------------------
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ENUM
+}
+
+// A single runtime-configurable value. The definition (type, default,
+// validation, which category it belongs to) lives in code —
+// src/lib/config/setting-definitions.ts — as the project-defined
+// default/validator; this row only ever holds the admin override, so a
+// missing row is a normal, expected state (falls back to the code
+// default), not a broken one. See src/lib/config/settings-service.ts
+// for the full resolution order.
+model PlatformSetting {
+  key            String            @id
+  type           SettingValueType
+  // Always stored as its string/JSON-serialized form regardless of
+  // `type`, e.g. "42", "true", "\"hello\"", "{\"a\":1}" — the settings
+  // service is what parses/validates this against the code definition
+  // before handing a typed value to the app. Kept as one column
+  // (rather than a value-per-type set of nullable columns) so adding a
+  // new setting is a code change, never a migration.
+  value          String            @db.Text
+  updatedAt      DateTime          @updatedAt
+  updatedById    String?
+  updatedByName  String?
+
+  @@index([type])
+}
+
+// A single feature flag. Same "definition in code, override in DB"
+// split as PlatformSetting — src/lib/config/feature-flag-definitions.ts
+// holds the label/description/category/safe-default; this row only
+// exists once an admin has actually changed it away from that default.
+model FeatureFlag {
+  key             String    @id
+  enabled         Boolean
+  // 0-100. Null = no rollout gating (fully on/off per `enabled`).
+  // Deterministic per-user via a hash of (key, userId), so a given
+  // user doesn't flip in and out of a flag across requests.
+  rolloutPercent  Int?
+  // Role names (matches the Role enum as strings) allowed to see this
+  // feature even when `enabled` is true for "everyone" — empty/null
+  // means no extra role restriction beyond the flag itself. This can
+  // only ever narrow a feature further, never grant a role access to
+  // something its normal permissions already forbid — see the
+  // "never bypass authorization" note in feature-flags.ts.
+  allowedRoles    String[]
+  updatedAt       DateTime  @updatedAt
+  updatedById     String?
+  updatedByName   String?
+}
+
+// A managed external/user-facing destination — see
+// src/lib/config/destination-definitions.ts for the fixed set of keys
+// components are allowed to reference (destination("community"), etc.)
+// and DESTINATIONS.md for the manual "used in" usage-tracking notes
+// referenced in the Admin UI (automated usage tracking isn't reliable
+// for a server-rendered app, so this is documented rather than
+// pretend-detected — see section 6 of the implementation report).
+model Destination {
+  key            String    @id
+  label          String
+  url            String    @db.Text
+  category       String
+  icon           String?
+  openInNewTab   Boolean   @default(true)
+  isActive       Boolean   @default(true)
+  updatedAt      DateTime  @updatedAt
+  updatedById    String?
+  updatedByName  String?
+}
+
+
+model BlogPost {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  title         String
+  excerpt       String
+  contentHtml   String    @db.Text
+  coverImageUrl String?
+  authorName    String
+  authorId      String?
+  author        User?     @relation(fields: [authorId], references: [id])
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id])
+  tags          String[]  @default([])
+  status        BlogPostStatus @default(DRAFT)
+  isFeatured    Boolean   @default(false)
+  seoTitle      String?
+  seoDescription String?  @db.Text
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([isFeatured])
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. "welcome", "certificate-issued"
+  subject   String
+  bodyHtml  String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------
+// TELEGRAM BOT INTEGRATION
+// ---------------------------------------------------------------------
+
+// The persistent Telegram <-> Proggaa account link. One row per linked
+// user; one Telegram account can only ever be linked to one Proggaa
+// user (and vice versa) — both directions enforced with @unique.
+model TelegramLink {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramId  String   @unique
+  linkedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Short-lived, single-use tokens used to prove a Telegram user controls
+// a given Proggaa account, without the bot ever seeing a password. The
+// website creates a row here (POST /api/telegram/link-tokens); the bot
+// redeems it (POST /api/telegram/link). Only the SHA-256 hash of the
+// raw token is stored — see hashToken() in src/lib/payments/reference.ts,
+// the same pattern already used for PaymentBridgeDevice tokens.
+model TelegramLinkToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}

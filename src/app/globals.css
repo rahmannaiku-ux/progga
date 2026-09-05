@@ -1,0 +1,456 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode — kept crisp and high-contrast for daytime study */
+    --background: 240 20% 99%;
+    --foreground: 240 10% 8%;
+    --surface: 240 20% 96%;
+    --surface-glass: 240 20% 100%;
+    --primary: 260 84% 58%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 189 94% 43%;
+    --accent-foreground: 0 0% 100%;
+    --xp: 38 92% 50%;
+    --danger: 0 72% 51%;
+    --border: 240 10% 88%;
+    --muted: 240 15% 94%;
+    --muted-foreground: 240 5% 40%;
+  }
+
+  .dark {
+    /* Dark mode is the primary, default experience */
+    --background: 245 35% 6%;
+    --foreground: 240 15% 96%;
+    --surface: 245 30% 10%;
+    --surface-glass: 245 30% 14%;
+    --primary: 262 83% 66%;
+    --primary-foreground: 245 35% 6%;
+    --accent: 189 94% 55%;
+    --accent-foreground: 245 35% 6%;
+    --xp: 38 92% 58%;
+    --danger: 0 84% 63%;
+    --border: 245 20% 20%;
+    --muted: 245 25% 14%;
+    --muted-foreground: 240 10% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* Global mobile-safety backstop, not a substitute for fixing
+       layouts — every known source of horizontal overflow in this
+       pass (fixed widths, oversized decorative elements, tables) was
+       fixed at the source. This only guards against anything missed:
+       clip rather than scroll, since an accidental sliver of
+       horizontal scroll is worse UX than invisibly clipping it. */
+    @apply overflow-x-clip;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased overflow-x-clip;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface-glass backdrop-blur-xl border border-border/60 shadow-glass rounded-2xl transition-all duration-300;
+  }
+
+  .hero-backdrop {
+    @apply bg-hero-glow;
+  }
+
+  .hover-glow-card {
+    @apply transition-all duration-300 hover:border-primary/50 hover:shadow-glow hover:-translate-y-1;
+  }
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Proggaa design system — PURPLE + YELLOW + WHITE + BLACK.
+ * Applied globally (wrapped around the entire app in the root layout),
+ * not just the marketing landing page. Because every shared component
+ * (buttons, badges, cards) is already built on the `--background` /
+ * `--primary` / etc. custom properties, redeclaring them here reskins
+ * those components everywhere automatically — dashboard, mentor
+ * console, admin — no per-component overrides needed for color.
+ *
+ * Two visual registers, used deliberately:
+ *  - Hero/mascot/decorative elements keep bold comic-book linework
+ *    (`--border` stays dark and is drawn as a visible stroke).
+ *  - Everyday UI (cards, panels, inputs) uses soft shadows instead of
+ *    thick outlines, so dense areas of the app stay calm and legible
+ *    — hierarchy over uniform "everything is a comic panel."
+ * ------------------------------------------------------------------ */
+@layer components {
+.theme-cartoon {
+  --background: 44 55% 97%; /* warm cream */
+  --foreground: 258 42% 12%; /* near-black purple ink */
+  --surface: 0 0% 100%; /* white cards */
+  --surface-glass: 0 0% 100%;
+  --primary: 262 47% 37%; /* deep purple */
+  --primary-foreground: 0 0% 100%;
+  --accent: 262 40% 94%; /* lavender */
+  --accent-foreground: 262 47% 30%;
+  --xp: 42 96% 54%; /* golden yellow */
+  --xp-foreground: 258 42% 12%; /* ink text on yellow */
+  --danger: 14 85% 56%; /* streak flame */
+  --border: 258 42% 14%; /* thick "ink" outlines — mascot, hero, stickers */
+  --muted: 44 30% 94%;
+  --muted-foreground: 258 15% 45%;
+
+  /* Sidebar is a fixed deep-purple "game HUD," independent of the
+     light/dark toggle applied to the rest of the app. */
+  --sidebar-bg: 262 52% 16%;
+  --sidebar-bg-2: 262 48% 21%;
+  --sidebar-fg: 0 0% 100%;
+  --sidebar-active: 42 96% 54%;
+  --sidebar-active-fg: 258 42% 12%;
+  --sidebar-border: 262 45% 24%;
+
+  background-color: hsl(var(--background));
+  position: relative;
+}
+
+/* Night mode — "Proggaa HQ after hours," not just an inverted palette.
+ * Deep indigo instead of black so it stays warm rather than clinical,
+ * and the comic "ink" outlines flip from dark to a warm off-white so
+ * panels/decorative strokes still read against a dark surface (a
+ * literal black outline would vanish on a near-black background).
+ * Uses a descendant selector (not `.theme-cartoon.dark`) because
+ * `.dark` lives on <html> while `.theme-cartoon` wraps a child <div> —
+ * they're never the same element, so a compound class selector would
+ * silently never match. The sidebar tokens are intentionally left
+ * unchanged here — the purple HUD rail stays the same in both modes,
+ * matching the reference design. */
+.dark .theme-cartoon {
+  --background: 258 40% 8%;
+  --foreground: 44 40% 96%;
+  --surface: 258 32% 13%;
+  --surface-glass: 258 32% 16%;
+  --primary: 262 65% 68%;
+  --primary-foreground: 258 40% 10%;
+  --accent: 262 30% 22%;
+  --accent-foreground: 44 40% 92%;
+  --xp: 42 96% 60%;
+  --xp-foreground: 258 42% 10%;
+  --danger: 14 90% 62%;
+  --border: 44 45% 88%; /* warm off-white "ink" outline, visible on dark */
+  --muted: 258 26% 17%;
+  --muted-foreground: 258 12% 70%;
+}
+
+/* Everyday cards/panels — soft shadow, no thick outline. Reserve the
+   heavy comic-panel-with-hard-shadow treatment for elements explicitly
+   marked `.comic-panel-bold` (hero banner, community banner). */
+.theme-cartoon :where(.glass-panel),
+.theme-cartoon :where(.comic-panel) {
+  @apply rounded-2xl border border-border/10 bg-surface shadow-card backdrop-blur-0;
+}
+
+.theme-cartoon .hover-glow-card {
+  @apply hover:shadow-card-hover;
+}
+.theme-cartoon .hover-glow-card:hover {
+  transform: translateY(-3px);
+}
+
+/* Bold comic panel — thick ink border + hard offset shadow. Used only
+   where the spec calls for a "comic panel" feel: the dashboard hero,
+   the community banner, empty states featuring Proggy. */
+.theme-cartoon :where(.comic-panel-bold) {
+  @apply rounded-[1.75rem] border-[3px] border-border bg-surface shadow-none;
+  box-shadow: 6px 6px 0 hsl(var(--border) / 0.9);
+}
+.theme-cartoon .comic-panel-bold.hover-glow-card:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0 hsl(var(--border) / 0.9);
+}
+
+.theme-cartoon :where(.comic-btn) {
+  @apply rounded-full transition-transform duration-150;
+  box-shadow: 0 3px 0 hsl(var(--border) / 0.55), 0 6px 14px hsl(var(--border) / 0.12);
+}
+.theme-cartoon .comic-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 hsl(var(--border) / 0.55), 0 10px 18px hsl(var(--border) / 0.16);
+}
+.theme-cartoon .comic-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 hsl(var(--border) / 0.55);
+}
+
+.theme-cartoon :where(.sticker) {
+  @apply rounded-full bg-surface shadow-card;
+}
+
+.theme-cartoon .halftone-dots {
+  background-image: radial-gradient(hsl(var(--border) / 0.16) 1.6px, transparent 1.6px);
+  background-size: 15px 15px;
+}
+
+.theme-cartoon input[type="text"],
+.theme-cartoon input[type="email"],
+.theme-cartoon input[type="password"],
+.theme-cartoon input[type="number"],
+.theme-cartoon input[type="date"],
+.theme-cartoon input[type="url"],
+.theme-cartoon input[type="search"],
+.theme-cartoon input:not([type]),
+.theme-cartoon select,
+.theme-cartoon textarea {
+  @apply rounded-xl border border-border/15 bg-surface transition-shadow duration-150;
+}
+.theme-cartoon input[type="text"]:focus,
+.theme-cartoon input[type="email"]:focus,
+.theme-cartoon input[type="password"]:focus,
+.theme-cartoon input[type="number"]:focus,
+.theme-cartoon input[type="date"]:focus,
+.theme-cartoon input[type="url"]:focus,
+.theme-cartoon input[type="search"]:focus,
+.theme-cartoon input:not([type]):focus,
+.theme-cartoon select:focus,
+.theme-cartoon textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
+  border-color: hsl(var(--primary) / 0.4);
+}
+.theme-cartoon input[type="checkbox"],
+.theme-cartoon input[type="radio"] {
+  accent-color: hsl(var(--primary));
+}
+
+.theme-cartoon :where(.sticker-badge) {
+  @apply rounded-full;
+  box-shadow: 0 1px 4px hsl(var(--border) / 0.18);
+}
+
+.theme-cartoon .comic-outline-text {
+  -webkit-text-stroke: 1.5px hsl(var(--border));
+  paint-order: stroke fill;
+}
+
+/* Form fields — there's no shared <Input>/<Select> component in this
+   codebase (every form uses raw HTML elements with inline Tailwind
+   classes), so this is applied once at the element level rather than
+   needing to touch every form individually. Excludes checkbox/radio/
+   range/file, which render natively and would look broken with a comic
+   border. */
+.theme-cartoon input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.theme-cartoon select,
+.theme-cartoon textarea {
+  border-radius: 0.85rem !important;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* Speech bubble — hero banner, empty states. Tail drawn with a
+   pseudo-element rather than an SVG so the bubble can wrap arbitrary
+   text content. */
+.theme-cartoon .speech-bubble {
+  @apply relative rounded-2xl border-[3px] border-border bg-surface px-4 py-3 shadow-none;
+  box-shadow: 4px 4px 0 hsl(var(--border) / 0.9);
+}
+.theme-cartoon .speech-bubble::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: -14px;
+  width: 22px;
+  height: 22px;
+  background: hsl(var(--surface));
+  border-right: 3px solid hsl(var(--border));
+  border-bottom: 3px solid hsl(var(--border));
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+@keyframes cartoon-wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes cartoon-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes cartoon-pop-in {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes cartoon-twinkle {
+  0%, 100% { opacity: 0.55; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+/* Proggy's idle "breathing" — a very small, slow scale pulse, not a
+   bounce. Meant to read as "alive" at a glance without being
+   distracting if you're staring at the page for a while (e.g. sitting
+   next to a lesson video). */
+@keyframes proggy-breathe {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.015) translateY(-2px);
+  }
+}
+.animate-proggy-breathe {
+  animation: proggy-breathe 4.5s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* The rest of Proggy's per-pose motion vocabulary. Each pairs with a
+   specific reference pose so the movement reads as "in character"
+   rather than a generic bob applied to every image:
+   - energetic: excited/jumping pose (celebrating, proud) — a real bounce
+   - restrained: thinking/sad poses — barely-there, unhurried sway
+   - wave: the waving pose (idle) — a small periodic hand-wave tilt
+   All three, like proggy-breathe, are disabled outright under
+   prefers-reduced-motion below rather than just shortened. */
+@keyframes proggy-bounce-energetic {
+  0%, 100% {
+    transform: translateY(0) rotate(-1.5deg) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) rotate(1.5deg) scale(1.03);
+  }
+}
+.animate-proggy-energetic {
+  animation: proggy-bounce-energetic 1.7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes proggy-sway-restrained {
+  0%, 100% {
+    transform: translateY(0) rotate(-0.75deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(0.75deg);
+  }
+}
+.animate-proggy-restrained {
+  animation: proggy-sway-restrained 6s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes proggy-wave-idle {
+  0%, 100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  20% {
+    transform: rotate(-4deg) translateY(-2px);
+  }
+  32% {
+    transform: rotate(3deg) translateY(-2px);
+  }
+  44% {
+    transform: rotate(-3deg) translateY(-1px);
+  }
+  56%, 100% {
+    transform: rotate(0deg) translateY(0);
+  }
+}
+.animate-proggy-wave {
+  animation: proggy-wave-idle 4.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes streak-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+.animate-streak-pulse {
+  animation: streak-pulse 1.8s ease-in-out infinite;
+}
+.theme-cartoon .animate-cartoon-wiggle {
+  animation: cartoon-wiggle 3.2s ease-in-out infinite;
+}
+.theme-cartoon .animate-cartoon-bob {
+  animation: cartoon-bob 4.5s ease-in-out infinite;
+}
+.theme-cartoon .animate-cartoon-pop {
+  animation: cartoon-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.theme-cartoon .animate-cartoon-twinkle {
+  animation: cartoon-twinkle 2.4s ease-in-out infinite;
+}
+} /* end @layer components (.theme-cartoon design system) */
+
+/* Respects the OS/browser "reduce motion" accessibility preference.
+   People with vestibular disorders or motion sensitivity can genuinely
+   feel unwell from continuous bobbing/wiggling animations — this app
+   uses them a lot (mascot, doodles, achievement pops), so a single
+   override here, rather than remembering to add a check to every
+   component that uses these classes, is what actually guarantees the
+   preference is honored everywhere, including anything added later.
+   Motion is disabled outright rather than just shortened — for
+   continuous infinite animations (wiggle/bob/twinkle), any nonzero
+   duration is still "reduced motion" non-compliant, so the correct fix
+   is off, not faster. Transform/opacity are reset too so elements
+   don't get stuck mid-animation (e.g. rotated or scaled) once the
+   animation is removed. */
+@media (prefers-reduced-motion: reduce) {
+  .theme-cartoon .animate-cartoon-wiggle,
+  .theme-cartoon .animate-cartoon-bob,
+  .theme-cartoon .animate-cartoon-pop,
+  .theme-cartoon .animate-cartoon-twinkle,
+  .animate-proggy-breathe,
+  .animate-proggy-energetic,
+  .animate-proggy-restrained,
+  .animate-proggy-wave,
+  .animate-streak-pulse {
+    animation: none;
+    transform: none;
+  }
+  /* XP bars still need to *show* the right value — just without the
+     0%-to-target sweep — so snap straight to the CSS var target
+     instead of disabling width entirely. */
+  .animate-xp-fill {
+    animation: none;
+    width: var(--xp-target, 100%);
+  }
+}
+
+/* Themed scrollbar — thin, matches the surface/accent palette instead of
+   the default OS scrollbar, which looks jarring against a dark-mode-first
+   design system. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+  border: 2px solid hsl(var(--background));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}

@@ -1,0 +1,113 @@
+import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db/client";
+import { levelForXp, XP_REWARDS } from "@/lib/gamification/xp-curve";
+import {
+  checkLevelAchievements,
+  checkStreakAchievements,
+} from "@/lib/gamification/check-achievements";
+
+/**
+ * Awards XP exactly once per (sourceType, sourceId, rewardType, userId).
+ * The idempotency guarantee comes from RewardEvent's unique constraint,
+ * not from an "if not already awarded" check in application code — a
+ * check-then-act guard here would have exactly the same TOCTOU race as
+ * the one that let exam submissions double-award XP (see
+ * submitAttempt in attempt-actions.ts). A duplicate call — retry,
+ * double-click, concurrent request, re-grading the same submission —
+ * hits the unique constraint, and this function treats that as "already
+ * awarded" and returns without touching HeroStats.
+ *
+ * `source` is required so every call site has to say what this XP is
+ * *for* — that's what the ledger keys on. There is deliberately no
+ * "just award some XP with no source" escape hatch.
+ */
+export async function awardXp(
+  userId: string,
+  amount: number,
+  source: { type: string; id: string; rewardType: string }
+) {
+  try {
+    await db.rewardEvent.create({
+      data: {
+        userId,
+        sourceType: source.type,
+        sourceId: source.id,
+        rewardType: source.rewardType,
+        amount,
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return; // already awarded for this exact source — no-op, not an error
+    }
+    throw err;
+  }
+
+  const stats = await db.heroStats.upsert({
+    where: { userId },
+    create: { userId, xp: amount },
+    update: { xp: { increment: amount } },
+  });
+
+  const newLevel = levelForXp(stats.xp);
+  if (newLevel !== stats.level) {
+    await db.heroStats.update({ where: { userId }, data: { level: newLevel } });
+    if (newLevel > stats.level) {
+      await db.notification.create({
+        data: {
+          userId,
+          type: "ACHIEVEMENT_UNLOCKED",
+          title: `Level up! You're now level ${newLevel}`,
+          body: "Keep going — your next level is already within reach.",
+          linkUrl: "/profile",
+        },
+      });
+      await checkLevelAchievements(userId, newLevel);
+    }
+  }
+}
+
+/** Kept for backward compatibility with Phase 5/6/7 call sites. */
+export async function awardLessonCompletionXp(userId: string, lessonId: string) {
+  await awardXp(userId, XP_REWARDS.LESSON_COMPLETE, {
+    type: "LESSON",
+    id: lessonId,
+    rewardType: "LESSON_COMPLETE",
+  });
+}
+
+/** Updates the daily streak: +1 if the last activity was yesterday,
+ * reset to 1 if it's been longer, unchanged if already logged today. */
+export async function updateStreak(userId: string) {
+  const stats = await db.heroStats.upsert({
+    where: { userId },
+    create: { userId },
+    update: {},
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const last = stats.lastActivityDate ? new Date(stats.lastActivityDate) : null;
+  if (last) last.setHours(0, 0, 0, 0);
+
+  let currentStreak = stats.currentStreak;
+  if (!last) {
+    currentStreak = 1;
+  } else {
+    const dayDiff = Math.round((today.getTime() - last.getTime()) / 86_400_000);
+    if (dayDiff === 1) currentStreak += 1;
+    else if (dayDiff > 1) currentStreak = 1;
+    // dayDiff === 0: already logged today, streak unchanged
+  }
+
+  await db.heroStats.update({
+    where: { userId },
+    data: {
+      currentStreak,
+      longestStreak: Math.max(currentStreak, stats.longestStreak),
+      lastActivityDate: today,
+    },
+  });
+
+  await checkStreakAchievements(userId, currentStreak);
+}
