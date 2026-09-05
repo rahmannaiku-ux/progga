@@ -42,7 +42,7 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  output: "standalone", // required for the multi-stage Dockerfile
+  output: process.env.VERCEL ? undefined : "standalone", // standalone only for Docker builds, not Vercel
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.youtube.com" },
