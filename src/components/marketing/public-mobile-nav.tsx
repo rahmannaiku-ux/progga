@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -20,19 +21,19 @@ export function PublicMobileNav({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  return (
-    <div className="md:hidden">
-      <button
-        type="button"
-        aria-label="Open menu"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-        className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
+  // The header this button lives in uses `backdrop-blur-xl`
+  // (`backdrop-filter`), which — like `filter` and `transform` — makes
+  // it a containing block for any `position: fixed` descendant. Left
+  // in place, the overlay below would be positioned relative to the
+  // 64px header bar instead of the viewport (squished into a thin top
+  // band, background never dimmed). Portal it to <body> so it escapes
+  // that containing block. `mounted` guards `document` access on the
+  // server, where `document.body` doesn't exist yet.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-      <AnimatePresence>
+  const overlay = (
+    <AnimatePresence>
         {open && (
           <>
             <motion.div
@@ -109,7 +110,22 @@ export function PublicMobileNav({
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+    </AnimatePresence>
+  );
+
+  return (
+    <div className="md:hidden">
+      <button
+        type="button"
+        aria-label="Open menu"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {mounted && createPortal(overlay, document.body)}
     </div>
   );
 }
