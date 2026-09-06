@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/require-role";
+import { getSiteBranding } from "@/lib/site-branding";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
 import { RoleMobileNav } from "@/components/shared/role-mobile-nav";
@@ -15,9 +16,12 @@ export default async function MentorLayout({
 
   await requireRole("TEACHER");
 
+  const branding = await getSiteBranding();
+  const brandLabel = `${branding.siteName} · Mentor`;
+
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar navKey="mentor" brandLabel="Proggaa · Mentor" />
+      <Sidebar navKey="mentor" brandLabel={brandLabel} />
       {/* min-w-0: see the identical comment in (hero)/layout.tsx —
           same missing-shrink bug, same fix. */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -29,7 +33,7 @@ export default async function MentorLayout({
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
-      <RoleMobileNav navKey="mentor" brandLabel="Proggaa · Mentor" />
+      <RoleMobileNav navKey="mentor" brandLabel={brandLabel} />
     </div>
   );
 }

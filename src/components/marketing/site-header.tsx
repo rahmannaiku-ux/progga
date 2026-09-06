@@ -3,6 +3,8 @@ import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { PublicMobileNav } from "@/components/marketing/public-mobile-nav";
 import { getCurrentUserRoleOptional } from "@/lib/auth/current-user";
+import { getSiteBranding } from "@/lib/site-branding";
+import { isSafeDestinationUrl } from "@/lib/config/destinations";
 
 const navLinks = [
   { href: "/courses", label: "Missions" },
@@ -24,16 +26,35 @@ function dashboardHrefForRole(role: string) {
 export async function SiteHeader() {
   const role = await getCurrentUserRoleOptional();
   const isSignedIn = role !== null;
+  const branding = await getSiteBranding();
+  const hasSafeLogo = Boolean(branding.logoUrl && isSafeDestinationUrl(branding.logoUrl));
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <span className="sticker flex h-7 w-7 items-center justify-center bg-primary font-display text-xs font-extrabold text-primary-foreground">
-            P
-          </span>
+          {hasSafeLogo ? (
+            <>
+              {/* Plain <img>, not next/image: this is an admin-configured
+                  arbitrary URL (same reasoning as blog cover images) — no
+                  fixed set of remote domains to allow-list, and a broken
+                  URL here must not throw and take out the header on every
+                  page. isSafeDestinationUrl above already rejected unsafe
+                  schemes (e.g. "javascript:"). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={branding.logoUrl!}
+                alt={branding.siteName}
+                className="h-7 w-7 rounded object-contain"
+              />
+            </>
+          ) : (
+            <span className="sticker flex h-7 w-7 items-center justify-center bg-primary font-display text-xs font-extrabold text-primary-foreground">
+              {branding.siteName.charAt(0).toUpperCase() || "P"}
+            </span>
+          )}
           <span className="font-display text-base font-bold text-foreground">
-            Proggaa
+            {branding.siteName}
           </span>
         </Link>
 

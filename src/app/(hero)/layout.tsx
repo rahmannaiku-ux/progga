@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { getSiteBranding } from "@/lib/site-branding";
 import { db } from "@/lib/db/client";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
@@ -19,6 +20,7 @@ export default async function HeroLayout({
   if (await isMaintenanceBlocking()) return <MaintenancePage />;
 
   const user = await getCurrentUser();
+  const branding = await getSiteBranding();
 
   const [stats, unreadNotifications] = await Promise.all([
     db.heroStats.upsert({
@@ -35,7 +37,7 @@ export default async function HeroLayout({
     <div className="flex min-h-screen bg-background">
       <Sidebar
         navKey="hero"
-        brandLabel="Proggaa"
+        brandLabel={branding.siteName}
         heroStats={{ xp: stats.xp, currentStreak: stats.currentStreak, coinBalance: stats.coinBalance }}
       />
       {/* min-w-0 is required here: a flex item's default min-width is
@@ -56,7 +58,7 @@ export default async function HeroLayout({
           mobileNav={
             <MobileNavDrawer
               navKey="hero"
-              brandLabel="Proggaa"
+              brandLabel={branding.siteName}
               heroProfile={{
                 name: user.firstName || "Hero",
                 avatarUrl: user.avatarUrl,
