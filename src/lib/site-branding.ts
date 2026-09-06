@@ -56,10 +56,16 @@ export const getSiteBranding = cache(async (): Promise<SiteBranding> => {
 export function hexToHslTriplet(hex: string): string | null {
   const match = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
   if (!match) return null;
+  // Non-null assertion is safe here: the pattern's single capturing
+  // group isn't optional, so a successful match always populates it —
+  // this isn't an indexed-access-on-unknown-length-array case, just
+  // TS's noUncheckedIndexedAccess being unable to encode "this specific
+  // regex guarantees group 1."
+  const hexDigits = match[1]!;
 
-  const r = parseInt(match[1].slice(0, 2), 16) / 255;
-  const g = parseInt(match[1].slice(2, 4), 16) / 255;
-  const b = parseInt(match[1].slice(4, 6), 16) / 255;
+  const r = parseInt(hexDigits.slice(0, 2), 16) / 255;
+  const g = parseInt(hexDigits.slice(2, 4), 16) / 255;
+  const b = parseInt(hexDigits.slice(4, 6), 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
