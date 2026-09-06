@@ -56,10 +56,14 @@ export function MobileHeroHud({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-display text-xs font-extrabold text-foreground">
+            <span className="shrink-0 font-display text-xs font-extrabold text-foreground">
               Level {level}
             </span>
-            <span className="font-mono text-[10px] font-semibold text-muted-foreground">
+            {/* min-w-0 is required for a flex item's truncate to actually
+                take effect (see the layout-level comment on this same bug) —
+                large XP totals could otherwise refuse to shrink and push
+                this whole HUD row (and the page) wider than the viewport. */}
+            <span className="min-w-0 truncate font-mono text-[10px] font-semibold text-muted-foreground">
               {xpIntoLevel.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP
             </span>
           </div>

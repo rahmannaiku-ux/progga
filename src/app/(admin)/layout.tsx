@@ -14,7 +14,9 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar navKey="admin" brandLabel="Proggaa · Admin" />
-      <div className="flex flex-1 flex-col">
+      {/* min-w-0: see the identical comment in (hero)/layout.tsx —
+          same missing-shrink bug, same fix. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar title="Admin Console" />
         {/* pb-24 clears the fixed mobile bottom nav, matching hero/mentor. */}
         <main className="relative flex-1 overflow-x-auto p-4 pb-24 sm:p-6 lg:pb-6">

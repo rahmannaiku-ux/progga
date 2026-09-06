@@ -18,7 +18,9 @@ export default async function MentorLayout({
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar navKey="mentor" brandLabel="Proggaa · Mentor" />
-      <div className="flex flex-1 flex-col">
+      {/* min-w-0: see the identical comment in (hero)/layout.tsx —
+          same missing-shrink bug, same fix. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar title="Mentor Console" />
         {/* pb-24 clears the fixed mobile bottom nav (h-14 + safe-area
             inset), matching the hero layout's spacing; lg:pb-6 restores

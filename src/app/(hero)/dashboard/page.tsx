@@ -259,7 +259,7 @@ export default async function HeroDashboardPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-xs font-semibold text-foreground">
+                      <p className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
                         {m.label}
                       </p>
                       <span className="shrink-0 font-mono text-[11px] font-bold text-xp">
@@ -607,7 +607,7 @@ export default async function HeroDashboardPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-foreground">{m.label}</p>
+                      <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{m.label}</p>
                       <span className="shrink-0 font-mono text-xs font-bold text-xp">+{m.xp} XP</span>
                     </div>
                     <div className="mt-1.5 flex items-center gap-2">
