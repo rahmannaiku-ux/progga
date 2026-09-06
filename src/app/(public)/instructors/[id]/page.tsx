@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { CourseCard } from "@/components/course/course-card";
+import { Avatar } from "@/components/shared/avatar";
 import { db } from "@/lib/db/client";
 
 export default async function InstructorProfilePage({
@@ -31,15 +31,12 @@ export default async function InstructorProfilePage({
   return (
     <div className="container max-w-4xl py-14">
       <div className="flex items-center gap-5">
-        {teacher.avatarUrl && (
-          <Image
-            src={teacher.avatarUrl}
-            alt={`${teacher.firstName} ${teacher.lastName}`}
-            width={80}
-            height={80}
-            className="rounded-full"
-          />
-        )}
+        <Avatar
+          src={teacher.avatarUrl}
+          name={teacher.firstName}
+          size={80}
+          className="text-2xl"
+        />
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground">
             {teacher.firstName} {teacher.lastName}

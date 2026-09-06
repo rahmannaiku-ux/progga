@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Clock, BarChart3, Star, CheckCircle2, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EnrollButton } from "@/components/course/enroll-button";
 import { WishlistButton } from "@/components/course/wishlist-button";
+import { Avatar } from "@/components/shared/avatar";
 import {
   Accordion,
   AccordionItem,
@@ -214,15 +214,11 @@ export default async function CourseDetailPage({
             Your mentor
           </h2>
           <div className="mt-4 flex items-center gap-4">
-            {course.teacher.avatarUrl && (
-              <Image
-                src={course.teacher.avatarUrl}
-                alt={`${course.teacher.firstName} ${course.teacher.lastName}`}
-                width={56}
-                height={56}
-                className="rounded-full"
-              />
-            )}
+            <Avatar
+              src={course.teacher.avatarUrl}
+              name={course.teacher.firstName}
+              size={56}
+            />
             <div>
               <p className="font-semibold text-foreground">
                 {course.teacher.firstName} {course.teacher.lastName}

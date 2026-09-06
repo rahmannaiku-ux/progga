@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Loader2 } from "lucide-react";
+import { Avatar } from "@/components/shared/avatar";
 
 export function AvatarUploader({
   currentUrl,
@@ -37,19 +37,12 @@ export function AvatarUploader({
   return (
     <div>
       <label className="group relative block h-20 w-20 cursor-pointer">
-        {currentUrl ? (
-          <Image
-            src={currentUrl}
-            alt={firstName}
-            width={80}
-            height={80}
-            className="h-20 w-20 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-surface font-display text-2xl text-muted-foreground">
-            {firstName.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <Avatar
+          src={currentUrl}
+          name={firstName}
+          size={80}
+          className="h-20 w-20 text-2xl"
+        />
         <div className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70 opacity-0 transition-opacity group-hover:opacity-100">
           {uploading ? (
             <Loader2 className="h-5 w-5 animate-spin text-foreground" />

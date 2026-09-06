@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Flame, Bell } from "lucide-react";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
@@ -36,17 +37,24 @@ export function MobileHeroHud({
   coinBalance?: number;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  // Guards against avatarUrl pointing at a host next/image won't fetch
+  // (e.g. an OAuth avatar host not yet in next.config.mjs remotePatterns)
+  // or a dead/blocked link — falls back to the "Lv" sticker instead of
+  // leaving blank space. See Avatar component for the same pattern
+  // applied elsewhere.
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   return (
     <div className="border-t border-border/10 bg-surface/60 px-4 py-2.5 lg:hidden">
       <div className="flex items-center gap-3">
-        {avatarUrl ? (
+        {avatarUrl && !avatarFailed ? (
           <Image
             src={avatarUrl}
             alt=""
             width={36}
             height={36}
             className="h-9 w-9 shrink-0 rounded-full border-2 border-xp object-cover"
+            onError={() => setAvatarFailed(true)}
           />
         ) : (
           <span className="sticker flex h-9 w-9 shrink-0 items-center justify-center bg-primary text-xs font-extrabold text-primary-foreground">

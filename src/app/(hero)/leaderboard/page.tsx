@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Trophy, Flame, Medal } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { cn } from "@/lib/utils";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { Avatar } from "@/components/shared/avatar";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 
 const TOP_N = 50;
@@ -113,19 +113,13 @@ export default async function LeaderboardPage({
                   <Medal className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", theme.medal)} />
                 </span>
                 <div className="sticker shrink-0 rounded-full bg-surface p-0.5">
-                  {row.user.avatarUrl ? (
-                    <Image
-                      src={row.user.avatarUrl}
-                      alt=""
-                      width={48}
-                      height={48}
-                      className="h-9 w-9 rounded-full sm:h-12 sm:w-12"
-                    />
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface font-display font-bold text-muted-foreground sm:h-12 sm:w-12">
-                      {row.user.firstName.charAt(0)}
-                    </div>
-                  )}
+                  <Avatar
+                    src={row.user.avatarUrl}
+                    name={row.user.firstName}
+                    size={48}
+                    className="h-9 w-9 font-display sm:h-12 sm:w-12"
+                    fallbackClassName="h-9 w-9 font-display sm:h-12 sm:w-12"
+                  />
                 </div>
                 <p className="line-clamp-1 w-full text-[11px] font-bold text-foreground sm:text-xs">
                   {row.user.firstName}
@@ -154,17 +148,7 @@ export default async function LeaderboardPage({
               <span className="w-6 shrink-0 text-center font-mono text-sm font-bold text-muted-foreground">
                 {i + 4}
               </span>
-              {row.user.avatarUrl ? (
-                <Image
-                  src={row.user.avatarUrl}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-surface" />
-              )}
+              <Avatar src={row.user.avatarUrl} name={row.user.firstName} size={32} className="h-8 w-8" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">
                   {row.user.firstName} {row.user.lastName}
@@ -191,17 +175,12 @@ export default async function LeaderboardPage({
             <span className="w-6 shrink-0 text-center font-mono text-sm font-bold text-muted-foreground">
               {myRank}
             </span>
-            {myRankRow.user.avatarUrl ? (
-              <Image
-                src={myRankRow.user.avatarUrl}
-                alt=""
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-surface" />
-            )}
+            <Avatar
+              src={myRankRow.user.avatarUrl}
+              name={myRankRow.user.firstName}
+              size={32}
+              className="h-8 w-8"
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">
                 {myRankRow.user.firstName} {myRankRow.user.lastName}{" "}

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/shared/avatar";
 import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
 import { drawerVariants, backdropVariants } from "@/lib/motion";
 
@@ -142,19 +142,13 @@ export function MobileNavDrawer({
                 <div className="shrink-0 px-4 pb-4">
                   <div className="rounded-2xl bg-white/10 p-3.5">
                     <div className="flex items-center gap-2.5">
-                      {heroProfile.avatarUrl ? (
-                        <Image
-                          src={heroProfile.avatarUrl}
-                          alt=""
-                          width={36}
-                          height={36}
-                          className="h-9 w-9 shrink-0 rounded-full border-2 border-xp object-cover"
-                        />
-                      ) : (
-                        <span className="sticker flex h-9 w-9 shrink-0 items-center justify-center bg-xp text-xs font-extrabold text-xp-foreground">
-                          {heroProfile.name.charAt(0)}
-                        </span>
-                      )}
+                      <Avatar
+                        src={heroProfile.avatarUrl}
+                        name={heroProfile.name}
+                        size={36}
+                        className="h-9 w-9 border-2 border-xp text-xs font-extrabold"
+                        fallbackClassName="h-9 w-9 border-2 border-xp bg-xp text-xs font-extrabold text-xp-foreground"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-sidebar-foreground">
                           {heroProfile.name}
