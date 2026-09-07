@@ -287,26 +287,36 @@ export async function importParsedQuestions(
 
   if (toCreate.length === 0) return { imported: 0, failed };
 
-  await db.$transaction(async (tx) => {
-    let nextOrder = 0;
-    if (assessmentId) {
-      const maxOrder = await tx.assessmentQuestion.aggregate({
-        where: { assessmentId },
-        _max: { order: true },
-      });
-      nextOrder = (maxOrder._max.order ?? -1) + 1;
-    }
-
-    for (const { data } of toCreate) {
-      const question = await tx.question.create({ data });
+  await db.$transaction(
+    async (tx) => {
+      let nextOrder = 0;
       if (assessmentId) {
-        await tx.assessmentQuestion.create({
-          data: { assessmentId, questionId: question.id, order: nextOrder },
+        const maxOrder = await tx.assessmentQuestion.aggregate({
+          where: { assessmentId },
+          _max: { order: true },
         });
-        nextOrder += 1;
+        nextOrder = (maxOrder._max.order ?? -1) + 1;
       }
-    }
-  });
+
+      for (const { data } of toCreate) {
+        const question = await tx.question.create({ data });
+        if (assessmentId) {
+          await tx.assessmentQuestion.create({
+            data: { assessmentId, questionId: question.id, order: nextOrder },
+          });
+          nextOrder += 1;
+        }
+      }
+    },
+    // Default interactive-transaction timeout is 5s. A batch import is
+    // 1-2 round trips per question over the pooled connection
+    // (ap-northeast-1), so anything past ~10 questions can exceed that
+    // and Prisma kills the transaction mid-loop (P2028 "Transaction
+    // already closed"). 30s covers MAX_REQUESTED_COUNT-sized AI batches
+    // with headroom; maxWait covers time spent queuing for a pooler
+    // connection before the transaction even starts.
+    { timeout: 30_000, maxWait: 10_000 }
+  );
 
   if (assessmentId) {
     revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
