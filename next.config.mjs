@@ -43,6 +43,26 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   output: process.env.VERCEL ? undefined : "standalone", // standalone only for Docker builds, not Vercel
+  // @pdfme/pdf-lib and @pdfme/common (both pulled in transitively by
+  // @pdfme/generator, used for certificate PDF generation — see
+  // src/lib/certificate/generate-certificate.ts) ship ESM-only builds.
+  // @pdfme/generator's own CJS build does `require("@pdfme/pdf-lib")` /
+  // `require("@pdfme/common")` internally, which neither Node's native
+  // module loader nor webpack's default CJS bundling will do for a
+  // pure-ESM target:
+  //   - Excluding these from bundling (experimental.serverComponentsExternalPackages,
+  //     the old config here) leaves Node's native require() to load the
+  //     raw file at runtime, which throws ERR_REQUIRE_ESM.
+  //   - Bundling them normally (no external-packages config at all)
+  //     makes webpack itself refuse with "Module not found: ESM
+  //     packages (...) need to be imported. Use 'import' to reference
+  //     the package instead."
+  // `transpilePackages` + `esmExternals: 'loose'` is the combination
+  // Next.js documents for exactly this "an ESM-only npm package needs
+  // to work through a CJS require() somewhere in the chain" situation:
+  // it runs these packages through Next's own compiler (which handles
+  // the ESM/CJS interop) instead of handing them to webpack raw.
+  transpilePackages: ["@pdfme/generator", "@pdfme/pdf-lib", "@pdfme/schemas", "@pdfme/common"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.youtube.com" },
@@ -67,25 +87,10 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    // NOTE: @pdfme/generator, @pdfme/pdf-lib, @pdfme/schemas, and
-    // @pdfme/common used to be listed here. Externalizing them skips
-    // webpack bundling and leaves Node's native require()/import() to
-    // load the raw files from node_modules at runtime — which broke
-    // certificate generation on Vercel with
-    // "Error [ERR_REQUIRE_ESM]: require() of ES Module .../@pdfme/pdf-lib/dist/index.js
-    // ... not supported", because @pdfme/generator's compiled CJS code
-    // does require("@pdfme/pdf-lib"), and @pdfme/pdf-lib ships ESM-only.
-    // Node's native loader refuses that; webpack's bundler doesn't hit
-    // the same restriction because it resolves/rewrites the require at
-    // build time instead. Letting webpack bundle these (the default,
-    // now that they're removed from this list) fixed it.
-    //
-    // If this list was originally added to work around a *different*
-    // bundling failure (fontkit-style packages that call
-    // fs.readFileSync at module-load time for embedded font data often
-    // don't survive webpack bundling), and that resurfaces, the
-    // alternative fix is upgrading @pdfme/generator + @pdfme/schemas to
-    // match @pdfme/common's 6.x line rather than re-externalizing.
+    // See the transpilePackages comment above — 'loose' mode lets
+    // webpack auto-correct remaining ESM/CJS interop edges for the
+    // same @pdfme packages that Next docs recommend it for.
+    esmExternals: "loose",
   },
 };
 
