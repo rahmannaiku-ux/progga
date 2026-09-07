@@ -67,12 +67,25 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    serverComponentsExternalPackages: [
-      "@pdfme/generator",
-      "@pdfme/pdf-lib",
-      "@pdfme/schemas",
-      "@pdfme/common",
-    ],
+    // NOTE: @pdfme/generator, @pdfme/pdf-lib, @pdfme/schemas, and
+    // @pdfme/common used to be listed here. Externalizing them skips
+    // webpack bundling and leaves Node's native require()/import() to
+    // load the raw files from node_modules at runtime — which broke
+    // certificate generation on Vercel with
+    // "Error [ERR_REQUIRE_ESM]: require() of ES Module .../@pdfme/pdf-lib/dist/index.js
+    // ... not supported", because @pdfme/generator's compiled CJS code
+    // does require("@pdfme/pdf-lib"), and @pdfme/pdf-lib ships ESM-only.
+    // Node's native loader refuses that; webpack's bundler doesn't hit
+    // the same restriction because it resolves/rewrites the require at
+    // build time instead. Letting webpack bundle these (the default,
+    // now that they're removed from this list) fixed it.
+    //
+    // If this list was originally added to work around a *different*
+    // bundling failure (fontkit-style packages that call
+    // fs.readFileSync at module-load time for embedded font data often
+    // don't survive webpack bundling), and that resurfaces, the
+    // alternative fix is upgrading @pdfme/generator + @pdfme/schemas to
+    // match @pdfme/common's 6.x line rather than re-externalizing.
   },
 };
 
