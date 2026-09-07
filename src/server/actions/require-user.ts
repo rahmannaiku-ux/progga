@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 
 const MENTOR_ROLES = ["TEACHER", "ADMIN", "SUPER_ADMIN"];
@@ -26,15 +25,29 @@ const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
  * previously meant a repeated `auth()` + `db.user.findUnique` per call.
  * `cache()` memoizes by arguments for the life of one request, so
  * repeat calls reuse the first result (including replaying a thrown
- * redirect) instead of re-querying. This never crosses request or user
+ * error) instead of re-querying. This never crosses request or user
  * boundaries — React's cache is per-request-scoped for server
  * components/actions — so authorization semantics are unchanged.
+ *
+ * Throws a plain Error rather than calling next/navigation's redirect()
+ * on purpose. Every call site here is a Server Action invoked from a
+ * client component via fetch/startTransition, not a page render — and
+ * every route that reaches one is already behind the Clerk session
+ * check in src/middleware.ts. Calling redirect("/sign-in") inside a
+ * Server Action on a route middleware also protects triggers a known
+ * Next.js 14 bug ("failed to forward action response" / TypeError:
+ * fetch failed) when the session has expired between page load and
+ * submission, crashing the request instead of navigating. Throwing
+ * instead lets the normal try/catch in each caller (e.g.
+ * NewPostComposer) surface a friendly "please sign in again" message.
  */
 export const requireActiveUser = cache(async () => {
   const { userId } = auth();
-  if (!userId) redirect("/sign-in");
-  const user = await db.user.findUnique({ where: { clerkId: userId! } });
-  if (!user || !user.isActive || user.isSuspended) redirect("/sign-in");
+  if (!userId) throw new Error("Your session has expired. Please sign in again.");
+  const user = await db.user.findUnique({ where: { clerkId: userId } });
+  if (!user || !user.isActive || user.isSuspended) {
+    throw new Error("Your session has expired. Please sign in again.");
+  }
   return user;
 });
 
