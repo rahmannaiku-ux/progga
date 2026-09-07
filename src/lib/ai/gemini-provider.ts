@@ -11,7 +11,7 @@ const QUESTION_TYPES = [
   "NUMERICAL",
 ] as const;
 
-const DEFAULT_MODEL = "gemini-1.5-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 // Hard ceiling independent of whatever the teacher's form allows —
 // defense in depth against a tampered request asking for an
 // unreasonable number of questions in one call (cost + latency, not a
@@ -205,6 +205,9 @@ function describeGeminiError(err: unknown): string {
   }
   if (/safety/i.test(message)) {
     return "Gemini declined to generate questions for this topic (safety filters). Try rephrasing the topic.";
+  }
+  if (/404|not found|is not supported for generateContent/i.test(message)) {
+    return "The configured Gemini model is no longer available (it may have been retired). Update GEMINI_MODEL to a current model.";
   }
   return "Gemini generation failed. Please try again.";
 }
