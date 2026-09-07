@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { db } from "@/lib/db/client";
 import { Prisma, type ExamIntegrityEventType } from "@prisma/client";
@@ -21,6 +20,7 @@ import { isWithinStudentAccessWindow } from "@/lib/live-exam";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { computeRisk, buildSessionFingerprint, TAB_SWITCH_DISQUALIFY_THRESHOLD, type RiskInput } from "@/lib/exam-integrity";
 import { requireActiveUser } from "./require-user";
+import { AttemptRedirectSignal } from "./attempt-redirect-signal";
 
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -170,7 +170,7 @@ export async function startAttempt(assessmentId: string) {
   const inProgress = await db.assessmentAttempt.findFirst({
     where: { assessmentId, userId: user.id, status: "IN_PROGRESS" },
   });
-  if (inProgress) redirect(`/encounters/${assessmentId}`);
+  if (inProgress) throw new AttemptRedirectSignal(`/encounters/${assessmentId}`);
 
   if (priorAttempts >= assessment.maxAttempts) {
     throw new Error("You've used all your attempts for this encounter.");
@@ -215,7 +215,7 @@ export async function startAttempt(assessmentId: string) {
     createdAttemptId = created.id;
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      redirect(`/encounters/${assessmentId}`);
+      throw new AttemptRedirectSignal(`/encounters/${assessmentId}`);
     }
     throw err;
   }
@@ -223,7 +223,7 @@ export async function startAttempt(assessmentId: string) {
   await logIntegrityEvent(createdAttemptId, "EXAM_STARTED", { userAgent });
 
   revalidatePath(`/encounters/${assessmentId}`);
-  redirect(`/encounters/${assessmentId}`);
+  throw new AttemptRedirectSignal(`/encounters/${assessmentId}`);
 }
 
 // ---------------------------------------------------------------------

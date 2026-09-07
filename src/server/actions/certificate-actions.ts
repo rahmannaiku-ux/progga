@@ -13,10 +13,12 @@ export async function retryCertificateIssuance(certificateId: string) {
   const { userId } = auth();
   if (!userId) throw new Error("Your session has expired. Please sign in again.");
 
-  const user = await db.user.findUnique({ where: { clerkId: userId } });
+  const [user, certificate] = await Promise.all([
+    db.user.findUnique({ where: { clerkId: userId } }),
+    db.certificate.findUnique({ where: { id: certificateId } }),
+  ]);
   if (!user) throw new Error("Your session has expired. Please sign in again.");
 
-  const certificate = await db.certificate.findUnique({ where: { id: certificateId } });
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
   if (!certificate || (certificate.userId !== user.id && !isAdmin)) {
     throw new Error("Certificate not found.");
