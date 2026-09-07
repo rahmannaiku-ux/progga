@@ -105,7 +105,15 @@ export async function createAssessment(formData: FormData) {
     chapterId: formData.get("chapterId"),
     title: formData.get("title"),
     kind: formData.get("kind"),
-    instructions: formData.get("instructions"),
+    // FormData.get() returns null (not undefined) when a field isn't
+    // present in the submitted form — this create form only sends
+    // title/kind/lessonId/chapterId, so instructions/monitoring/access
+    // fields are always absent here. The schema's
+    // `.optional().or(z.literal(""))` accepts undefined or "", but not
+    // null, so raw null was tripping Zod's generic union-mismatch error
+    // ("Invalid input") on every submission. `|| undefined` normalizes
+    // null (and "") the same way the other optional fields below do.
+    instructions: formData.get("instructions") || undefined,
     timeLimitSeconds: formData.get("timeLimitSeconds") || undefined,
     randomizeQuestions: formData.get("randomizeQuestions") === "on",
     questionBankSize: formData.get("questionBankSize") || undefined,
@@ -121,10 +129,11 @@ export async function createAssessment(formData: FormData) {
     passPercentage: formData.get("passPercentage") || 60,
     showResultsInstantly: formData.get("showResultsInstantly") === "on",
     isLiveExam: formData.get("isLiveExam") === "on",
-    monitoringStartsAt: formData.get("monitoringStartsAt"),
-    monitoringEndsAt: formData.get("monitoringEndsAt"),
-    accessOpensAt: formData.get("accessOpensAt"),
-    accessClosesAt: formData.get("accessClosesAt"),
+    // Same null-vs-undefined issue as `instructions` above.
+    monitoringStartsAt: formData.get("monitoringStartsAt") || undefined,
+    monitoringEndsAt: formData.get("monitoringEndsAt") || undefined,
+    accessOpensAt: formData.get("accessOpensAt") || undefined,
+    accessClosesAt: formData.get("accessClosesAt") || undefined,
     coinReward: formData.get("coinReward") || 0,
     minimumScoreForCoinReward: formData.get("minimumScoreForCoinReward") || undefined,
   });
@@ -178,7 +187,10 @@ export async function updateAssessment(assessmentId: string, formData: FormData)
       chapterId: formData.get("chapterId"),
       title: formData.get("title"),
       kind: formData.get("kind"),
-      instructions: formData.get("instructions"),
+      // See the comment in createAssessment above — `|| undefined` guards
+      // against FormData.get() returning null (rather than undefined)
+      // for a field the form omits or leaves blank.
+      instructions: formData.get("instructions") || undefined,
       timeLimitSeconds: formData.get("timeLimitSeconds") || undefined,
       randomizeQuestions: formData.get("randomizeQuestions") === "on",
       questionBankSize: formData.get("questionBankSize") || undefined,
@@ -194,10 +206,10 @@ export async function updateAssessment(assessmentId: string, formData: FormData)
       passPercentage: formData.get("passPercentage") || 60,
       showResultsInstantly: formData.get("showResultsInstantly") === "on",
       isLiveExam: formData.get("isLiveExam") === "on",
-      monitoringStartsAt: formData.get("monitoringStartsAt"),
-      monitoringEndsAt: formData.get("monitoringEndsAt"),
-      accessOpensAt: formData.get("accessOpensAt"),
-      accessClosesAt: formData.get("accessClosesAt"),
+      monitoringStartsAt: formData.get("monitoringStartsAt") || undefined,
+      monitoringEndsAt: formData.get("monitoringEndsAt") || undefined,
+      accessOpensAt: formData.get("accessOpensAt") || undefined,
+      accessClosesAt: formData.get("accessClosesAt") || undefined,
       coinReward: formData.get("coinReward") || 0,
       minimumScoreForCoinReward: formData.get("minimumScoreForCoinReward") || undefined,
     });
