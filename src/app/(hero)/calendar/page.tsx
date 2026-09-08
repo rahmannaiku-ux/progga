@@ -1,16 +1,25 @@
 import Link from "next/link";
+import { subMonths, addMonths } from "date-fns";
 import { Calendar, Video, ClipboardList, CalendarDays } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { getStudentCalendarItems, type CalendarItem } from "@/server/services/calendar";
+import { db } from "@/lib/db/client";
+import { getStudentCalendarItems, getStudentGamificationTimeline, type CalendarItem } from "@/server/services/calendar";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { MonthCalendar } from "@/components/calendar/month-calendar";
+import { formatDhakaTime, formatDhakaDate, dhakaDateKey } from "@/lib/timezone";
 
 const KIND_ICON = { event: Calendar, live_class: Video, assignment_due: ClipboardList } as const;
 const KIND_LABEL = { event: "Event", live_class: "Live Class", assignment_due: "Due" } as const;
 
+// Buckets by the Dhaka calendar day the event falls on, not the
+// server's (UTC on Vercel) or browser's local day — see dhakaDateKey's
+// comment. Without this, an event at, say, 1:00 AM Dhaka time (7:00 PM
+// UTC the previous day) would silently show up under the wrong date
+// header.
 function groupByDate(items: CalendarItem[]) {
   const groups = new Map<string, CalendarItem[]>();
   for (const item of items) {
-    const key = item.startAt.toDateString();
+    const key = dhakaDateKey(item.startAt);
     const list = groups.get(key);
     if (list) list.push(item);
     else groups.set(key, [item]);
@@ -20,11 +29,28 @@ function groupByDate(items: CalendarItem[]) {
 
 export default async function CalendarPage() {
   const user = await getCurrentUser();
-  const allItems = await getStudentCalendarItems(user.id);
 
+  // Bounded window for the gamification overlay (3 months back, 2
+  // forward from "now") — same reasoning as getStudentCalendarItems
+  // scoping to enrollments: a long-tenured student's full RewardEvent/
+  // ProggyCoinTransaction history isn't needed for a calendar that only
+  // ever shows a few months at a time. The month grid itself can still
+  // be navigated further via prev/next; days outside this window just
+  // won't show XP/coin badges, which is an acceptable trade at this
+  // scale (matches the "acceptable inline for the scale this platform
+  // is built for at launch" precedent elsewhere in this codebase).
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const upcoming = allItems.filter((i) => i.startAt >= startOfToday);
+  const gamificationRangeStart = subMonths(now, 3);
+  const gamificationRangeEnd = addMonths(now, 2);
+
+  const [allItems, heroStats, gamificationMap] = await Promise.all([
+    getStudentCalendarItems(user.id),
+    db.heroStats.findUnique({ where: { userId: user.id } }),
+    getStudentGamificationTimeline(user.id, gamificationRangeStart, gamificationRangeEnd),
+  ]);
+
+  const startOfTodayDhaka = new Date(`${dhakaDateKey(now)}T00:00:00+06:00`);
+  const upcoming = allItems.filter((i) => i.startAt >= startOfTodayDhaka);
   const grouped = groupByDate(upcoming);
 
   return (
@@ -35,9 +61,29 @@ export default async function CalendarPage() {
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Live classes, assignment due dates, and mission events for the missions you're enrolled
-          in.
+          in — plus your XP and streak history, right on the days you earned them.
         </p>
       </StaggerItem>
+
+      <StaggerItem>
+        <MonthCalendar
+          items={allItems}
+          gamification={Object.fromEntries(gamificationMap)}
+          streak={{
+            current: heroStats?.currentStreak ?? 0,
+            longest: heroStats?.longestStreak ?? 0,
+            lastActivityDate: heroStats?.lastActivityDate?.toISOString() ?? null,
+          }}
+        />
+      </StaggerItem>
+
+      {grouped.size > 0 && (
+        <StaggerItem>
+          <h2 className="font-display text-sm font-extrabold uppercase tracking-wide text-foreground">
+            Upcoming
+          </h2>
+        </StaggerItem>
+      )}
 
       {grouped.size === 0 && (
         <StaggerItem className="comic-panel bg-surface p-8 text-center">
@@ -51,11 +97,7 @@ export default async function CalendarPage() {
       {Array.from(grouped.entries()).map(([dateKey, items]) => (
         <StaggerItem key={dateKey}>
           <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            {new Date(dateKey).toLocaleDateString(undefined, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
+            {formatDhakaDate(`${dateKey}T00:00:00+06:00`, { weekday: "long", month: "long", day: "numeric" })}
           </h2>
           <div className="space-y-2">
             {items.map((item) => {
@@ -85,7 +127,7 @@ export default async function CalendarPage() {
                       <p className="truncate text-xs text-muted-foreground">{item.courseTitle}</p>
                     )}
                     <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                      {item.startAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                      {formatDhakaTime(item.startAt)}
                     </p>
                     {item.description && (
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">

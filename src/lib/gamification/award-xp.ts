@@ -5,6 +5,7 @@ import {
   checkLevelAchievements,
   checkStreakAchievements,
 } from "@/lib/gamification/check-achievements";
+import { dhakaDateKey } from "@/lib/timezone";
 
 /**
  * Awards XP exactly once per (sourceType, sourceId, rewardType, userId).
@@ -85,10 +86,15 @@ export async function updateStreak(userId: string) {
     update: {},
   });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const last = stats.lastActivityDate ? new Date(stats.lastActivityDate) : null;
-  if (last) last.setHours(0, 0, 0, 0);
+  // Bangladesh calendar day, not the server's local day — Vercel
+  // functions run in UTC regardless of region, so a plain
+  // `new Date(); setHours(0,0,0,0)` here would mark "today" using
+  // UTC's midnight, up to 6 hours off from Dhaka's. See dhakaDateKey's
+  // comment in lib/timezone.ts.
+  const today = new Date(`${dhakaDateKey(new Date())}T00:00:00+06:00`);
+  const last = stats.lastActivityDate
+    ? new Date(`${dhakaDateKey(stats.lastActivityDate)}T00:00:00+06:00`)
+    : null;
 
   let currentStreak = stats.currentStreak;
   if (!last) {

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { dhakaDateKey } from "@/lib/timezone";
 
 export type CalendarItem = {
   id: string;
@@ -152,4 +153,83 @@ export async function getStudentCalendarItems(userId: string): Promise<CalendarI
 
   items.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
   return items;
+}
+
+/** One day's worth of gamification activity, keyed by Dhaka calendar
+ * day elsewhere (see getStudentGamificationTimeline). `xp` is the
+ * day's total from RewardEvent amounts; `entries` is the human-
+ * readable breakdown (one row per RewardEvent and per positive
+ * ProggyCoinTransaction) shown in the day-detail panel. */
+export type DayGamificationSummary = {
+  xp: number;
+  entries: { label: string; xp: number; coins: number }[];
+};
+
+// Human-readable labels for RewardEvent.rewardType — keep in sync with
+// XP_REWARDS in lib/gamification/xp-curve.ts. Falls back to the raw
+// rewardType string for anything not listed here so a newly added
+// reward type never disappears from the timeline, it just shows up
+// unformatted until this map is updated.
+const REWARD_TYPE_LABELS: Record<string, string> = {
+  LESSON_COMPLETE: "Lesson completed",
+  QUIZ_PASSED: "Quiz passed",
+  EXAM_PASSED: "Exam passed",
+  ASSIGNMENT_GRADED_PASS: "Assignment graded",
+  MISSION_COMPLETE: "Mission completed",
+  STREAK_MILESTONE: "Streak milestone",
+};
+
+/**
+ * XP (RewardEvent) and Proggy Coin (ProggyCoinTransaction) activity
+ * for a student, bucketed by the Dhaka calendar day each event fell
+ * on, for calendar-overlay display (see (hero)/calendar/page.tsx).
+ *
+ * Only positive coin transactions are included — STORE_PURCHASE spends
+ * are negative and aren't something a student "earned" on a given day,
+ * so they'd be misleading next to a "+" badge. RewardEvent.amount is
+ * always positive (awardXp never writes a negative amount), so no
+ * equivalent filter is needed there.
+ */
+export async function getStudentGamificationTimeline(
+  userId: string,
+  start: Date,
+  end: Date
+): Promise<Map<string, DayGamificationSummary>> {
+  const [rewardEvents, coinTransactions] = await Promise.all([
+    db.rewardEvent.findMany({
+      where: { userId, createdAt: { gte: start, lte: end } },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.proggyCoinTransaction.findMany({
+      where: { userId, amount: { gt: 0 }, createdAt: { gte: start, lte: end } },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  const map = new Map<string, DayGamificationSummary>();
+  const getDay = (key: string): DayGamificationSummary => {
+    let day = map.get(key);
+    if (!day) {
+      day = { xp: 0, entries: [] };
+      map.set(key, day);
+    }
+    return day;
+  };
+
+  for (const event of rewardEvents) {
+    const day = getDay(dhakaDateKey(event.createdAt));
+    day.xp += event.amount;
+    day.entries.push({
+      label: REWARD_TYPE_LABELS[event.rewardType] ?? event.rewardType,
+      xp: event.amount,
+      coins: 0,
+    });
+  }
+
+  for (const tx of coinTransactions) {
+    const day = getDay(dhakaDateKey(tx.createdAt));
+    day.entries.push({ label: tx.reason, xp: 0, coins: tx.amount });
+  }
+
+  return map;
 }
