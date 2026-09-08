@@ -1,6 +1,7 @@
 import { Megaphone } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { createMissionAnnouncement, deleteMentorAnnouncement } from "@/server/actions/mentor-actions";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 
@@ -78,7 +79,7 @@ export default async function MentorAnnouncementsPage() {
                 </span>
               )}
               <p className="mt-1.5 text-xs text-muted-foreground">{a.body}</p>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">{a.createdAt.toLocaleString()}</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{formatDhakaDateTime(a.createdAt)}</p>
             </div>
             <ConfirmDeleteButton
               action={deleteMentorAnnouncement.bind(null, a.id)}

@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { formatDhakaDateTime } from "@/lib/timezone";
 
 const CONFIG_ENTITY_TYPES = new Set(["PlatformSetting", "FeatureFlag", "Destination"]);
 
@@ -44,7 +45,7 @@ export default async function ActivityLogsPage() {
                       {log.user.firstName} {log.user.lastName}
                     </p>
                     <p className="shrink-0 text-xs text-muted-foreground">
-                      {log.createdAt.toLocaleString()}
+                      {formatDhakaDateTime(log.createdAt)}
                     </p>
                   </div>
                   <p className="truncate text-xs text-muted-foreground">{log.user.email}</p>
@@ -89,7 +90,7 @@ export default async function ActivityLogsPage() {
               return (
                 <tr key={log.id} className="border-b border-border/40 last:border-0">
                   <td className="p-4 text-muted-foreground">
-                    {log.createdAt.toLocaleString()}
+                    {formatDhakaDateTime(log.createdAt)}
                   </td>
                   <td className="p-4 text-foreground">
                     {log.user.firstName} {log.user.lastName}

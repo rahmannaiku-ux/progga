@@ -18,6 +18,7 @@ import { db } from "@/lib/db/client";
 import { MarkAllReadButton } from "@/components/gamification/mark-all-read-button";
 import { NotificationRow } from "@/components/gamification/notification-row";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { formatDhakaDate } from "@/lib/timezone";
 
 const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> = {
   ANNOUNCEMENT: { icon: Megaphone, color: "text-accent" },
@@ -50,7 +51,7 @@ function timeAgo(date: Date) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
+  return formatDhakaDate(date);
 }
 
 export default async function NotificationsPage({

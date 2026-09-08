@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Video, Calendar, Clock, ArrowRight, Plus } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getMentorLiveClasses } from "@/server/services/mentor-live-classes";
+import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
 
 export default async function MentorLiveClassesPage() {
   const user = await getCurrentUser();
@@ -111,11 +112,11 @@ function MentorLiveClassRow({
         <p className="truncate text-xs text-muted-foreground">{lc.course.title}</p>
         <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> {lc.scheduledStart.toLocaleDateString()}
+            <Calendar className="h-3 w-3" /> {formatDhakaDate(lc.scheduledStart)}
           </span>
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {lc.scheduledStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            {formatDhakaTime(lc.scheduledStart)}
           </span>
         </div>
       </div>

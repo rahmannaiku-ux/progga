@@ -1,6 +1,7 @@
 import { CalendarDays } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { createMissionCalendarEvent, deleteCalendarEvent } from "@/server/actions/calendar-actions";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 
@@ -100,7 +101,7 @@ export default async function MentorCalendarPage() {
                 </span>
               )}
               {e.description && <p className="mt-1.5 text-xs text-muted-foreground">{e.description}</p>}
-              <p className="mt-1.5 text-[11px] text-muted-foreground">{e.startAt.toLocaleString()}</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{formatDhakaDateTime(e.startAt)}</p>
             </div>
             <ConfirmDeleteButton
               action={deleteCalendarEvent.bind(null, e.id)}

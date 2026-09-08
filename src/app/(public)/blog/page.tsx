@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { isSafeDestinationUrl } from "@/lib/config/destinations";
+import { formatDhakaDate } from "@/lib/timezone";
 
 export const metadata = { title: "Blog" };
 
@@ -73,11 +74,7 @@ export default async function BlogPage({
                   <span className="font-semibold text-primary">{post.category.name}</span>
                 )}
                 <span>
-                  {post.publishedAt?.toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}{" "}
+                  {post.publishedAt && formatDhakaDate(post.publishedAt)}{" "}
                   · {post.authorName}
                 </span>
               </div>

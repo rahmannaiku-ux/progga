@@ -1,5 +1,6 @@
 import { Youtube, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { ResourceUploader } from "@/components/mentor-dashboard/resource-uploader";
@@ -63,7 +64,7 @@ export function LessonRow({
               {lesson.scheduledStart && (
                 <>
                   {" "}
-                  · <Badge variant="outline">Live · {lesson.scheduledStart.toLocaleString()}</Badge>
+                  · <Badge variant="outline">Live · {formatDhakaDateTime(lesson.scheduledStart)}</Badge>
                 </>
               )}
             </p>

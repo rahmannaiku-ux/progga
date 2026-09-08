@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { formatDhakaDate } from "@/lib/timezone";
 
 export default async function GradingQueuePage() {
   const user = await requireRole("TEACHER");
@@ -45,7 +46,7 @@ export default async function GradingQueuePage() {
               </p>
             </div>
             <span className="text-xs text-muted-foreground">
-              Submitted {a.submittedAt?.toLocaleDateString()}
+              Submitted {a.submittedAt && formatDhakaDate(a.submittedAt)}
             </span>
           </Link>
         ))}

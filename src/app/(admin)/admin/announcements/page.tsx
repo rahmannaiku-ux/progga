@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { createGlobalAnnouncement, deleteAnnouncement } from "@/server/actions/admin-actions";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { PaginationControls, parsePageParam } from "@/components/shared/pagination-controls";
 
@@ -42,7 +43,7 @@ export default async function AdminAnnouncementsPage({
               <p className="text-sm font-medium text-foreground">{a.title}</p>
               <p className="mt-1 text-xs text-muted-foreground">{a.body}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {a.createdAt.toLocaleString()}
+                {formatDhakaDateTime(a.createdAt)}
               </p>
             </div>
             <ConfirmDeleteButton

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { FileText, CheckCircle2, Clock3 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
+import { formatDhakaDate } from "@/lib/timezone";
 import { Badge } from "@/components/ui/badge";
 import { AssignmentSubmissionForm } from "@/components/course/assignment-submission-form";
 
@@ -79,7 +80,7 @@ export default async function ChallengePage({
                 isPastDue ? "bg-danger/15 text-danger" : "bg-muted text-foreground"
               }`}
             >
-              Due {assignment.dueAt.toLocaleDateString()}
+              Due {formatDhakaDate(assignment.dueAt)}
             </span>
           )}
           {assignment.allowLateSubmission && (

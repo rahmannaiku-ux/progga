@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
 import { renderCertificatePdf } from "@/lib/certificate/generate-certificate";
+import { formatDhakaDate } from "@/lib/timezone";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
 import { uploadUserFile } from "@/lib/storage";
 
@@ -53,11 +54,7 @@ export async function issueCertificate(certificateId: string) {
       studentName: `${certificate.user.firstName} ${certificate.user.lastName}`.trim(),
       courseTitle: certificate.course.title,
       mentorName: `${certificate.course.teacher.firstName} ${certificate.course.teacher.lastName}`.trim(),
-      issuedDate: new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
+      issuedDate: formatDhakaDate(new Date()),
       certificateNo: certificate.certificateNo,
     });
 

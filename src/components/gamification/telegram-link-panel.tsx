@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Send, CheckCircle2, Clock, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
 import {
   generateTelegramLinkTokenAction,
   unlinkTelegramAction,
@@ -53,7 +54,7 @@ export function TelegramLinkPanel({ initialStatus }: { initialStatus: LinkStatus
           <Badge variant="accent">Active</Badge>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Linked since {new Date(status.linkedAt).toLocaleDateString()}. Your dashboard, exams, results, and notifications are available in the Proggaa Telegram bot.
+          Linked since {formatDhakaDate(status.linkedAt)}. Your dashboard, exams, results, and notifications are available in the Proggaa Telegram bot.
         </p>
         <Button variant="outline" size="sm" className="mt-4" onClick={handleUnlink} disabled={isPending}>
           {isPending ? "Unlinking..." : "Unlink Telegram"}
@@ -100,7 +101,7 @@ export function TelegramLinkPanel({ initialStatus }: { initialStatus: LinkStatus
           {copied && <p className="text-xs text-accent">Copied!</p>}
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
-            {expiresAt && `Expires at ${new Date(expiresAt).toLocaleTimeString()}`} — one-time use.
+            {expiresAt && `Expires at ${formatDhakaTime(expiresAt)}`} — one-time use.
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
             <li>Open the Proggaa bot on Telegram.</li>

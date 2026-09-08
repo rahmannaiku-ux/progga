@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, Clock, User, ArrowRight } from "lucide-react";
 import { getLiveClassStatus, effectiveEndTime, formatDuration } from "@/lib/live-classes";
+import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
 import type { StudentLiveClass } from "@/server/services/live-classes";
 
 /**
@@ -58,15 +59,11 @@ export function LiveClassCard({
             <User className="h-3 w-3" /> {teacherName}
           </span>
           <span className="flex items-center gap-1" suppressHydrationWarning>
-            <Calendar className="h-3 w-3" /> {liveClass.scheduledStart.toLocaleDateString()}
+            <Calendar className="h-3 w-3" /> {formatDhakaDate(liveClass.scheduledStart)}
           </span>
           <span className="flex items-center gap-1" suppressHydrationWarning>
             <Clock className="h-3 w-3" />
-            {liveClass.scheduledStart.toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-              timeZoneName: "short",
-            })}
+            {formatDhakaTime(liveClass.scheduledStart, { timeZoneName: "short" })}
           </span>
         </div>
 

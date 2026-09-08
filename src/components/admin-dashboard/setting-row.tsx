@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, RotateCcw, AlertCircle } from "lucide-react";
 import { updateSettingAction } from "@/server/actions/control-center-actions";
+import { formatDhakaDate } from "@/lib/timezone";
 import type { SettingDefinition } from "@/lib/config/setting-definitions";
 import type { SettingWithMeta } from "@/lib/config/settings-service";
 
@@ -105,7 +106,7 @@ export function SettingRow({
         {meta.updatedByName && meta.updatedAt && (
           <>
             {" "}
-            · Last changed by {meta.updatedByName} on {new Date(meta.updatedAt).toLocaleDateString()}
+            · Last changed by {meta.updatedByName} on {formatDhakaDate(meta.updatedAt)}
           </>
         )}
       </p>

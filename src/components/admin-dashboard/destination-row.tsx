@@ -8,6 +8,7 @@ import {
   deleteDestinationAction,
 } from "@/server/actions/control-center-actions";
 import type { DestinationDefinition } from "@/lib/config/destination-definitions";
+import { formatDhakaDate } from "@/lib/timezone";
 
 type Existing = {
   label: string;
@@ -142,7 +143,7 @@ export function DestinationRow({
         )}
         {existing?.updatedByName && (
           <p className="text-[11px] text-muted-foreground">
-            Last changed by {existing.updatedByName} on {new Date(existing.updatedAt!).toLocaleDateString()}
+            Last changed by {existing.updatedByName} on {formatDhakaDate(existing.updatedAt!)}
           </p>
         )}
       </div>

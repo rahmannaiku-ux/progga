@@ -1,6 +1,7 @@
 import { Coins, Wallet as WalletIcon, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
+import { formatDhakaDate } from "@/lib/timezone";
 
 export default async function WalletPage() {
   const user = await getCurrentUser();
@@ -52,7 +53,7 @@ export default async function WalletPage() {
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">{t.reason}</p>
-                <p className="text-[11px] text-muted-foreground">{t.createdAt.toLocaleDateString()}</p>
+                <p className="text-[11px] text-muted-foreground">{formatDhakaDate(t.createdAt)}</p>
               </div>
             </div>
             <span

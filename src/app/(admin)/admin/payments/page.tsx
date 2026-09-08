@@ -4,6 +4,7 @@ import { db } from "@/lib/db/client";
 import { Pagination } from "@/components/admin-dashboard/pagination";
 import { PaymentVerifyControls } from "@/components/admin-dashboard/payment-verify-controls";
 import { formatMoney, PAYMENT_STATUS_META, sourceLabel } from "@/lib/payments/format";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import type { PaymentStatus, VerificationMethod, Prisma } from "@prisma/client";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
@@ -130,7 +131,7 @@ export default async function AdminPaymentsPage({
                   <Field label="Reference" value={p.paymentReference} mono />
                   <Field label="TXID" value={p.transactionId ?? "—"} mono />
                   <Field label="Source" value={sourceLabel(p.source)} />
-                  <Field label="Submitted" value={p.updatedAt.toLocaleString()} />
+                  <Field label="Submitted" value={formatDhakaDateTime(p.updatedAt)} />
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">

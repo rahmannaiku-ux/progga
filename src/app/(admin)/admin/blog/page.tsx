@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import type { Prisma } from "@prisma/client";
 import { PaginationControls, parsePageParam } from "@/components/shared/pagination-controls";
+import { formatDhakaDate } from "@/lib/timezone";
 import { BlogStatusSelect } from "@/components/admin-dashboard/blog-status-select";
 import { BlogDeleteButton } from "@/components/admin-dashboard/blog-delete-button";
 
@@ -179,7 +180,7 @@ export default async function AdminBlogPage({
                 <td className="p-4">
                   <BlogStatusSelect postId={post.id} status={post.status} />
                 </td>
-                <td className="p-4 text-muted-foreground">{post.updatedAt.toLocaleDateString()}</td>
+                <td className="p-4 text-muted-foreground">{formatDhakaDate(post.updatedAt)}</td>
                 <td className="p-4">
                   <div className="flex items-center gap-3">
                     <Link href={`/admin/blog/${post.id}/edit`} className="text-xs font-semibold text-primary">

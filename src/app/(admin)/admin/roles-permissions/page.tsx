@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { PromoteUserForm } from "@/components/admin-dashboard/promote-user-form";
 
 const ROLE_DESCRIPTIONS = [
@@ -69,7 +70,7 @@ export default async function RolesPermissionsPage() {
               <span className="text-foreground">
                 {c.changedBy.firstName} {c.changedBy.lastName}
               </span>{" "}
-              · {c.createdAt.toLocaleString()}
+              · {formatDhakaDateTime(c.createdAt)}
             </li>
           ))}
           {recentChanges.length === 0 && (

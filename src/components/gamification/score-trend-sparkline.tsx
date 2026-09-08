@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { formatDhakaDate } from "@/lib/timezone";
 
 export type TrendPoint = {
   id: string;
@@ -86,10 +87,7 @@ export function ScoreTrendSparkline({ points }: { points: TrendPoint[] }) {
           <span className="truncate text-foreground">{active.title}</span>
           <span className="shrink-0 font-mono font-semibold text-muted-foreground">
             {active.percentage}% ·{" "}
-            {new Date(active.submittedAt).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })}
+            {formatDhakaDate(active.submittedAt, { month: "short", day: "numeric" })}
           </span>
         </div>
       )}

@@ -19,12 +19,18 @@
  */
 const DHAKA_TZ = "Asia/Dhaka";
 
-/** "2:30 PM" */
-export function formatDhakaTime(date: Date | string): string {
+/** "2:30 PM" — pass Intl.DateTimeFormatOptions to customize (e.g.
+ * { timeZoneName: "short" } to append "GMT+6"); timeZone is always
+ * pinned to Dhaka regardless of what's passed in. */
+export function formatDhakaTime(
+  date: Date | string,
+  opts: Intl.DateTimeFormatOptions = {}
+): string {
   return new Date(date).toLocaleTimeString("en-US", {
-    timeZone: DHAKA_TZ,
     hour: "numeric",
     minute: "2-digit",
+    ...opts,
+    timeZone: DHAKA_TZ,
   });
 }
 

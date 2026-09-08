@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { createBatch, deleteBatch } from "@/server/actions/admin-actions";
+import { formatDhakaDate } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { PaginationControls, parsePageParam } from "@/components/shared/pagination-controls";
 
@@ -46,8 +47,8 @@ export default async function AdminBatchesPage({
                 {b.name} — {b.course.title}
               </p>
               <p className="text-xs text-muted-foreground">
-                {b.startDate.toLocaleDateString()}
-                {b.endDate ? ` – ${b.endDate.toLocaleDateString()}` : ""} ·{" "}
+                {formatDhakaDate(b.startDate)}
+                {b.endDate ? ` – ${formatDhakaDate(b.endDate)}` : ""} ·{" "}
                 {b._count.members}
                 {b.capacity ? ` / ${b.capacity}` : ""} enrolled
               </p>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { formatDhakaDate } from "@/lib/timezone";
 import { isSafeDestinationUrl } from "@/lib/config/destinations";
 
 export async function generateMetadata({
@@ -56,11 +57,7 @@ export default async function BlogPostPage({
           </Link>
         )}
         <span>
-          {post.publishedAt?.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}{" "}
+          {post.publishedAt && formatDhakaDate(post.publishedAt)}{" "}
           · {post.authorName}
         </span>
       </div>

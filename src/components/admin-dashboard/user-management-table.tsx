@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { formatDhakaDate } from "@/lib/timezone";
 import { UserRowControls } from "@/components/admin-dashboard/user-row-controls";
 import { Pagination } from "@/components/admin-dashboard/pagination";
 import type { Role, Prisma } from "@prisma/client";
@@ -98,7 +99,7 @@ export async function UserManagementTable({
                   )}
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Joined {u.createdAt.toLocaleDateString()}</span>
+                  <span>Joined {formatDhakaDate(u.createdAt)}</span>
                   <span>
                     {u.role === "TEACHER"
                       ? `${u._count.coursesAuthored} missions`
@@ -150,7 +151,7 @@ export async function UserManagementTable({
                 </td>
                 <td className="p-4 text-muted-foreground">{u.email}</td>
                 <td className="p-4 text-muted-foreground">
-                  {u.createdAt.toLocaleDateString()}
+                  {formatDhakaDate(u.createdAt)}
                 </td>
                 <td className="p-4 text-muted-foreground">
                   {u.role === "TEACHER"

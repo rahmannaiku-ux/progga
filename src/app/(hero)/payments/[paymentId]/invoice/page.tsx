@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { formatMoney } from "@/lib/payments/format";
+import { formatDhakaDate } from "@/lib/timezone";
 import { PrintButton } from "@/components/payments/print-button";
 
 export default async function InvoicePage({
@@ -55,7 +56,7 @@ export default async function InvoicePage({
           </div>
           <div className="text-right">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Date</p>
-            <p className="mt-1 font-semibold text-foreground">{date.toLocaleDateString()}</p>
+            <p className="mt-1 font-semibold text-foreground">{formatDhakaDate(date)}</p>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Payment method
             </p>

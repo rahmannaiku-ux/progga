@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Smartphone, Plus, Ban, Copy, Check, TriangleAlert } from "lucide-react";
 import { createBridgeDevice, revokeBridgeDevice } from "@/server/actions/payment-actions";
+import { formatDhakaDateTime } from "@/lib/timezone";
 
 type Device = {
   id: string;
@@ -105,7 +106,7 @@ export function BridgeDeviceManager({ devices }: { devices: Device[] }) {
                 <p className="font-semibold text-foreground">{d.name}</p>
                 <p className="text-muted-foreground">
                   {d.isActive ? "Active" : "Revoked"} · last seen{" "}
-                  {d.lastSeenAt ? d.lastSeenAt.toLocaleString() : "never"}
+                  {d.lastSeenAt ? formatDhakaDateTime(d.lastSeenAt) : "never"}
                 </p>
               </div>
               {d.isActive && (

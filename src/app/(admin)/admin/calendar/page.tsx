@@ -2,6 +2,7 @@ import { CalendarDays } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { createCalendarEvent, deleteCalendarEvent } from "@/server/actions/calendar-actions";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { PaginationControls, parsePageParam } from "@/components/shared/pagination-controls";
 
@@ -46,7 +47,7 @@ export default async function AdminCalendarPage({
                 {e.isGlobal ? "Platform-wide" : e.course?.title}
               </span>
               {e.description && <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>}
-              <p className="mt-1 text-[11px] text-muted-foreground">{e.startAt.toLocaleString()}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{formatDhakaDateTime(e.startAt)}</p>
             </div>
             <ConfirmDeleteButton
               action={deleteCalendarEvent.bind(null, e.id)}

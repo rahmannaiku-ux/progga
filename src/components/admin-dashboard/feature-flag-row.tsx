@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, AlertCircle } from "lucide-react";
 import { updateFeatureFlagAction } from "@/server/actions/control-center-actions";
+import { formatDhakaDate } from "@/lib/timezone";
 
 const ROLES = ["STUDENT", "TEACHER", "ADMIN", "SUPER_ADMIN"] as const;
 
@@ -105,7 +106,7 @@ export function FeatureFlagRow({ meta }: { meta: FlagMeta }) {
         </button>
         {meta.updatedByName && meta.updatedAt && (
           <p className="text-[11px] text-muted-foreground">
-            Last changed by {meta.updatedByName} on {new Date(meta.updatedAt).toLocaleDateString()}
+            Last changed by {meta.updatedByName} on {formatDhakaDate(meta.updatedAt)}
           </p>
         )}
       </div>

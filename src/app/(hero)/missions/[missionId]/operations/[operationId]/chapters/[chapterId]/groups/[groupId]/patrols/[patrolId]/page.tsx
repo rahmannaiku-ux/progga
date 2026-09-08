@@ -24,6 +24,7 @@ import { GoogleResourceEmbed } from "@/components/course/google-resource-embed";
 import { Badge } from "@/components/ui/badge";
 import { flattenLessons, getAdjacentLessons } from "@/lib/course-tree";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { formatDhakaDate } from "@/lib/timezone";
 
 export default async function LessonPlayerPage({
   params,
@@ -300,7 +301,7 @@ export default async function LessonPlayerPage({
                     <span className="flex shrink-0 items-center gap-2">
                       {o.dueAt && (
                         <span className="text-xs text-muted-foreground">
-                          due {o.dueAt.toLocaleDateString()}
+                          due {formatDhakaDate(o.dueAt)}
                         </span>
                       )}
                       <Badge variant={o.kind === "Challenge" ? "xp" : "accent"}>{o.kind}</Badge>

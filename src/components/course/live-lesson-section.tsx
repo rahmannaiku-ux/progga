@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Calendar, Clock } from "lucide-react";
 import { getLiveClassStatus, effectiveEndTime, formatDuration } from "@/lib/live-classes";
 import { youtubeThumbnailUrl } from "@/lib/youtube";
+import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
 import { LiveClassPlayer } from "@/components/course/live-class-player";
 import { LessonPlayer } from "@/components/course/lesson-player";
 
@@ -104,15 +105,11 @@ export function LiveLessonSection({
       </p>
       <p className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1" suppressHydrationWarning>
-          <Calendar className="h-3.5 w-3.5" /> {scheduledStart.toLocaleDateString()}
+          <Calendar className="h-3.5 w-3.5" /> {formatDhakaDate(scheduledStart)}
         </span>
         <span className="flex items-center gap-1" suppressHydrationWarning>
           <Clock className="h-3.5 w-3.5" />
-          {scheduledStart.toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-            timeZoneName: "short",
-          })}
+          {formatDhakaTime(scheduledStart, { timeZoneName: "short" })}
         </span>
       </p>
     </div>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { createAssignment, deleteAssignment } from "@/server/actions/assignment-actions";
+import { formatDhakaDate } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { RubricBuilder } from "@/components/mentor-dashboard/rubric-builder";
 
@@ -73,7 +74,7 @@ export default async function AssignmentsListPage({
               <p className="mt-1 text-xs text-muted-foreground">
                 Attached to "{a.lessonTitle}" · {a.maxPoints} pts ·{" "}
                 {a._count.submissions} submission{a._count.submissions === 1 ? "" : "s"}
-                {a.dueAt && ` · due ${a.dueAt.toLocaleDateString()}`}
+                {a.dueAt && ` · due ${formatDhakaDate(a.dueAt)}`}
               </p>
             </div>
             <ConfirmDeleteButton
