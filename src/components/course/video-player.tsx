@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFullscreen } from "@/hooks/use-fullscreen";
+import { useDevToolsShield } from "@/hooks/use-devtools-shield";
+import { VideoWatermark } from "@/components/security/video-watermark";
 
 /**
  * Maps YouTube's internal quality identifiers to the human labels the
@@ -81,19 +83,31 @@ export function VideoPlayer({
   resumeAtSeconds,
   onProgressTick,
   onEnded,
+  onPlayingChange,
 }: {
   youtubeVideoId: string;
   resumeAtSeconds: number;
-  /** Called periodically (and on pause) with the latest known playback position. */
-  onProgressTick: (currentSeconds: number) => void;
+  /**
+   * Called periodically while playing (and on pause) with the latest playback
+   * position and, when known, the video's total length in seconds.
+   */
+  onProgressTick: (currentSeconds: number, durationSeconds?: number) => void;
   /** Called once when the video genuinely finishes playing — the only trigger for automatic completion. */
   onEnded: (finalSeconds: number) => void;
+  /**
+   * Called whenever playback starts or stops (including after every seek,
+   * because YouTube re-enters PLAYING). Lets the parent tell "played
+   * continuously" apart from "jumped to a new position".
+   */
+  onPlayingChange?: (playing: boolean) => void;
 }) {
   const playerRef = useRef<YouTubePlayer | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const menusRef = useRef<HTMLDivElement | null>(null);
   const onProgressTickRef = useRef(onProgressTick);
   const onEndedRef = useRef(onEnded);
+  const onPlayingChangeRef = useRef(onPlayingChange);
+  onPlayingChangeRef.current = onPlayingChange;
   onProgressTickRef.current = onProgressTick;
   onEndedRef.current = onEnded;
 
@@ -117,6 +131,17 @@ export function VideoPlayer({
     useFullscreen(containerRef);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  // Anti-DevTools: pause + cover the picture the moment DevTools is detected
+  // (just before the redirect to /security/devtools). A deterrent only.
+  const [shielded, setShielded] = useState(false);
+  useDevToolsShield(() => {
+    try {
+      void playerRef.current?.pauseVideo();
+    } catch {
+      /* player not ready — the cover below still hides it */
+    }
+    setShielded(true);
+  });
 
   // Auto-hide the controls bar (and cursor) in fullscreen after a period
   // of no pointer activity, matching the standard "cinema mode" behavior
@@ -138,7 +163,7 @@ export function VideoPlayer({
         const [t, d] = await Promise.all([player.getCurrentTime(), player.getDuration()]);
         setCurrentTime(t);
         if (d > 0) setDuration(d);
-        onProgressTickRef.current(Math.floor(t));
+        onProgressTickRef.current(Math.floor(t), d > 0 ? d : undefined);
       } catch {
         // Player briefly unavailable mid-transition (e.g. seeking) — skip this tick.
       }
@@ -182,14 +207,14 @@ export function VideoPlayer({
   }, [showSpeedMenu, showQualityMenu]);
 
   // Schedules the controls to fade out after 3s of inactivity — but only
-  // while fullscreen, playing, and with no menu open or seek in progress
+  // while playing, with no menu open or seek in progress
   // (hiding mid-interaction would yank the UI out from under the
   // student's cursor/finger).
   const scheduleHide = useCallback(() => {
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    if (!isFullscreen || !isPlaying || showSpeedMenu || showQualityMenu || isSeeking) return;
+    if (!isPlaying || showSpeedMenu || showQualityMenu || isSeeking) return;
     hideTimeoutRef.current = setTimeout(() => setControlsVisible(false), 3000);
-  }, [isFullscreen, isPlaying, showSpeedMenu, showQualityMenu, isSeeking]);
+  }, [isPlaying, showSpeedMenu, showQualityMenu, isSeeking]);
 
   // Called on every pointer move/tap/click inside the player — brings
   // the controls back immediately, then restarts the hide countdown.
@@ -243,6 +268,7 @@ export function VideoPlayer({
     const state = e.data;
 
     if (state === YT_STATE.PLAYING) {
+      onPlayingChangeRef.current?.(true);
       setIsPlaying(true);
       // Re-query now that playback has actually started — this is when
       // YouTube's reported quality list is most reliable.
@@ -257,7 +283,9 @@ export function VideoPlayer({
       // until the next autosave tick in the parent component.
       const t = await player.getCurrentTime();
       onProgressTickRef.current(Math.floor(t));
+      onPlayingChangeRef.current?.(false);
     } else if (state === YT_STATE.ENDED) {
+      onPlayingChangeRef.current?.(false);
       setIsPlaying(false);
       const d = await player.getDuration();
       setCurrentTime(d);
@@ -341,7 +369,7 @@ export function VideoPlayer({
       onTouchStart={wakeControls}
       onClick={wakeControls}
       className={cn(
-        "comic-panel overflow-hidden bg-surface p-0",
+        "comic-panel relative overflow-hidden bg-surface p-0",
         // .comic-panel (globals.css) applies rounded-2xl, a visible
         // border, bg-surface, and shadow-card — all of which are
         // wrong for a true fullscreen player and must ALL be
@@ -374,11 +402,13 @@ export function VideoPlayer({
             cannot be interacted with. controls:0/disablekb:1/fs:0
             strip YouTube's own UI (native controls, keyboard shortcuts,
             its own fullscreen button) at the player-parameter level. */}
-        <div className="pointer-events-none absolute inset-0 h-full w-full">
+        <div className={cn("pointer-events-none absolute inset-0 h-full w-full", shielded && "invisible")}>
           <YouTube
             videoId={youtubeVideoId}
             className="h-full w-full"
-            iframeClassName="h-full w-full"
+            // Pinned edge-to-edge in its own box: no inline baseline gap, border
+            // or margin that can nudge the picture sideways on iOS Safari.
+            iframeClassName="absolute inset-0 m-0 block h-full w-full max-w-none border-0"
             opts={{
               width: "100%",
               height: "100%",
@@ -399,6 +429,17 @@ export function VideoPlayer({
           />
         </div>
 
+        <VideoWatermark />
+
+        {shielded && (
+          <div
+            role="alert"
+            className="absolute inset-0 z-40 flex items-center justify-center bg-black p-4 text-center text-sm font-semibold text-white"
+          >
+            Protected content paused. Close Developer Tools to continue.
+          </div>
+        )}
+
         {/* Click-catching overlay — sits above the (already
             pointer-events-none) iframe and receives every tap/click
             itself. Toggling play/pause here, rather than leaving the
@@ -409,11 +450,11 @@ export function VideoPlayer({
             type="button"
             aria-label={isPlaying ? "Pause video" : "Play video"}
             onClick={() => {
-              // In fullscreen with the controls faded out, the first tap
+              // With the controls faded out, the first tap
               // only brings them back (it's the container's onClick that
               // does that) — otherwise every "show controls" tap on a
               // phone also paused or resumed the video.
-              if (isFullscreen && !controlsVisible) return;
+              if (!controlsVisible) return;
               togglePlay();
             }}
             className="absolute inset-0 flex items-center justify-center bg-transparent"
@@ -468,13 +509,14 @@ export function VideoPlayer({
       {status === "ready" && (
         <div
           className={cn(
-            "flex flex-col gap-2 bg-surface p-3 transition-opacity duration-300",
-            isFullscreen
-              ? cn(
-                  "absolute inset-x-0 bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
-                  controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-                )
-              : "opacity-100"
+            // A clear overlay: no solid background, only a soft dark fade at
+            // the very bottom so the white controls stay readable over any
+            // video frame. It sits ON the video (not under it, as the old
+            // white card did) and fades away while playing.
+            "absolute inset-x-0 bottom-0 z-20 flex flex-col gap-1 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-3 pt-10 text-white transition-opacity duration-300",
+            isFullscreen &&
+              "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
+            controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         >
           {/* Progress bar: a native <input type="range"> rather than a
@@ -484,7 +526,7 @@ export function VideoPlayer({
               (pointer up / change), not on every pixel of drag,
               matching the "efficient update strategy" ask. */}
           <div className="flex items-center gap-2">
-            <span className="w-12 shrink-0 font-mono text-[11px] text-muted-foreground">
+            <span className="w-12 shrink-0 font-mono text-[11px] tabular-nums text-white/85">
               {formatTime(displayTime)}
             </span>
             <input
@@ -499,10 +541,10 @@ export function VideoPlayer({
                 setSeekPreview(Number((e.target as HTMLInputElement).value));
               }}
               onChange={(e) => commitSeek(Number(e.target.value))}
-              className="h-2 min-h-[44px] flex-1 cursor-pointer touch-none accent-accent"
-              style={{ minHeight: 44, padding: "21px 0" }}
+              className="player-range flex-1 touch-none"
+              style={{ "--fill": `${duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0}%` } as React.CSSProperties}
             />
-            <span className="w-12 shrink-0 text-right font-mono text-[11px] text-muted-foreground">
+            <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-white/85">
               {formatTime(duration)}
             </span>
           </div>
@@ -516,7 +558,7 @@ export function VideoPlayer({
                 aria-label="Rewind 10 seconds"
                 title="-10s"
                 onClick={() => seekBy(-SEEK_STEP_SECONDS)}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
               >
                 <RotateCcw className="h-5 w-5" />
               </button>
@@ -525,7 +567,7 @@ export function VideoPlayer({
                 aria-label={isPlaying ? "Pause" : "Play"}
                 title={isPlaying ? "Pause" : "Play"}
                 onClick={togglePlay}
-                className="sticker flex h-11 w-11 items-center justify-center bg-primary text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-xp text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
               >
                 {isPlaying ? (
                   <Pause className="h-5 w-5 fill-current" />
@@ -538,7 +580,7 @@ export function VideoPlayer({
                 aria-label="Forward 10 seconds"
                 title="+10s"
                 onClick={() => seekBy(SEEK_STEP_SECONDS)}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
               >
                 <RotateCw className="h-5 w-5" />
               </button>
@@ -553,7 +595,7 @@ export function VideoPlayer({
                   aria-label={isMuted ? "Unmute" : "Mute"}
                   title={isMuted ? "Unmute" : "Mute"}
                   onClick={toggleMute}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeX className="h-4.5 w-4.5" />
@@ -569,7 +611,8 @@ export function VideoPlayer({
                   step={1}
                   value={isMuted ? 0 : volume}
                   onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                  className="h-2 w-16 cursor-pointer accent-accent"
+                  className="player-range w-20"
+                  style={{ "--fill": `${isMuted ? 0 : volume}%` } as React.CSSProperties}
                 />
               </div>
             </div>
@@ -587,14 +630,14 @@ export function VideoPlayer({
                     setShowSpeedMenu((v) => !v);
                     setShowQualityMenu(false);
                   }}
-                  className="flex h-11 min-w-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="flex h-11 min-w-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                 >
                   <Gauge className="h-4 w-4" /> {playbackRate}×
                 </button>
                 {showSpeedMenu && (
                   <div
                     role="menu"
-                    className="comic-panel absolute bottom-full right-0 z-10 mb-2 w-28 bg-surface p-1.5"
+                    className="absolute bottom-full right-0 z-10 mb-2 w-28 rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl"
                   >
                     {PLAYBACK_RATES.map((rate) => (
                       <button
@@ -606,8 +649,8 @@ export function VideoPlayer({
                         className={cn(
                           "flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold",
                           rate === playbackRate
-                            ? "bg-primary text-primary-foreground"
-                            : "text-foreground hover:bg-muted"
+                            ? "bg-xp text-xp-foreground"
+                            : "text-white hover:bg-white/15"
                         )}
                       >
                         {rate}×
@@ -633,7 +676,7 @@ export function VideoPlayer({
                     setShowQualityMenu((v) => !v);
                     setShowSpeedMenu(false);
                   }}
-                  className="flex h-11 min-w-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-foreground hover:bg-muted disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="flex h-11 min-w-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-white hover:bg-white/15 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                 >
                   <Settings className="h-4 w-4" />
                   {QUALITY_LABELS[currentQuality] ?? "Auto"}
@@ -641,7 +684,7 @@ export function VideoPlayer({
                 {showQualityMenu && availableQualities.length > 0 && (
                   <div
                     role="menu"
-                    className="comic-panel absolute bottom-full right-0 z-10 mb-2 w-28 bg-surface p-1.5"
+                    className="absolute bottom-full right-0 z-10 mb-2 w-28 rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl"
                   >
                     {["auto", ...availableQualities.filter((q) => q !== "auto")].map((q) => (
                       <button
@@ -653,8 +696,8 @@ export function VideoPlayer({
                         className={cn(
                           "flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold",
                           q === currentQuality
-                            ? "bg-primary text-primary-foreground"
-                            : "text-foreground hover:bg-muted"
+                            ? "bg-xp text-xp-foreground"
+                            : "text-white hover:bg-white/15"
                         )}
                       >
                         {QUALITY_LABELS[q] ?? q}
@@ -669,7 +712,7 @@ export function VideoPlayer({
                 aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 onClick={toggleFullscreen}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
               >
                 {isFullscreen ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
               </button>

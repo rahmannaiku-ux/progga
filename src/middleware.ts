@@ -44,6 +44,9 @@ const isPublicRoute = createRouteMatcher([
   // redirected, and the public contact form failed for signed-out visitors.
   "/api/health",
   "/api/contact",
+  // The DevTools warning page must load for anyone (even a signed-out
+  // tab), or the redirect to it would itself bounce to /sign-in.
+  "/security/devtools",
   "/api/cron/(.*)",
   "/api/uploadthing(.*)",
   "/api/payment-bridge/(.*)",

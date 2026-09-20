@@ -39,6 +39,14 @@ export const FEATURE_FLAG_DEFINITIONS = {
     description: "Allow starting a new exam/quiz attempt. In-progress attempts are never interrupted.",
     defaultEnabled: true,
   },
+  devtools_protection: {
+    key: "devtools_protection",
+    category: "Emergency",
+    label: "DevTools protection",
+    description:
+      "Detect open browser Developer Tools for students and send them to a warning page (pauses the video first). Turn this off instantly if it ever blocks legitimate users. A deterrent only — real access control is always server-side.",
+    defaultEnabled: true,
+  },
   community: {
     key: "community",
     category: "Core",

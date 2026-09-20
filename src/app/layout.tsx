@@ -43,13 +43,14 @@ const DEFAULT_TITLE = "Proggaa — Level Up Your Skills";
 const DEFAULT_DESCRIPTION =
   "A gamified learning platform where every course is a mission, every lesson is a patrol, and every skill you master earns XP.";
 
-// viewport-fit=cover lets pages draw under the iPhone notch/home bar so the
-// env(safe-area-inset-*) padding used by the bottom navs and the fullscreen
-// player actually takes effect; theme-color tints the browser chrome.
+// NOTE: deliberately NOT viewport-fit=cover. With "cover", iPhone Safari in
+// landscape draws the page under the notch and nothing pads for it, which
+// shifted the video (and the whole page) toward one side. Without it Safari
+// keeps everything inside the safe area by itself. theme-color tints the
+// browser chrome.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fcf9f3" },
     { media: "(prefers-color-scheme: dark)", color: "#110c1d" },

@@ -597,3 +597,63 @@
     font-size: max(16px, 1em);
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Video player sliders (seek + volume) — a visible track with a filled
+ * portion (set per element via the --fill custom property) and a clear
+ * thumb. The native range input is kept, so keyboard and screen-reader
+ * behaviour are unchanged. The input itself is 44px tall for a thumb-sized
+ * hit area; only the 6px track is drawn.
+ * ------------------------------------------------------------------ */
+.player-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.player-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    hsl(var(--xp)) var(--fill, 0%),
+    hsl(0 0% 100% / 0.3) var(--fill, 0%)
+  );
+}
+.player-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid hsl(var(--xp));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
+}
+.player-range::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: hsl(0 0% 100% / 0.3);
+}
+.player-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--xp));
+}
+.player-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid hsl(var(--xp));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
+}
+.player-range:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  border-radius: 9999px;
+}

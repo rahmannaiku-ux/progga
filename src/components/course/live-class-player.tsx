@@ -6,6 +6,8 @@ import YouTube, { type YouTubeEvent, type YouTubePlayer } from "react-youtube";
 import { PlayCircle, Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFullscreen } from "@/hooks/use-fullscreen";
+import { useDevToolsShield } from "@/hooks/use-devtools-shield";
+import { VideoWatermark } from "@/components/security/video-watermark";
 
 // YT.PlayerState numeric values — same constants video-player.tsx uses.
 const YT_STATE = { PLAYING: 1, PAUSED: 2 } as const;
@@ -42,6 +44,16 @@ export function LiveClassPlayer({
   // unmount cleanup — see src/hooks/use-fullscreen.ts.
   const { isFullscreen, isPseudoFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } =
     useFullscreen(containerRef);
+  // Anti-DevTools: pause + cover on detection (see lib/security/anti-devtools.ts).
+  const [shielded, setShielded] = useState(false);
+  useDevToolsShield(() => {
+    try {
+      void playerRef.current?.pauseVideo();
+    } catch {
+      /* not ready — the cover still hides it */
+    }
+    setShielded(true);
+  });
 
   function handleReady(e: YouTubeEvent) {
     playerRef.current = e.target;
@@ -106,7 +118,7 @@ export function LiveClassPlayer({
     <div
       ref={containerRef}
       className={cn(
-        "comic-panel overflow-hidden bg-surface p-0",
+        "comic-panel relative overflow-hidden bg-surface p-0",
         isFullscreen && "!fixed !inset-0 !z-50 flex !rounded-none !border-0 !shadow-none flex-col !bg-black touch-manipulation overscroll-none"
       )}
     >
@@ -122,12 +134,12 @@ export function LiveClassPlayer({
             UI at the player-parameter level; pointer-events-none
             guarantees the iframe itself can never be clicked directly,
             even if the overlay below were ever removed or mis-sized. */}
-        <div className="pointer-events-none absolute inset-0 h-full w-full">
+        <div className={cn("pointer-events-none absolute inset-0 h-full w-full", shielded && "invisible")}>
           <YouTube
             videoId={youtubeVideoId}
             title={title}
             className="h-full w-full"
-            iframeClassName="h-full w-full"
+            iframeClassName="absolute inset-0 m-0 block h-full w-full max-w-none border-0"
             opts={{
               width: "100%",
               height: "100%",
@@ -148,6 +160,17 @@ export function LiveClassPlayer({
             onError={handleError}
           />
         </div>
+
+        <VideoWatermark />
+
+        {shielded && (
+          <div
+            role="alert"
+            className="absolute inset-0 z-40 flex items-center justify-center bg-black p-4 text-center text-sm font-semibold text-white"
+          >
+            Protected content paused. Close Developer Tools to continue.
+          </div>
+        )}
 
         {status === "ready" && (
           <button
@@ -195,7 +218,8 @@ export function LiveClassPlayer({
       {status === "ready" && (
         <div
           className={cn(
-            "flex items-center justify-between gap-2 bg-surface p-3",
+            // Clear overlay on the video (soft fade only), like the lesson player.
+            "absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-3 pt-10 text-white",
             isFullscreen &&
               "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
           )}
@@ -206,7 +230,7 @@ export function LiveClassPlayer({
               aria-label={isPlaying ? "Pause" : "Play"}
               title={isPlaying ? "Pause" : "Play"}
               onClick={togglePlay}
-              className="sticker flex h-11 w-11 items-center justify-center bg-primary text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-xp text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               {isPlaying ? (
                 <Pause className="h-5 w-5 fill-current" />
@@ -219,7 +243,7 @@ export function LiveClassPlayer({
               aria-label={isMuted ? "Unmute" : "Mute"}
               title={isMuted ? "Unmute" : "Mute"}
               onClick={toggleMute}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               {isMuted ? <VolumeX className="h-4.5 w-4.5" /> : <Volume2 className="h-4.5 w-4.5" />}
             </button>
@@ -231,7 +255,7 @@ export function LiveClassPlayer({
             aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             onClick={toggleFullscreen}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
             {isFullscreen ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
           </button>

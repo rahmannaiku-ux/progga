@@ -6,6 +6,7 @@ import { recalcEnrollmentProgress } from "@/lib/progress";
 import { awardLessonCompletionXp, updateStreak } from "@/lib/gamification/award-xp";
 import { checkLessonCompletionAchievements } from "@/lib/gamification/check-achievements";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { evaluateProgress } from "@/lib/lesson-progress";
 import { requireActiveUser } from "./require-user";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 
@@ -28,59 +29,79 @@ async function requireEnrolledUser(lessonId: string) {
 }
 
 // ---------------------------------------------------------------------
-// PROGRESS (autosaved by the player, throttled client-side)
+// PROGRESS — completion is detected automatically, never chosen by the student
 // ---------------------------------------------------------------------
 
+/**
+ * Called by the lesson player every ~15s, on pause, and at the end.
+ *
+ * `playedSeconds` is how many seconds of video were actually PLAYED since the
+ * previous report — measured by the player from consecutive playback ticks, so
+ * seeking/dragging the slider never counts. The server adds it to the running
+ * total, and refuses to accept more than physically possible since the last
+ * save (elapsed wall-clock time x max playback speed). Completion is decided
+ * here, only here: enough was really played AND the student got near the end.
+ *
+ * There is deliberately no "mark complete" input any more: the fourth
+ * parameter is ignored and only kept so older call sites still compile.
+ */
 export async function updateLessonProgress(
   lessonId: string,
-  watchedSeconds: number,
+  playedSeconds: number,
   lastPositionSec: number,
-  markComplete: boolean
-) {
+  _ignoredMarkComplete?: boolean,
+  reportedDurationSeconds?: number
+): Promise<{ completed: boolean }> {
   const { user, courseId, durationSeconds } = await requireEnrolledUser(lessonId);
-
-  // Never trust these numbers or the completion flag directly — this is
-  // a server action, callable with any payload regardless of what the
-  // player UI actually sends. Clamp to physically sensible bounds, and
-  // only let `markComplete` actually flip isCompleted when enough of
-  // the lesson has genuinely been watched (a 30s grace band absorbs
-  // normal player rounding/seeking without allowing markComplete=true
-  // on a lesson with watchedSeconds=0 to instantly complete it).
-  const safeWatched = Math.max(0, Math.min(watchedSeconds, durationSeconds > 0 ? durationSeconds + 30 : watchedSeconds));
-  const safePosition = Math.max(0, Math.min(lastPositionSec, durationSeconds > 0 ? durationSeconds + 30 : lastPositionSec));
-  const hasWatchedEnough = durationSeconds === 0 || safeWatched >= durationSeconds * 0.85;
 
   const existing = await db.lessonProgress.findUnique({
     where: { userId_lessonId: { userId: user.id, lessonId } },
   });
 
-  const isCompleted = (markComplete && hasWatchedEnough) || existing?.isCompleted || false;
+  // All the rules (rate limit on claimed playback, completion thresholds)
+  // live in lib/lesson-progress.ts, where they are unit-tested.
+  const next = evaluateProgress({
+    existing: existing
+      ? {
+          watchedSeconds: existing.watchedSeconds,
+          lastPositionSec: existing.lastPositionSec,
+          isCompleted: existing.isCompleted,
+          updatedAtMs: existing.updatedAt.getTime(),
+        }
+      : null,
+    nowMs: Date.now(),
+    playedSeconds,
+    lastPositionSec,
+    storedDurationSec: durationSeconds,
+    reportedDurationSec: reportedDurationSeconds,
+  });
+  const { isCompleted, justCompleted } = next;
 
   await db.lessonProgress.upsert({
     where: { userId_lessonId: { userId: user.id, lessonId } },
     create: {
       userId: user.id,
       lessonId,
-      watchedSeconds: safeWatched,
-      lastPositionSec: safePosition,
+      watchedSeconds: next.watched,
+      lastPositionSec: next.position,
       isCompleted,
       completedAt: isCompleted ? new Date() : null,
     },
     update: {
-      watchedSeconds: Math.max(safeWatched, existing?.watchedSeconds ?? 0),
-      lastPositionSec: safePosition,
-      ...(isCompleted && !existing?.isCompleted
-        ? { isCompleted: true, completedAt: new Date() }
-        : {}),
+      watchedSeconds: next.watched,
+      lastPositionSec: next.position,
+      ...(justCompleted ? { isCompleted: true, completedAt: new Date() } : {}),
     },
   });
 
-  if (isCompleted && !existing?.isCompleted) {
+  if (justCompleted) {
     await recalcEnrollmentProgress(user.id, courseId);
     await awardLessonCompletionXp(user.id, lessonId);
     await updateStreak(user.id);
     await checkLessonCompletionAchievements(user.id);
   }
+
+  return { completed: isCompleted };
 }
 
 // ---------------------------------------------------------------------

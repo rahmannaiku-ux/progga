@@ -265,6 +265,35 @@ npm run db:seed
 npm run dev
 ```
 
+## DevTools protection (deterrent, not security)
+
+Students who open the browser's Developer Tools are sent to `/security/devtools`
+("Developer Tools Detected" → **Return to Proggaa**) after the video is paused
+and covered. **This cannot stop a determined user** (disabled JavaScript,
+extensions, another browser, proxies, automation) — real protection is
+server-side: authentication, enrollment and access checks on every request.
+
+| Piece | Where |
+|---|---|
+| Detection, key/right-click guards, redirect + loop protection | `src/lib/security/anti-devtools.ts` |
+| Mounted once, in the authenticated layouts | `AntiDevToolsProvider` in `src/app/(hero)/layout.tsx` and `(mentor)/layout.tsx` |
+| Server decision (env, role, feature flag) | `src/lib/security/anti-devtools-config.ts` |
+| Warning page (public, no detector of its own) | `src/app/security/devtools/page.tsx` |
+| Video pause/cover + identity watermark | `useDevToolsShield`, `VideoWatermark` in both players |
+| Advisory server log (ActivityLog, entity `SecurityEvent`) | `src/app/api/security/devtools/route.ts` |
+
+Signals (weighted; ≥ 3 combined within 8s triggers): a real `debugger` pause (4),
+DevTools reading a logged object (2, +1 if persistent), a docked-window size jump
+that survives zoom/resizes (2), slow `console.table` (1), a stalled timer while the
+tab is visible (1), repeated tampering with the monitor (3). A window-size change
+alone never triggers. Blocked shortcuts: F12, Ctrl+Shift+I/J/C/K, Cmd+Option+I/J/C/K,
+Cmd+Shift+C, Ctrl+U / Cmd+Option+U; right-click is blocked outside text fields on
+non-touch devices.
+
+Switches: `ANTI_DEVTOOLS=on|off` (default off in `next dev`), `ANTI_DEVTOOLS_ROLES`
+(default `STUDENT`), and the admin feature flag **DevTools protection**
+(Control Center → Feature flags) as an instant kill-switch.
+
 ## Linting
 
 `npm run lint` (ESLint 8 + `next/core-web-vitals`, config in `.eslintrc.json`)

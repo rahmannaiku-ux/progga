@@ -12,6 +12,8 @@ import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import { isMaintenanceBlocking } from "@/lib/maintenance";
 import { MaintenancePage } from "@/components/shared/maintenance-page";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
+import { AntiDevToolsProvider } from "@/components/security/anti-devtools-provider";
+import { isAntiDevToolsEnabledFor } from "@/lib/security/anti-devtools-config";
 
 export default async function HeroLayout({
   children,
@@ -28,9 +30,10 @@ export default async function HeroLayout({
   ]);
   if (blocked) return <MaintenancePage />;
 
-  const [stats, unreadNotifications] = await Promise.all([
+  const [stats, unreadNotifications, devtoolsGuard] = await Promise.all([
     getOrCreateHeroStats(user.id),
     db.notification.count({ where: { userId: user.id, isRead: false } }),
+    isAntiDevToolsEnabledFor(user),
   ]);
 
   const { level, xpIntoLevel, xpForNextLevel, percent } = xpProgressWithinLevel(stats.xp);
@@ -98,7 +101,10 @@ export default async function HeroLayout({
             under it — lg:pb-6 restores the plain desktop padding once
             the bottom nav is gone. */}
         <main className="relative flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
-          <PageTransition>{children}</PageTransition>
+          {/* The one place the anti-DevTools monitor is mounted for the app. */}
+          <AntiDevToolsProvider enabled={devtoolsGuard}>
+            <PageTransition>{children}</PageTransition>
+          </AntiDevToolsProvider>
         </main>
       </div>
       <MobileBottomNav />

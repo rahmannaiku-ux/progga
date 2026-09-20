@@ -6,6 +6,8 @@ import { RoleMobileNav } from "@/components/shared/role-mobile-nav";
 import { isMaintenanceBlocking } from "@/lib/maintenance";
 import { MaintenancePage } from "@/components/shared/maintenance-page";
 import { PageTransition } from "@/components/shared/page-transition";
+import { AntiDevToolsProvider } from "@/components/security/anti-devtools-provider";
+import { isAntiDevToolsEnabledFor } from "@/lib/security/anti-devtools-config";
 
 export default async function MentorLayout({
   children,
@@ -14,9 +16,14 @@ export default async function MentorLayout({
 }) {
   if (await isMaintenanceBlocking()) return <MaintenancePage />;
 
-  await requireRole("TEACHER");
+  const user = await requireRole("TEACHER");
 
-  const branding = await getSiteBranding();
+  const [branding, devtoolsGuard] = await Promise.all([
+    getSiteBranding(),
+    // Off for teachers by default (ANTI_DEVTOOLS_ROLES=STUDENT); mounted here so
+    // the same switch can include them without a code change.
+    isAntiDevToolsEnabledFor(user),
+  ]);
   const brandLabel = `${branding.siteName} · Mentor`;
 
   return (
@@ -30,7 +37,9 @@ export default async function MentorLayout({
             inset), matching the hero layout's spacing; lg:pb-6 restores
             plain desktop padding once the bottom nav is gone. */}
         <main className="relative flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
-          <PageTransition>{children}</PageTransition>
+          <AntiDevToolsProvider enabled={devtoolsGuard}>
+            <PageTransition>{children}</PageTransition>
+          </AntiDevToolsProvider>
         </main>
       </div>
       <RoleMobileNav navKey="mentor" brandLabel={brandLabel} />

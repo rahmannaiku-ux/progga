@@ -57,6 +57,27 @@
   `node scripts/find-unused-deps.mjs` (unused packages + the `npm uninstall` line).
 - Locale-safe numbers (`toLocaleString("en-US")`) to stop server/client hydration mismatches.
 
+### DevTools protection (deterrent)
+- New multi-signal detector (`lib/security/anti-devtools.ts`), mounted once per authenticated layout via
+  `AntiDevToolsProvider`; blocks DevTools/view-source shortcuts and right-click (outside text fields, non-touch);
+  on detection pauses + covers the video, then `location.replace("/security/devtools")`.
+- New public page `/security/devtools` (observe-only status, always-enabled "Return to Proggaa" link, no auto-redirect back).
+- Loop protection: per-tab singleton (Strict-Mode safe), cooldown + per-minute cap in `sessionStorage`, no detector on the warning page.
+- Moving identity watermark over lesson and live-class video; advisory server log to `ActivityLog` (`SecurityEvent`).
+- Kill-switches: `ANTI_DEVTOOLS`, `ANTI_DEVTOOLS_ROLES`, feature flag `devtools_protection`. Off in `next dev`.
+- Player controls are now a clear overlay (soft fade, auto-hide while playing) instead of a solid bar; iframe pinned edge-to-edge,
+  and `viewport-fit=cover` removed (it shifted the page/video sideways on iPhone landscape).
+
+### Automatic lesson completion
+- Removed the "Mark as complete" button: students can no longer choose to complete a lesson.
+- Completion is detected automatically and decided only on the server (`lib/lesson-progress.ts`, unit-tested): the player
+  measures how much video was actually *played* (dragging the slider or skipping counts as nothing), the server adds it up
+  (never accepting more than elapsed time x max speed since the last save) and completes the lesson once >= 85% was played
+  AND the student reached >= 85% of the way through.
+- **Fixed:** seeking to the end of a video used to trigger YouTube's "ended" event and complete the lesson. It no longer does.
+- `updateLessonProgress` now takes the seconds played since the last save (its "mark complete" argument is ignored) and
+  returns `{ completed }`.
+
 ### Lint
 - Added `.eslintrc.json` (the `lint` script existed but there was no config, so `npm run lint` could not run), plus
   `npm run lint:fix`; `next build` does not lint (`eslint.ignoreDuringBuilds`). Replaced an
