@@ -480,7 +480,7 @@ export function ExamRunner({
       <ExamWatermark studentName={studentName} examTitle={examTitle} attemptId={attemptId} />
 
       {contentHidden && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95">
           <p className="text-sm font-semibold text-muted-foreground">
             Exam content hidden while page inactive.
           </p>
@@ -551,7 +551,7 @@ export function ExamRunner({
                 href={`#question-${q.id}`}
                 aria-label={`Jump to question ${i + 1}${isMarked ? " (marked for review)" : isAnswered ? " (answered)" : " (unanswered)"}`}
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[3px] font-mono text-xs font-bold transition-transform hover:-translate-y-0.5",
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-mono text-xs font-bold transition-transform hover:-translate-y-0.5",
                   isMarked
                     ? "border-xp bg-xp/30 text-foreground"
                     : isAnswered
@@ -630,7 +630,7 @@ export function ExamRunner({
                       <label
                         key={opt.id}
                         className={cn(
-                          "comic-panel flex min-h-[48px] items-center gap-2.5 border-[3px] bg-surface p-3 text-base font-medium transition-transform",
+                          "comic-panel flex min-h-[48px] items-center gap-2.5 border-2 bg-surface p-3 text-base font-medium transition-transform",
                           isLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:-translate-y-0.5",
                           checked ? "border-accent bg-accent/10 text-foreground" : "border-border text-foreground"
                         )}
@@ -654,7 +654,7 @@ export function ExamRunner({
                       <label
                         key={opt.id}
                         className={cn(
-                          "comic-panel flex min-h-[48px] items-center gap-2.5 border-[3px] bg-surface p-3 text-base font-medium transition-transform",
+                          "comic-panel flex min-h-[48px] items-center gap-2.5 border-2 bg-surface p-3 text-base font-medium transition-transform",
                           isLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:-translate-y-0.5",
                           checked ? "border-accent bg-accent/10 text-foreground" : "border-border text-foreground"
                         )}

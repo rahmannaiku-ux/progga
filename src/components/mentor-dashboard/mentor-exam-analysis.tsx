@@ -54,7 +54,7 @@ export function MentorExamAnalysis({ analytics }: { analytics: MentorAssessmentA
         </h2>
       </div>
       <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Users className="h-3.5 w-3.5" /> Based on {participantCount.toLocaleString()} students'
+        <Users className="h-3.5 w-3.5" /> Based on {participantCount.toLocaleString("en-US")} students'
         best attempts
       </p>
 

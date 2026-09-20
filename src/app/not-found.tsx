@@ -6,7 +6,7 @@ import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodle
 
 export default function NotFound() {
   return (
-    <div className="hero-backdrop flex min-h-screen flex-col items-center justify-center gap-2 p-6 text-center">
+    <div className="hero-backdrop flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
       <div className="comic-panel halftone-dots relative max-w-md overflow-hidden bg-surface p-10">
         <DoodleStar className="pointer-events-none absolute -left-4 top-6 h-10 w-10 -rotate-12 opacity-70" />
         <DoodleSparkle className="pointer-events-none absolute -right-2 -top-2 h-9 w-9 opacity-70" />

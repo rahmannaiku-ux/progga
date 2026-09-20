@@ -48,7 +48,7 @@ export default async function AchievementsPage() {
             <StaggerItem
               key={a.key}
               className={cn(
-                "comic-panel relative flex items-start gap-3 border-[3px] bg-surface p-4 transition-transform duration-200",
+                "comic-panel relative flex items-start gap-3 border-2 bg-surface p-4 transition-transform duration-200",
                 isUnlocked ? rarity.ring : "border-border",
                 isUnlocked && rarity.glow,
                 isUnlocked && "hover:-translate-y-1",

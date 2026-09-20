@@ -3,10 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import { Flame, Bell } from "lucide-react";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
-import { progressFill } from "@/lib/motion";
 
 /**
  * Second HUD row rendered under the mobile topbar (lg:hidden, wired in
@@ -36,7 +34,6 @@ export function MobileHeroHud({
   unreadNotifications?: number;
   coinBalance?: number;
 }) {
-  const shouldReduceMotion = useReducedMotion();
   // Guards against avatarUrl pointing at a host next/image won't fetch
   // (e.g. an OAuth avatar host not yet in next.config.mjs remotePatterns)
   // or a dead/blocked link — falls back to the "Lv" sticker instead of
@@ -72,17 +69,12 @@ export function MobileHeroHud({
                 large XP totals could otherwise refuse to shrink and push
                 this whole HUD row (and the page) wider than the viewport. */}
             <span className="min-w-0 truncate font-mono text-[10px] font-semibold text-muted-foreground">
-              {xpIntoLevel.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP
+              {xpIntoLevel.toLocaleString("en-US")} / {xpForNextLevel.toLocaleString("en-US")} XP
             </span>
           </div>
-          <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={progressFill}
-            className="mt-1"
-          >
+          <div className="mt-1">
             <AnimatedProgressBar percent={percent} className="h-2" />
-          </motion.div>
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">

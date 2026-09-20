@@ -120,7 +120,7 @@ export function LessonGroupBlock({
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               Set a start time to make this a live class instead of a recorded lesson — put it in
               a "Live" class type so it sits alongside your recorded ones. Leave blank for an
-              ordinary recorded patrol.
+              ordinary recorded patrol. Times are Bangladesh time (UTC+6).
             </p>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
               <input

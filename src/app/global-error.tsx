@@ -25,7 +25,7 @@ export default function GlobalError({
             layout's `.theme-cartoon` wrapper — so the comic palette's CSS
             variables (bg-surface, text-foreground, etc.) aren't in scope
             unless we redeclare the class here too. */}
-        <div className="theme-cartoon hero-backdrop flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6 text-center">
+        <div className="theme-cartoon hero-backdrop flex min-h-dvh flex-col items-center justify-center gap-2 bg-background p-6 text-center">
           <div className="comic-panel halftone-dots relative max-w-md overflow-hidden bg-surface p-10">
             <DoodleSparkle className="pointer-events-none absolute -right-2 -top-2 h-9 w-9 opacity-70" />
 

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
@@ -75,11 +74,7 @@ export function Sidebar({
                       )}
                     >
                       {isActive && (
-                        <motion.span
-                          layoutId="sidebar-active-pill"
-                          className="absolute inset-0 rounded-xl bg-sidebar-active shadow-[0_3px_0_hsl(var(--sidebar-border))]"
-                          transition={{ type: "spring", stiffness: 500, damping: 38 }}
-                        />
+                        <span className="nav-pill-in absolute inset-0 rounded-xl bg-sidebar-active shadow-[0_3px_0_hsl(var(--sidebar-border))]" />
                       )}
                       <Icon className="relative z-10 h-4 w-4 shrink-0" />
                       <span className="relative z-10">{item.label}</span>

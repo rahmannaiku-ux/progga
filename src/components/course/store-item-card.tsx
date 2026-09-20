@@ -4,10 +4,8 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FileText, Video, CheckCircle2, Coins, ExternalLink, Sparkles } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { purchaseCoinStoreItem } from "@/server/actions/store-actions";
 import type { StoreItemWithOwnership } from "@/server/services/store";
-import { celebratePop } from "@/lib/motion";
 
 const TYPE_ICON = { PDF: FileText, EXCLUSIVE_CLASS: Video, STICKER: Sparkles } as const;
 const TYPE_LABEL = { PDF: "PDF", EXCLUSIVE_CLASS: "Class", STICKER: "Sticker" } as const;
@@ -76,42 +74,31 @@ export function StoreItemCard({
         <span className="flex items-center gap-1 font-mono text-sm font-bold text-xp">
           <Coins className="h-4 w-4" /> {item.priceCoins}
         </span>
-        <AnimatePresence mode="wait">
+        <>
           {!owned ? (
-            <motion.button
+            <button
               key="buy"
               type="button"
               onClick={handleBuy}
               disabled={isPending || !canAfford}
-              variants={celebratePop}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="comic-btn bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground disabled:opacity-50"
+              className="pop-in comic-btn bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground disabled:opacity-50"
             >
               {isPending ? "Buying..." : canAfford ? "Buy" : "Not enough coins"}
-            </motion.button>
+            </button>
           ) : item.type === "PDF" && item.resourceUrl ? (
-            <motion.a
+            <a
               key="open-pdf"
               href={item.resourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              variants={celebratePop}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="comic-btn flex items-center gap-1.5 bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground"
+              className="pop-in comic-btn flex items-center gap-1.5 bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5" /> Open PDF
-            </motion.a>
+            </a>
           ) : item.type === "EXCLUSIVE_CLASS" && item.lessonRoute ? (
-            <motion.div
+            <div
               key="go-to-class"
-              variants={celebratePop}
-              initial="initial"
-              animate="animate"
-              exit="exit"
+              className="pop-in"
             >
               <Link
                 href={item.lessonRoute}
@@ -119,9 +106,9 @@ export function StoreItemCard({
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Go to class
               </Link>
-            </motion.div>
+            </div>
           ) : null}
-        </AnimatePresence>
+        </>
       </div>
 
       {error && <p className="mt-2 text-xs font-medium text-danger">{error}</p>}

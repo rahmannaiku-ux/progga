@@ -63,7 +63,7 @@ export default async function MentorCalendarPage() {
             />
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-foreground">Start</label>
+                <label className="mb-1 block text-xs font-medium text-foreground">Start (Bangladesh time)</label>
                 <input
                   type="datetime-local"
                   name="startAt"

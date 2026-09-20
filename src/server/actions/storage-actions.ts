@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db/client";
 import { disconnectGoogleDriveAccount } from "@/lib/storage/google-drive";
 import { deleteUserFile } from "@/lib/storage";
 import { requireAdminUser } from "./require-user";

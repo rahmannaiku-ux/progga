@@ -1,19 +1,12 @@
-"use client";
-
-import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
-import {
-  staggerContainer,
-  staggerItem,
-  staggerItemReduced,
-} from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 /**
- * Wraps a page's major sections (or a grid of cards) so children with
- * <StaggerItem> inside stagger in together instead of the whole page
- * appearing as one flat block. This is the piece most pages were
- * missing — FadeIn/whileInView already covered scroll-reveal, but nothing
- * choreographed "this page just loaded" for the app shell.
+ * Staggered entrance for a group of cards. Pure CSS (`.stagger` /
+ * `.stagger-item` in globals.css, delays by sibling position) — these used
+ * to be framer-motion client components; now they're server-renderable and
+ * ship no JavaScript. Same props as before, so existing call sites are
+ * unchanged.
  */
 export function StaggerContainer({
   children,
@@ -22,16 +15,7 @@ export function StaggerContainer({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <motion.div
-      initial="initial"
-      animate="animate"
-      variants={staggerContainer}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={cn("stagger", className)}>{children}</div>;
 }
 
 export function StaggerItem({
@@ -45,16 +29,10 @@ export function StaggerItem({
   as?: "div" | "section" | "li";
   id?: string;
 }) {
-  const reduce = useReducedMotion();
-  const MotionTag =
-    as === "section" ? motion.section : as === "li" ? motion.li : motion.div;
+  const Tag = as;
   return (
-    <MotionTag
-      id={id}
-      variants={reduce ? staggerItemReduced : staggerItem}
-      className={className}
-    >
+    <Tag id={id} className={cn("stagger-item", className)}>
       {children}
-    </MotionTag>
+    </Tag>
   );
 }

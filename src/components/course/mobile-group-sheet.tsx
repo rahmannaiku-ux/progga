@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { GroupLessonList, type GroupSidebarLesson } from "@/components/course/curriculum-sidebar";
-import { backdropVariants } from "@/lib/motion";
+import { useMountTransition } from "@/hooks/use-mount-transition";
+import { cn } from "@/lib/utils";
 
 /**
  * `lg:hidden` mobile equivalent of GroupSidebar — instead of consuming
@@ -26,6 +26,7 @@ export function MobileGroupSheet({
   activeLessonId?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { mounted, entered } = useMountTransition(open, 300);
   const completedCount = lessons.filter((l) => l.isCompleted).length;
   const totalCount = lessons.length;
   const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -61,27 +62,25 @@ export function MobileGroupSheet({
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
 
-      <AnimatePresence>
-        {open && (
+        {mounted && (
           <div className="fixed inset-0 z-50 flex flex-col justify-end">
-            <motion.button
+            <button
               type="button"
               aria-label="Close lesson list"
               onClick={() => setOpen(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
-              variants={backdropVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
+              className={cn(
+                "absolute inset-0 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none",
+                entered ? "opacity-100" : "opacity-0"
+              )}
             />
 
-            <motion.div
+            <div
               role="dialog"
               aria-label={`${groupTitle} lessons`}
-              className="relative flex max-h-[75vh] flex-col rounded-t-3xl border-t-[3px] border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-2xl"
-              initial={{ y: "100%" }}
-              animate={{ y: 0, transition: { duration: 0.28, ease: [0.21, 0.47, 0.32, 0.98] } }}
-              exit={{ y: "100%", transition: { duration: 0.2 } }}
+              className={cn(
+                "relative flex max-h-[75dvh] flex-col rounded-t-3xl border-t-2 border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none",
+                entered ? "translate-y-0" : "translate-y-full"
+              )}
             >
               <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-border" />
 
@@ -115,10 +114,9 @@ export function MobileGroupSheet({
                   onNavigate={() => setOpen(false)}
                 />
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

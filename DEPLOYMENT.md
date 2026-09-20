@@ -81,7 +81,23 @@ gap, but the webhook is the primary, reliable path).
 6. Point your domain's DNS at Vercel, then update `NEXT_PUBLIC_APP_URL`
    and the Clerk webhook URL to match
 
-**Cron jobs**: add a `vercel.json` with `crons` entries pointing at
+**Cron jobs** (schedules are **UTC**; Bangladesh is UTC+6, so 20:00 UTC =
+02:00 BST). Example `vercel.json` — note Vercel's Hobby plan only allows
+daily crons, so the 5-minute reminder job needs Pro (or an external pinger):
+
+```json
+{
+  "crons": [
+    { "path": "/api/cron/expire-payments", "schedule": "0 20 * * *" },
+    { "path": "/api/cron/live-class-reminders", "schedule": "*/5 * * * *" }
+  ]
+}
+```
+
+The `/api/cron/*`, `/api/health`, `/api/contact`, `/api/uploadthing` and
+`/api/payment-bridge/*` routes are open to the middleware on purpose (they
+authenticate themselves); before this they were redirected to `/sign-in`.
+Add a `vercel.json` with `crons` entries pointing at
 `/api/cron/expire-payments` (expires stale pending bKash payments, run once
 or twice a day) and `/api/cron/live-class-reminders` (notifies enrolled
 students when a live class is starting within the next 20 minutes — run
@@ -99,8 +115,11 @@ matching `crons` entry here if that gets built.
 2. Clone the repo onto the server
 3. Copy `.env.example` to `.env` and fill it in — for a fully self-hosted
    setup, point `DATABASE_URL` at the `db` service in `docker-compose.yml`
-   (`postgresql://heroic:heroic@db:5432/heroic_lms`) and change the
-   default Postgres password
+   (`postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>`) —
+   `docker compose` refuses to start unless those three variables are set.
+   There is no Redis container: rate limiting uses Upstash or an in-process
+   fallback. The containers run with `TZ=Asia/Dhaka` (logs only — the app's
+   dates are pinned to Bangladesh time in code either way)
 4. Build and start:
 
 ```bash

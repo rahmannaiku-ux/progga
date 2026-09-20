@@ -54,7 +54,7 @@ export default async function MentorDashboardPage() {
   ]);
 
   const stats = [
-    { label: "Total Students", value: totalStudents.toLocaleString(), icon: Users },
+    { label: "Total Students", value: totalStudents.toLocaleString("en-US"), icon: Users },
     { label: "Total Missions", value: myCourses.length, icon: Rocket },
     { label: "Total Earnings", value: formatMoney(totalEarnings._sum.amountCents ?? 0, "BDT"), icon: Wallet },
     {

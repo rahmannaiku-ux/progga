@@ -36,7 +36,27 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/api/webhooks/(.*)",
   "/api/files/(.*)",
+  // Endpoints that authenticate themselves (or are meant to be open) and
+  // are never called with a Clerk session cookie. Before, all of these were
+  // bounced to /sign-in by the check below, so: the Docker health check
+  // never reached the database, Vercel Cron and the bKash payment bridge
+  // could never run, UploadThing's server-to-server callback was
+  // redirected, and the public contact form failed for signed-out visitors.
+  "/api/health",
+  "/api/contact",
+  "/api/cron/(.*)",
+  "/api/uploadthing(.*)",
+  "/api/payment-bridge/(.*)",
 ]);
+
+/** Routes that have their own auth/limits and must not share the per-IP API window. */
+const SKIP_IP_RATE_LIMIT = [
+  "/api/webhooks/",
+  "/api/uploadthing",
+  "/api/health",
+  "/api/cron/",
+  "/api/payment-bridge/",
+];
 
 /**
  * Server-to-server routes that authenticate via `X-Api-Key`
@@ -72,16 +92,18 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
 
   if (!userId && !isPublicRoute(req) && !isBotAuthRoute(req)) {
+    // API callers get a JSON 401 straight away instead of a redirect to an
+    // HTML sign-in page — one round trip instead of two, and fetch()
+    // callers can actually read the answer.
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
     const signInUrl = new URL("/sign-in", req.url);
     signInUrl.searchParams.set("redirect_url", req.url);
     return NextResponse.redirect(signInUrl);
   }
 
-  if (
-    isApiRoute &&
-    !pathname.startsWith("/api/webhooks/") &&
-    !pathname.startsWith("/api/uploadthing")
-  ) {
+  if (isApiRoute && !SKIP_IP_RATE_LIMIT.some((p) => pathname.startsWith(p))) {
     const identifier =
       userId ??
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

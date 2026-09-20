@@ -1,42 +1,30 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { pageVariants, pageVariantsReduced } from "@/lib/motion";
 
 /**
- * Mounted once per route-group layout (hero/mentor/admin/public — see
- * each layout.tsx), wrapping only that group's `{children}`. Sidebar,
- * topbar, mobile bottom nav, and the mobile drawer all live outside
- * this wrapper in their respective layouts, so they never re-animate
- * on navigation — only the page content does. `usePathname()` as the
- * AnimatePresence key is what makes Next.js's route swap trigger an
- * actual enter animation instead of an instant swap.
+ * Mounted once per route-group layout (hero/mentor/admin/public), wrapping
+ * only that group's `{children}`. Sidebar, topbar and the mobile navs live
+ * outside it, so only the page area animates on navigation.
  *
- * `mode="popLayout"` (not "wait"): with "wait", AnimatePresence holds
- * the new page off-screen until the outgoing page's exit animation
- * fully finishes — a serialized ~150ms tax on every single navigation,
- * which directly fights the "navigation must still feel instant"
- * requirement. "popLayout" lets the exiting page animate out (via
- * position: absolute) while the new page mounts and animates in at
- * the same time, so perceived nav latency is ~0 instead of ~150ms.
+ * This used to be framer-motion's <AnimatePresence mode="popLayout"> keyed
+ * by pathname. In the App Router that pattern renders the *new* page inside
+ * the exiting wrapper too, so every navigation mounted the destination page
+ * twice (double effects, double data work — and a delayed-feeling swap) and
+ * a page kept a transform after animating, which breaks `position: fixed`
+ * children such as the fullscreen video player.
+ *
+ * Now it's a single CSS enter animation (`.page-enter` in globals.css,
+ * ~220ms, opacity + 8px rise, disabled under prefers-reduced-motion). The
+ * pathname key restarts it on each route change; there is no exit phase, so
+ * the new page (or its loading.tsx skeleton) appears immediately.
  */
 export function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const reduce = useReducedMotion();
-
   return (
-    <AnimatePresence mode="popLayout" initial={false}>
-      <motion.div
-        key={pathname}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        variants={reduce ? pageVariantsReduced : pageVariants}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div key={pathname} className="page-enter">
+      {children}
+    </div>
   );
 }

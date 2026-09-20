@@ -34,7 +34,7 @@ export async function extractQuestionsFromPdf(buffer: Buffer): Promise<PdfExtrac
     // the import to inside the function (only reached when a PDF is
     // actually uploaded) avoids paying that cost for every request that
     // never touches PDF import.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line -- CommonJS require on purpose (see comment above)
     pdfParse = require("pdf-parse");
   } catch {
     return {

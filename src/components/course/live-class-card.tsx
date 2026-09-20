@@ -35,7 +35,6 @@ export function LiveClassCard({
   return (
     <Link
       href={liveClass.href}
-      prefetch={false}
       className="hover-glow-card comic-panel flex items-center justify-between gap-3 bg-surface p-4"
     >
       <div className="min-w-0 flex-1">

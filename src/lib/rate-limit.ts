@@ -41,23 +41,27 @@ const FALLBACK_LIMITS: Record<LimiterKind, { max: number; windowMs: number }> = 
 };
 const fallbackBuckets = new Map<string, { count: number; resetAt: number }>();
 
-// Periodically drop expired entries so this Map can't grow unbounded
-// over a long-running process — a low-effort safeguard against a slow
-// memory leak, not a full LRU implementation.
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [key, bucket] of fallbackBuckets) {
-      if (bucket.resetAt <= now) fallbackBuckets.delete(key);
-    }
-  },
-  5 * 60_000
-).unref?.();
+// Drop expired entries opportunistically (on use) so this Map can't grow
+// unbounded. Deliberately NOT a module-scope setInterval: this file is
+// imported by middleware.ts, which runs on the Edge runtime where global
+// timers aren't reliable, and a timer would also keep serverless
+// instances alive for nothing.
+const PRUNE_EVERY_N_CALLS = 500;
+let callsSincePrune = 0;
+function pruneExpiredBuckets(now: number) {
+  for (const [key, bucket] of fallbackBuckets) {
+    if (bucket.resetAt <= now) fallbackBuckets.delete(key);
+  }
+}
 
 function checkFallbackLimit(kind: LimiterKind, identifier: string): { success: boolean } {
   const { max, windowMs } = FALLBACK_LIMITS[kind];
   const key = `${kind}:${identifier}`;
   const now = Date.now();
+  if (++callsSincePrune >= PRUNE_EVERY_N_CALLS) {
+    callsSincePrune = 0;
+    pruneExpiredBuckets(now);
+  }
   const bucket = fallbackBuckets.get(key);
 
   if (!bucket || bucket.resetAt <= now) {

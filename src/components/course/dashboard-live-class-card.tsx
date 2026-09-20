@@ -25,7 +25,6 @@ export function DashboardLiveClassCard({
   return (
     <Link
       href={target.href}
-      prefetch={false}
       className="hover-glow-card comic-panel flex items-center gap-3 bg-surface p-3.5"
     >
       {live ? (

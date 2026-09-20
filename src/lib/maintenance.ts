@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
+import { getSiteSettingsRow } from "@/lib/site-branding";
 
 /**
  * Checked at the layout level (Node runtime, same DB the rest of the app
@@ -12,7 +13,7 @@ import { db } from "@/lib/db/client";
  * route group never calls this.
  */
 export async function isMaintenanceBlocking(): Promise<boolean> {
-  const settings = await db.siteSettings.findUnique({ where: { id: "singleton" } });
+  const settings = await getSiteSettingsRow();
   if (!settings?.maintenanceMode) return false;
 
   const { userId } = auth();

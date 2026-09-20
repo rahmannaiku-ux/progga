@@ -13,12 +13,13 @@ import { DoodleStar } from "@/components/marketing/cartoon-doodles";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import { getStudentScoreTrend } from "@/server/services/exam-analytics";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
 
   const [stats, achievements, enrollments, scoreTrend, ownedStickerPurchases] = await Promise.all([
-    db.heroStats.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} }),
+    getOrCreateHeroStats(user.id),
     db.userAchievement.findMany({
       where: { userId: user.id },
       orderBy: { unlockedAt: "desc" },
@@ -86,7 +87,7 @@ export default async function ProfilePage() {
             <span>
               {xpIntoLevel} / {xpForNextLevel} XP to level {level + 1}
             </span>
-            <span className="font-mono font-semibold">{stats.xp.toLocaleString()} total XP</span>
+            <span className="font-mono font-semibold">{stats.xp.toLocaleString("en-US")} total XP</span>
           </div>
           <AnimatedProgressBar percent={percent} className="mt-1.5" />
         </div>

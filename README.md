@@ -11,7 +11,7 @@ Udemy/Coursera/Skillshare, not a mobile app.
 
 ## Tech Stack
 Next.js 14 (App Router) · React 18 · TypeScript · Tailwind CSS · shadcn/ui
-(Radix primitives) · Framer Motion · PostgreSQL · Prisma · Clerk ·
+(Radix primitives) · CSS animations (no animation library) · PostgreSQL · Prisma · Clerk ·
 YouTube embedded player · Docker
 
 ## Terminology Mapping (UI only — schema uses plain LMS nouns)
@@ -43,11 +43,11 @@ placeholders.
   - `next.config.mjs`, `tailwind.config.ts` + original design tokens, `globals.css`
   - Clerk auth middleware + server-side RBAC guard (`requireRole`)
   - Prisma client singleton
-  - Dockerfile (multi-stage, standalone output) + docker-compose (app/Postgres/Redis)
+  - Dockerfile (multi-stage, standalone output) + docker-compose (app + Postgres)
   - `.env.example` with every required variable documented
 - [x] **Phase 2 — Auth & Core Layout** *(this delivery)*
-  - Root layout with font system (Space Grotesk display / Inter body /
-    JetBrains Mono for stats readouts), `ClerkProvider`, `next-themes`
+  - Root layout with font system (Baloo 2 display / Inter body /
+    the system monospace stack for stats readouts), `ClerkProvider`, `next-themes`
     provider (dark mode default)
   - Clerk webhook (`/api/webhooks/clerk`, svix-verified) syncing
     `user.created` / `.updated` / `.deleted` into Prisma — Clerk owns
@@ -258,12 +258,61 @@ placeholders.
 ## Local Development
 ```bash
 cp .env.example .env        # fill in Clerk/Resend/Uploadthing/Upstash keys
-docker compose up -d db redis
+docker compose up -d db          # Postgres only — rate limiting uses Upstash (REST) or an in-process fallback; there is no Redis container
 npm install
 npm run db:push             # or db:migrate once schema stabilizes
 npm run db:seed
 npm run dev
 ```
+
+## Linting
+
+`npm run lint` (ESLint 8 + `next/core-web-vitals`, config in `.eslintrc.json`)
+and `npm run lint:fix`. Build-breaking problems (`rules-of-hooks`, `no-var`,
+`no-debugger`, …) are errors; `exhaustive-deps`, `prefer-const`, `eqeqeq`,
+`no-console` and `<img>` usage are warnings. `next build` skips lint on purpose
+(`eslint.ignoreDuringBuilds`) — run `npm run lint` and `npm run typecheck`
+in CI instead.
+
+## Bangladesh Standard Time (BST, UTC+6)
+
+Every date and time in the app is **Bangladesh time**, independent of where
+the server or the visitor is. All of it goes through `src/lib/timezone.ts`:
+
+| Need | Use |
+|---|---|
+| Show a date/time | `formatDhakaDate`, `formatDhakaTime`, `formatDhakaDateTime` |
+| Read a `datetime-local` / `date` form value | `parseDhakaInput`, `parseOptionalDhakaInput` |
+| Fill a `datetime-local` / `date` input | `toDhakaInputValue`, `toDhakaDateInputValue` |
+| "Today", this week, this month, the hour | `dhakaStartOfDay`, `dhakaStartOfWeek`, `dhakaStartOfMonth`, `dhakaHour`, `dhakaGreeting`, `dhakaYear` |
+| Calendar day key / date arithmetic | `dhakaDateKey`, `addDhakaDays`, `addDhakaMonths` |
+
+Rules: never call `getHours()/getDay()/setHours()/toLocale*String()` (or
+`new Date("2026-09-08T14:30")`) on a date a person will read as a calendar
+day — those follow the *runtime's* zone (UTC on Vercel). Stored instants stay
+UTC in Postgres; only wall-clock reading/writing is pinned to `+06:00`.
+`src/lib/timezone.test.ts` checks this under any process timezone.
+Cron schedules in `vercel.json` are always **UTC** — see `DEPLOYMENT.md`.
+
+## UI, colours and page transitions
+
+- **Colour tokens** live in `src/app/globals.css` (`:root, .theme-cartoon` for
+  light, `.dark, .dark .theme-cartoon` for dark) and are declared on `:root`
+  so portalled UI (dialogs, menus, selects) gets the same palette. Every
+  text/background pair is >= 4.5:1. Brand colours have separate *fill* and
+  *ink* roles: `bg-xp` is yellow but `text-xp` is amber-brown (`--xp-ink`);
+  `bg-danger` holds white text while `text-danger` uses `--danger-ink`
+  (see `textColor`/`borderColor` in `tailwind.config.ts`). `text-accent` is a
+  real, readable violet — not the old near-white lavender.
+- **Page transitions**: `PageTransition` is a single CSS enter animation
+  (`.page-enter`), `NavigationProgress` shows a top bar the instant a link is
+  clicked, and every route group has a `loading.tsx` skeleton. Keep the
+  animation `backwards`-filled: a leftover `transform` would trap the
+  `position: fixed` fullscreen video player inside the page.
+- **Fullscreen video** (`src/hooks/use-fullscreen.ts`): native fullscreen where
+  it exists, `webkit`-prefixed on iPad, and a CSS fallback on iPhone (which
+  only allows fullscreen on `<video>`) with scroll-lock, safe-area padding and
+  an always-visible exit button.
 
 ## Folder Structure
 See `docs/folder-structure.txt` for the full generated tree. Route groups:

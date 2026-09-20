@@ -58,8 +58,10 @@ export function BlogPostForm({
         setError(result.error);
         return;
       }
+      // The server action already revalidated /admin/blog, so a single
+      // navigation is enough — an extra router.refresh() re-fetched the
+      // page a second time.
       router.push("/admin/blog");
-      router.refresh();
     });
   }
 
@@ -90,7 +92,7 @@ export function BlogPostForm({
       <div>
         <label className={labelClass} htmlFor="slug">
           Slug{" "}
-          <span className="font-normal text-muted-foreground/70">
+          <span className="font-normal text-muted-foreground">
             (leave blank to auto-generate from title)
           </span>
         </label>
@@ -107,7 +109,7 @@ export function BlogPostForm({
 
       <div>
         <label className={labelClass} htmlFor="excerpt">
-          Excerpt <span className="font-normal text-muted-foreground/70">(shown on the list page, max 300 chars)</span>
+          Excerpt <span className="font-normal text-muted-foreground">(shown on the list page, max 300 chars)</span>
         </label>
         <textarea
           id="excerpt"
@@ -123,7 +125,7 @@ export function BlogPostForm({
       <div>
         <label className={labelClass} htmlFor="contentHtml">
           Content (HTML){" "}
-          <span className="font-normal text-muted-foreground/70">
+          <span className="font-normal text-muted-foreground">
             sanitized on save — scripts and unknown tags are stripped
           </span>
         </label>
@@ -194,7 +196,7 @@ export function BlogPostForm({
 
         <div>
           <label className={labelClass} htmlFor="tags">
-            Tags <span className="font-normal text-muted-foreground/70">(comma-separated)</span>
+            Tags <span className="font-normal text-muted-foreground">(comma-separated)</span>
           </label>
           <input
             id="tags"
@@ -239,7 +241,7 @@ export function BlogPostForm({
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass} htmlFor="seoTitle">
-              SEO title <span className="font-normal text-muted-foreground/70">(≤70 chars)</span>
+              SEO title <span className="font-normal text-muted-foreground">(≤70 chars)</span>
             </label>
             <input
               id="seoTitle"
@@ -251,7 +253,7 @@ export function BlogPostForm({
           </div>
           <div>
             <label className={labelClass} htmlFor="seoDescription">
-              SEO description <span className="font-normal text-muted-foreground/70">(≤160 chars)</span>
+              SEO description <span className="font-normal text-muted-foreground">(≤160 chars)</span>
             </label>
             <input
               id="seoDescription"

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useMountTransition } from "@/hooks/use-mount-transition";
 
 export function PublicMobileNav({
   navLinks,
@@ -19,6 +19,7 @@ export function PublicMobileNav({
   dashboardHref?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { mounted: overlayMounted, entered } = useMountTransition(open, 300);
   const pathname = usePathname();
 
   // The header this button lives in uses `backdrop-blur-xl`
@@ -33,26 +34,25 @@ export function PublicMobileNav({
   useEffect(() => setMounted(true), []);
 
   const overlay = (
-    <AnimatePresence>
-        {open && (
+    <>
+        {overlayMounted && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/40"
+            <div
+              className={cn(
+                "fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none",
+                entered ? "opacity-100" : "opacity-0"
+              )}
               onClick={() => setOpen(false)}
               aria-hidden
             />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            <div
               role="dialog"
               aria-modal="true"
               aria-label="Site navigation"
-              className="fixed inset-y-0 right-0 z-50 flex w-[82vw] max-w-xs flex-col bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl"
+              className={cn(
+                "fixed inset-y-0 right-0 z-50 flex w-[82vw] max-w-xs flex-col bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none",
+                entered ? "translate-x-0" : "translate-x-full"
+              )}
             >
               <div className="flex h-16 items-center justify-between border-b border-border/60 px-4">
                 <span className="font-display text-sm font-bold text-foreground">Menu</span>
@@ -107,10 +107,10 @@ export function PublicMobileNav({
                   </>
                 )}
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-    </AnimatePresence>
+    </>
   );
 
   return (

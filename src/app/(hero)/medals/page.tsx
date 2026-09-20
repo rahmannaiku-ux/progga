@@ -7,6 +7,7 @@ import { RetryCertificateButton } from "@/components/gamification/retry-certific
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { formatDhakaDate } from "@/lib/timezone";
 
 const TABS = [
   { key: "all", label: "All Certificates" },
@@ -87,7 +88,7 @@ export default async function MedalsPage({
                     </p>
                     <p className="mt-0.5 font-mono text-xs text-muted-foreground">{c.certificateNo}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Earned {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(c.createdAt)}
+                      Earned {formatDhakaDate(c.createdAt, { dateStyle: "medium" })}
                     </p>
                   </div>
                 </div>

@@ -37,7 +37,7 @@ export default function TestimonialsPage() {
                   reads as one continuous shape pointing at the avatar
                   below. */}
               <span
-                className="absolute -bottom-[13px] left-10 h-6 w-6 rotate-45 border-b-[3px] border-r-[3px] border-border bg-surface"
+                className="absolute -bottom-[13px] left-10 h-6 w-6 rotate-45 border-b-2 border-r-2 border-border bg-surface"
                 aria-hidden="true"
               />
             </div>

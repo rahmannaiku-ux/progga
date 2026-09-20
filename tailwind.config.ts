@@ -16,9 +16,16 @@ const config: Config = {
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],
         body: ["var(--font-body)", "sans-serif"],
-        mono: ["var(--font-mono)", "monospace"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "monospace"],
         // Bouncy heading face used only on the cartoon-themed landing page.
         cartoon: ["var(--font-display)", "sans-serif"],
+      },
+      // Tailwind's spacing scale has no 4.5 / 13, but the app uses h-4.5,
+      // w-4.5 (icons) and h-13 (large buttons). Those classes silently
+      // generated no CSS, so the elements had no size at all.
+      spacing: {
+        "4.5": "1.125rem",
+        "13": "3.25rem",
       },
       colors: {
         // Original palette: deep void + circuit-violet + signal-cyan.
@@ -42,7 +49,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--xp))", // golden yellow
           foreground: "hsl(var(--xp-foreground))",
         },
-        danger: "hsl(var(--danger))",
+        danger: {
+          DEFAULT: "hsl(var(--danger))",
+          foreground: "hsl(var(--danger-foreground))",
+        },
         border: "hsl(var(--border))",
         ink: "hsl(var(--border))", // semantic alias — comic outlines / mascot linework
         muted: {
@@ -61,6 +71,21 @@ const config: Config = {
           "active-foreground": "hsl(var(--sidebar-active-fg))",
           border: "hsl(var(--sidebar-border))",
         },
+      },
+      // TEXT / BORDER / RING roles get their own "ink" tokens. The same
+      // brand colour cannot be both a readable text colour on cream/white
+      // *and* a solid fill that carries white text: yellow (--xp) is
+      // 1.7:1 as text on the light background, and the dark-mode danger
+      // that reads well as text is too light to hold white label text.
+      // Fills (bg-*, fill-*) keep using the brand token; text-*, border-*,
+      // ring-* and outline-* below use the readable ink variant.
+      textColor: {
+        xp: { DEFAULT: "hsl(var(--xp-ink) / <alpha-value>)", foreground: "hsl(var(--xp-foreground) / <alpha-value>)" },
+        danger: { DEFAULT: "hsl(var(--danger-ink) / <alpha-value>)", foreground: "hsl(var(--danger-foreground) / <alpha-value>)" },
+      },
+      borderColor: {
+        xp: { DEFAULT: "hsl(var(--xp-ink) / <alpha-value>)", foreground: "hsl(var(--xp-foreground) / <alpha-value>)" },
+        danger: { DEFAULT: "hsl(var(--danger-ink) / <alpha-value>)", foreground: "hsl(var(--danger-foreground) / <alpha-value>)" },
       },
       borderRadius: {
         xl: "1rem",

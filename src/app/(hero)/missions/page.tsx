@@ -6,6 +6,8 @@ import { db } from "@/lib/db/client";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { dhakaStartOfDay, dhakaStartOfWeek } from "@/lib/timezone";
+import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 
 const TABS = [
   { key: "daily", label: "Daily Missions" },
@@ -18,14 +20,6 @@ const STUDY_GOAL_MINUTES = 30;
 const WEEKLY_LESSON_GOAL = 5;
 const WEEKLY_XP_GOAL = 200;
 
-function startOfWeek(d: Date) {
-  const date = new Date(d);
-  const day = date.getDay();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() - day);
-  return date;
-}
-
 export default async function MissionsPage({
   searchParams,
 }: {
@@ -34,9 +28,9 @@ export default async function MissionsPage({
   const user = await getCurrentUser();
   const tab: TabKey = searchParams.tab === "weekly" ? "weekly" : "daily";
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const weekStart = startOfWeek(today);
+  // Day/week boundaries are Bangladesh midnight, not the server's.
+  const today = dhakaStartOfDay();
+  const weekStart = dhakaStartOfWeek();
 
   const [
     stats,
@@ -48,7 +42,7 @@ export default async function MissionsPage({
     coursesFinishedThisWeek,
     xpThisWeek,
   ] = await Promise.all([
-    db.heroStats.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} }),
+    getOrCreateHeroStats(user.id),
     db.lessonProgress.count({
       where: { userId: user.id, isCompleted: true, completedAt: { gte: today } },
     }),
@@ -209,7 +203,7 @@ export default async function MissionsPage({
                 <span
                   className={cn(
                     "sticker flex h-11 w-11 shrink-0 items-center justify-center",
-                    isDone ? "bg-xp text-xp-foreground" : "bg-accent text-primary"
+                    isDone ? "bg-xp text-xp-foreground" : "bg-accent text-accent-foreground"
                   )}
                 >
                   <m.icon className="h-5 w-5" />

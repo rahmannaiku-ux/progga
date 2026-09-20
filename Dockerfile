@@ -1,11 +1,14 @@
 # ---- deps ----
 FROM node:20-alpine AS deps
+# Prisma's query engine needs OpenSSL on Alpine.
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # ---- builder ----
 FROM node:20-alpine AS builder
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -15,7 +18,12 @@ RUN npm run build
 
 # ---- runner ----
 FROM node:20-alpine AS runner
+# tzdata + TZ so logs and any stray Date formatting are in Bangladesh time.
+# (All user-visible dates are pinned to Asia/Dhaka in src/lib/timezone.ts
+# regardless of this.)
+RUN apk add --no-cache openssl libc6-compat tzdata
 WORKDIR /app
+ENV TZ=Asia/Dhaka
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 

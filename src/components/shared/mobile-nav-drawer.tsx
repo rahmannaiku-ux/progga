@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/shared/avatar";
 import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
-import { drawerVariants, backdropVariants } from "@/lib/motion";
+import { useMountTransition } from "@/hooks/use-mount-transition";
 
 const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNav };
 
@@ -63,11 +62,18 @@ export function MobileNavDrawer({
   const open = isControlled ? controlledOpen : uncontrolledOpen;
   const setOpen = isControlled ? onOpenChange : setUncontrolledOpen;
   const pathname = usePathname();
+  const { mounted, entered } = useMountTransition(open, 300);
 
   // Close on route change — otherwise tapping a nav link would leave
-  // the drawer sitting open over the new page.
+  // the drawer sitting open over the new page. `setOpen` may be a new
+  // function on every render (the controlled `onOpenChange` prop), so the
+  // effect reads the latest one through a ref and depends only on the
+  // route — listing `setOpen` itself would re-run it, and close the
+  // drawer, on every render.
+  const setOpenRef = useRef(setOpen);
+  setOpenRef.current = setOpen;
   useEffect(() => {
-    setOpen(false);
+    setOpenRef.current(false);
   }, [pathname]);
 
   // Prevent the page behind the drawer from scrolling while it's open —
@@ -97,27 +103,24 @@ export function MobileNavDrawer({
         </button>
       )}
 
-      <AnimatePresence>
-        {open && (
+        {mounted && (
           <div className="fixed inset-0 z-50 flex">
             {/* Backdrop — tapping it closes the drawer, same as the X button */}
-            <motion.button
+            <button
               type="button"
               aria-label="Close navigation menu"
               onClick={() => setOpen(false)}
-              className="flex-1 bg-black/40 backdrop-blur-[1px]"
-              variants={backdropVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
+              className={cn(
+                "flex-1 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none",
+                entered ? "opacity-100" : "opacity-0"
+              )}
             />
 
-            <motion.div
-              className="flex h-full w-[82vw] max-w-xs flex-col bg-sidebar shadow-2xl"
-              variants={drawerVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
+            <div
+              className={cn(
+                "flex h-full w-[82vw] max-w-xs flex-col bg-sidebar shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none",
+                entered ? "translate-x-0" : "translate-x-full"
+              )}
             >
               <div className="flex h-16 shrink-0 items-center justify-between px-4">
                 <div className="flex items-center gap-2">
@@ -218,10 +221,9 @@ export function MobileNavDrawer({
                   </div>
                 ))}
               </nav>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

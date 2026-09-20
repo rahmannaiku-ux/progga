@@ -13,15 +13,32 @@
 // app; it is not a guarantee against inline-script injection. Tighten
 // further (nonces, stricter script-src) as a follow-up once there's a
 // way to actually test each change against a running app.
+// In production Clerk serves its frontend API from the app's own custom
+// domain (e.g. clerk.example.com), which none of the *.clerk.com /
+// *.clerk.accounts.dev entries below cover — sign-in would be blocked by the
+// CSP. The host is encoded in the publishable key, so derive it from there.
+function clerkFrontendOrigin() {
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!key) return "";
+  try {
+    const host = Buffer.from(key.split("_")[2] ?? "", "base64").toString("utf8").replace(/\$$/, "");
+    return /^[a-z0-9.-]+$/i.test(host) ? `https://${host}` : "";
+  } catch {
+    return "";
+  }
+}
+const clerkOrigin = clerkFrontendOrigin();
+
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://www.youtube.com http://www.youtube.com https://s.ytimg.com",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://www.youtube.com http://www.youtube.com https://s.ytimg.com ${clerkOrigin}`.trim(),
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://utfs.io https://img.clerk.com https://*.clerk.com https://lh3.googleusercontent.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "media-src 'self' https://utfs.io",
-  "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org",
-  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://docs.google.com https://drive.google.com",
+  `connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org ${clerkOrigin}`.trim(),
+  `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://docs.google.com https://drive.google.com ${clerkOrigin}`.trim(),
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'self'",
@@ -42,6 +59,10 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  // Lint runs as its own step (`npm run lint`, e.g. in CI) — not inside
+  // `next build`, so a style warning/error can never block a deploy.
+  eslint: { ignoreDuringBuilds: true },
   output: process.env.VERCEL ? undefined : "standalone", // standalone only for Docker builds, not Vercel
   // @pdfme/pdf-lib and @pdfme/common (both pulled in transitively by
   // @pdfme/generator, used for certificate PDF generation — see

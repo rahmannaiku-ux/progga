@@ -20,16 +20,26 @@ export async function awardCoins(
 ): Promise<{ awarded: boolean }> {
   if (amount <= 0) return { awarded: false };
 
+  // Ledger row + balance change commit together (see awardXp: a crash
+  // between the two used to leave a ledger row with no coins granted, and
+  // the unique constraint then blocked every retry).
   try {
-    await db.proggyCoinTransaction.create({
-      data: {
-        userId,
-        amount,
-        type: source.type,
-        reason: source.reason,
-        sourceType: source.type,
-        sourceId: source.id,
-      },
+    await db.$transaction(async (tx) => {
+      await tx.proggyCoinTransaction.create({
+        data: {
+          userId,
+          amount,
+          type: source.type,
+          reason: source.reason,
+          sourceType: source.type,
+          sourceId: source.id,
+        },
+      });
+      await tx.heroStats.upsert({
+        where: { userId },
+        create: { userId, coinBalance: amount },
+        update: { coinBalance: { increment: amount } },
+      });
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -37,12 +47,6 @@ export async function awardCoins(
     }
     throw err;
   }
-
-  await db.heroStats.upsert({
-    where: { userId },
-    create: { userId, coinBalance: amount },
-    update: { coinBalance: { increment: amount } },
-  });
 
   return { awarded: true };
 }

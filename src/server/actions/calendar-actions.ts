@@ -4,16 +4,18 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { requireMentorUser, requireAdminUser } from "./require-user";
 import { logActivity } from "./admin-actions";
+import { parseDhakaInput } from "@/lib/timezone";
 
 function parseEventDates(startAtRaw: string, endAtRaw: string) {
-  const startAt = new Date(startAtRaw);
+  // datetime-local values are Dhaka wall-clock time — see lib/timezone.ts.
+  const startAt = parseDhakaInput(startAtRaw);
   if (Number.isNaN(startAt.getTime())) {
     throw new Error("Invalid start date/time.");
   }
 
   let endAt: Date | null = null;
   if (endAtRaw) {
-    endAt = new Date(endAtRaw);
+    endAt = parseDhakaInput(endAtRaw);
     if (Number.isNaN(endAt.getTime())) {
       throw new Error("Invalid end date/time.");
     }

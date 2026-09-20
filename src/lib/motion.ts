@@ -13,7 +13,13 @@
  * `reduced` variants below, which only animate opacity — no transform,
  * so nothing moves for people who've asked for that.
  */
-import type { Variants, Transition } from "framer-motion";
+// The app no longer uses framer-motion at runtime (page transitions, stagger,
+// drawers, nav pills and pops are CSS — see globals.css and
+// src/hooks/use-mount-transition.ts). These presets are kept, with local
+// structural types, so any file that still imports them keeps compiling
+// without pulling the library in.
+type Variants = Record<string, unknown>;
+type Transition = Record<string, unknown>;
 
 export const EASE = [0.21, 0.47, 0.32, 0.98] as const;
 

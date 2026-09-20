@@ -30,9 +30,16 @@ const DEFAULT_BRANDING: SiteBranding = {
  * sits on the critical path for the entire app, unlike an ordinary page
  * query that can afford to throw into an error boundary.
  */
+/**
+ * The raw singleton SiteSettings row, deduped per request. Branding (root
+ * layout, header) and the maintenance-mode check (every route-group layout)
+ * both need it — before, each ran its own query for the same row.
+ */
+export const getSiteSettingsRow = cache(() => db.siteSettings.findUnique({ where: { id: "singleton" } }));
+
 export const getSiteBranding = cache(async (): Promise<SiteBranding> => {
   try {
-    const settings = await db.siteSettings.findUnique({ where: { id: "singleton" } });
+    const settings = await getSiteSettingsRow();
     if (!settings) return DEFAULT_BRANDING;
     return {
       siteName: settings.siteName || DEFAULT_BRANDING.siteName,

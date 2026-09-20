@@ -11,30 +11,32 @@ import { MobileHeroHud } from "@/components/gamification/mobile-hero-hud";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import { isMaintenanceBlocking } from "@/lib/maintenance";
 import { MaintenancePage } from "@/components/shared/maintenance-page";
+import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 
 export default async function HeroLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  if (await isMaintenanceBlocking()) return <MaintenancePage />;
-
-  const user = await getCurrentUser();
-  const branding = await getSiteBranding();
+  // Independent lookups run together instead of one after another (this
+  // layout used to chain four round trips before anything could render).
+  // Maintenance + branding share one cached SiteSettings query.
+  const [blocked, user, branding] = await Promise.all([
+    isMaintenanceBlocking(),
+    getCurrentUser(),
+    getSiteBranding(),
+  ]);
+  if (blocked) return <MaintenancePage />;
 
   const [stats, unreadNotifications] = await Promise.all([
-    db.heroStats.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
-    }),
+    getOrCreateHeroStats(user.id),
     db.notification.count({ where: { userId: user.id, isRead: false } }),
   ]);
 
   const { level, xpIntoLevel, xpForNextLevel, percent } = xpProgressWithinLevel(stats.xp);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-dvh bg-background">
       <Sidebar
         navKey="hero"
         brandLabel={branding.siteName}

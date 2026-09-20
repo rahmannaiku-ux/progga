@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   PlayCircle,
   Zap,
-  Trophy,
   BookOpen,
   Target,
   Clock3,
@@ -12,8 +11,6 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { Button } from "@/components/ui/button";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
-import { AchievementIcon } from "@/components/gamification/achievement-icon";
-import { DailyGoalsWidget } from "@/components/gamification/daily-goals-widget";
 import { CourseCard } from "@/components/course/course-card";
 import { DoodleStar, DoodleSparkle, ComicBurst } from "@/components/marketing/cartoon-doodles";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
@@ -22,6 +19,8 @@ import { getStudentLiveClasses } from "@/server/services/live-classes";
 import { DashboardLiveClassCard } from "@/components/course/dashboard-live-class-card";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
+import { dhakaStartOfDay, dhakaGreeting } from "@/lib/timezone";
+import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 
 const WEEKLY_QUIZ_TARGET_PCT = 80;
 const STUDY_GOAL_MINUTES = 30;
@@ -29,15 +28,14 @@ const STUDY_GOAL_MINUTES = 30;
 export default async function HeroDashboardPage() {
   const user = await getCurrentUser();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" is the Bangladesh calendar day, not the server's.
+  const today = dhakaStartOfDay();
 
   const [
     active,
     completed,
     completedCount,
     stats,
-    recentAchievements,
     recommended,
     lessonsCompletedTotal,
     certificatesEarned,
@@ -74,13 +72,7 @@ export default async function HeroDashboardPage() {
       include: { course: { select: { id: true, title: true } } },
     }),
     db.enrollment.count({ where: { userId: user.id, status: "COMPLETED" } }),
-    db.heroStats.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} }),
-    db.userAchievement.findMany({
-      where: { userId: user.id },
-      orderBy: { unlockedAt: "desc" },
-      take: 3,
-      include: { achievement: true },
-    }),
+    getOrCreateHeroStats(user.id),
     getRecommendedCourses(user.id, 4),
     db.lessonProgress.count({ where: { userId: user.id, isCompleted: true } }),
     db.certificate.count({ where: { userId: user.id, status: "ISSUED" } }),
@@ -136,12 +128,7 @@ export default async function HeroDashboardPage() {
     },
   ];
 
-  const greetingWord = (() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  })();
+  const greetingWord = dhakaGreeting();
 
   const remainingMinutes = currentCourse
     ? Math.max(
@@ -176,7 +163,6 @@ export default async function HeroDashboardPage() {
             {currentCourse ? (
               <Link
                 href={resumeHref}
-                prefetch={false}
                 className="hover-glow-card comic-panel-bold relative block overflow-hidden bg-xp p-4"
               >
                 <div className="halftone-dots pointer-events-none absolute inset-0 opacity-20" />
@@ -324,36 +310,6 @@ export default async function HeroDashboardPage() {
             </div>
           </StaggerItem>
 
-          {/* 5 · Achievements — horizontal rail */}
-          <StaggerItem>
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-1.5 font-display text-sm font-bold text-foreground">
-                <Trophy className="h-4 w-4 fill-xp text-xp" /> Achievements
-              </h2>
-              <Link href="/achievements" className="text-xs font-bold text-primary">
-                View all
-              </Link>
-            </div>
-            {recentAchievements.length > 0 ? (
-              <ul className="mt-3 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {recentAchievements.map((ua) => (
-                  <li key={ua.id} className="flex w-20 shrink-0 flex-col items-center gap-1.5 text-center">
-                    <span className="sticker flex h-14 w-14 items-center justify-center bg-xp/15 text-xp">
-                      <AchievementIcon iconKey={ua.achievement.iconKey} className="h-6 w-6" />
-                    </span>
-                    <p className="line-clamp-2 text-[10px] font-semibold leading-tight text-foreground">
-                      {ua.achievement.name}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Complete a lesson or mission to earn your first achievement.
-              </p>
-            )}
-          </StaggerItem>
-
           {/* 6 · Recommended courses — horizontal scroll, not a grid */}
           {recommended.length > 0 && (
             <StaggerItem>
@@ -375,21 +331,6 @@ export default async function HeroDashboardPage() {
             </StaggerItem>
           )}
 
-          {/* 7 · Community — condensed */}
-          <StaggerItem className="comic-panel-bold relative overflow-hidden bg-primary p-5">
-            <div className="halftone-dots pointer-events-none absolute inset-0 opacity-10" />
-            <h2 className="relative font-display text-lg font-extrabold text-primary-foreground">
-              Join the Community!
-            </h2>
-            <p className="relative mt-1 text-xs text-primary-foreground/80">
-              Ask questions, help others and grow together.
-            </p>
-            <Button asChild variant="accent" size="sm" className="relative mt-3">
-              <Link href="/community">
-                Go to Community <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </StaggerItem>
         </StaggerContainer>
       </div>
 
@@ -416,7 +357,7 @@ export default async function HeroDashboardPage() {
               Every lesson brings you closer to your heroic future.
             </p>
             <Button asChild variant="primary" className="mt-5">
-              <Link href={resumeHref} prefetch={false}>
+              <Link href={resumeHref}>
                 Continue Learning <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -455,7 +396,6 @@ export default async function HeroDashboardPage() {
             {currentCourse ? (
               <Link
                 href={resumeHref}
-                prefetch={false}
                 className="hover-glow-card comic-panel mt-4 flex flex-col gap-4 bg-surface p-4 sm:flex-row sm:items-center sm:p-5"
               >
                 <div className="relative flex h-24 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary sm:w-36">
@@ -510,35 +450,6 @@ export default async function HeroDashboardPage() {
             </StaggerItem>
           )}
 
-          {/* ── Community banner ────────────────────────────────── */}
-          <StaggerItem
-            as="section"
-            className="comic-panel-bold relative overflow-hidden bg-primary p-6 sm:p-8"
-          >
-            <div className="halftone-dots pointer-events-none absolute inset-0 opacity-10" />
-            <DoodleStar className="pointer-events-none absolute right-10 top-4 h-8 w-8 opacity-80" />
-            <DoodleStar className="pointer-events-none absolute bottom-4 right-32 h-6 w-6 opacity-60" />
-            <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-display text-xl font-extrabold text-primary-foreground sm:text-2xl">
-                  Join the Community!
-                </h2>
-                <p className="mt-1.5 text-sm text-primary-foreground/80">
-                  Ask questions, help others and grow together.
-                </p>
-                <Button asChild variant="accent" className="mt-4">
-                  <Link href="/community">
-                    Go to Community <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-              <div className="hidden shrink-0 items-end gap-1 sm:flex">
-                <ProggyMascot state="happy" animated={false} className="h-24 w-24" />
-                <ProggyMascot state="proud" animated={false} className="h-28 w-28" />
-                <ProggyMascot state="encouraging" animated={false} className="h-24 w-24" />
-              </div>
-            </div>
-          </StaggerItem>
         </div>
 
         <div className="space-y-6">
@@ -622,43 +533,6 @@ export default async function HeroDashboardPage() {
             </ul>
           </StaggerItem>
 
-          {/* ── Weekly goals & streak ────────────────────────────── */}
-          <StaggerItem>
-            <DailyGoalsWidget userId={user.id} className="comic-panel bg-surface p-5" />
-          </StaggerItem>
-
-          {/* ── Recent achievements ──────────────────────────────── */}
-          <StaggerItem className="comic-panel bg-surface p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-1.5 font-display text-sm font-bold text-foreground">
-                <Trophy className="h-4 w-4 fill-xp text-xp" /> Recent Achievements
-              </h2>
-              <Link href="/achievements" className="text-xs font-bold text-primary hover:text-primary/80">
-                View all
-              </Link>
-            </div>
-            {recentAchievements.length > 0 ? (
-              <ul className="mt-4 space-y-3">
-                {recentAchievements.map((ua) => (
-                  <li key={ua.id} className="flex items-center gap-3">
-                    <span className="sticker flex h-9 w-9 shrink-0 items-center justify-center bg-xp/15 text-xp">
-                      <AchievementIcon iconKey={ua.achievement.iconKey} className="h-4 w-4" />
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                      {ua.achievement.name}
-                    </p>
-                    <span className="shrink-0 font-mono text-xs font-bold text-xp">
-                      +{ua.achievement.xpBonus} XP
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Complete a lesson or mission to earn your first achievement.
-              </p>
-            )}
-          </StaggerItem>
         </div>
       </div>
     </StaggerContainer>

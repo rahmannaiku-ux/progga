@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 
 const TABS = [
   { key: "all", label: "All Courses" },
@@ -57,7 +58,7 @@ export default async function MyCoursesPage({
         },
       },
     }),
-    db.heroStats.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} }),
+    getOrCreateHeroStats(user.id),
   ]);
 
   const active = enrollments.filter((e) => e.status === "ACTIVE");
@@ -115,7 +116,7 @@ export default async function MyCoursesPage({
                   key={w.id}
                   className="comic-panel flex items-center gap-4 bg-surface p-4"
                 >
-                  <span className="sticker flex h-12 w-12 shrink-0 items-center justify-center bg-accent text-primary">
+                  <span className="sticker flex h-12 w-12 shrink-0 items-center justify-center bg-accent text-accent-foreground">
                     <Heart className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -162,7 +163,7 @@ export default async function MyCoursesPage({
                 </div>
 
                 <Button asChild size="sm" variant={e.status === "COMPLETED" ? "outline" : "accent"} className="shrink-0">
-                  <Link href={resumeHrefs.get(e.id) ?? `/missions/${e.course.id}`} prefetch={false}>
+                  <Link href={resumeHrefs.get(e.id) ?? `/missions/${e.course.id}`}>
                     {e.status === "COMPLETED" ? "Review" : "Continue"}
                   </Link>
                 </Button>
@@ -201,7 +202,7 @@ function Stat({
 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="sticker flex h-9 w-9 shrink-0 items-center justify-center bg-accent text-primary">
+      <span className="sticker flex h-9 w-9 shrink-0 items-center justify-center bg-accent text-accent-foreground">
         <Icon className="h-4 w-4" />
       </span>
       <div>

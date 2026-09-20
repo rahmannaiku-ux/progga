@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { getDestinations } from "@/lib/config/destinations";
+import { dhakaYear } from "@/lib/timezone";
 
 const columns = [
   {
@@ -100,7 +101,7 @@ export async function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-border/10 py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Proggaa. All rights reserved.
+        © {dhakaYear()} Proggaa. All rights reserved.
       </div>
     </footer>
   );

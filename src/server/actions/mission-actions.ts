@@ -14,6 +14,7 @@ import {
   lessonUpdateSchema,
 } from "@/lib/validation/course";
 import { requireMentorUser } from "./require-user";
+import { parseDhakaInput } from "@/lib/timezone";
 
 /**
  * Verifies `courseId` exists and is owned by `teacherId` (or the caller
@@ -425,14 +426,15 @@ export async function reorderLessonGroup(
 function parseScheduleFields(scheduledStart?: string, scheduledEnd?: string) {
   if (!scheduledStart) return { scheduledStart: null, scheduledEnd: null };
 
-  const start = new Date(scheduledStart);
+  // datetime-local values are Dhaka wall-clock time — see lib/timezone.ts.
+  const start = parseDhakaInput(scheduledStart);
   if (Number.isNaN(start.getTime())) {
     throw new Error("Invalid scheduled start time.");
   }
 
   let end: Date | null = null;
   if (scheduledEnd) {
-    end = new Date(scheduledEnd);
+    end = parseDhakaInput(scheduledEnd);
     if (Number.isNaN(end.getTime())) {
       throw new Error("Invalid scheduled end time.");
     }

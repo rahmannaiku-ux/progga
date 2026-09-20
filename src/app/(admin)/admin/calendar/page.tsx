@@ -1,4 +1,3 @@
-import { CalendarDays } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { createCalendarEvent, deleteCalendarEvent } from "@/server/actions/calendar-actions";
@@ -88,7 +87,7 @@ export default async function AdminCalendarPage({
           />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-foreground">Start</label>
+              <label className="mb-1 block text-xs font-medium text-foreground">Start (Bangladesh time)</label>
               <input
                 type="datetime-local"
                 name="startAt"

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseDhakaInput } from "@/lib/timezone";
 
 const assessmentFieldsSchema = z.object({
   courseId: z.string().min(1),
@@ -49,7 +50,7 @@ function withLiveExamChecks<T extends z.ZodTypeAny>(schema: T) {
         !d.isLiveExam ||
         !d.monitoringStartsAt ||
         !d.monitoringEndsAt ||
-        new Date(d.monitoringStartsAt) < new Date(d.monitoringEndsAt),
+        parseDhakaInput(d.monitoringStartsAt) < parseDhakaInput(d.monitoringEndsAt),
       { message: "Monitoring end must be after monitoring start.", path: ["monitoringEndsAt"] }
     )
     .refine(
@@ -57,7 +58,7 @@ function withLiveExamChecks<T extends z.ZodTypeAny>(schema: T) {
         !d.isLiveExam ||
         !d.accessOpensAt ||
         !d.accessClosesAt ||
-        new Date(d.accessOpensAt) < new Date(d.accessClosesAt),
+        parseDhakaInput(d.accessOpensAt) < parseDhakaInput(d.accessClosesAt),
       { message: "Access close must be after access open.", path: ["accessClosesAt"] }
     );
 }

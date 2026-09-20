@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
-import { Baloo_2, Inter, JetBrains_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Baloo_2, Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { getSiteBranding, hexToHslTriplet } from "@/lib/site-branding";
 import "./globals.css";
+import { NavigationProgress } from "@/components/shared/navigation-progress";
 
 // Display face: bold, bouncy, comic-poster energy — the Proggaa brand
 // voice. Loaded once here and used everywhere via the --font-display
@@ -22,13 +23,8 @@ const body = Inter({
   variable: "--font-body",
 });
 
-// Utility face: used only for numbers — XP counters, timers, exam clocks,
-// leaderboard ranks — so stats read with a "readout" feel.
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["500", "700"],
-});
+// Numbers (XP counters, timers, exam clocks) use the system monospace stack
+// (see `fontFamily.mono` in tailwind.config.ts) — no third web font to load.
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 // Matches SiteSettings.primaryColor's Prisma default. Saving *any*
@@ -46,6 +42,19 @@ const DEFAULT_PRIMARY_HEX = "#7C3AED";
 const DEFAULT_TITLE = "Proggaa — Level Up Your Skills";
 const DEFAULT_DESCRIPTION =
   "A gamified learning platform where every course is a mission, every lesson is a patrol, and every skill you master earns XP.";
+
+// viewport-fit=cover lets pages draw under the iPhone notch/home bar so the
+// env(safe-area-inset-*) padding used by the bottom navs and the fullscreen
+// player actually takes effect; theme-color tints the browser chrome.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcf9f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#110c1d" },
+  ],
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getSiteBranding();
@@ -94,7 +103,10 @@ export default async function RootLayout({
       <html
         lang="en"
         suppressHydrationWarning
-        className={`${display.variable} ${body.variable} ${mono.variable}`}
+        className={`${display.variable} ${body.variable}`}
+        // Brand-colour override is set on <html> too, not only on the
+        // wrapper below: dialogs/menus portal to <body>, outside the wrapper.
+        style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
       >
         <body className="font-body">
           <ThemeProvider
@@ -116,8 +128,9 @@ export default async function RootLayout({
                 below it regardless of which mode is active — an inline
                 style always beats a class selector on the same element,
                 so one override covers both. */}
+            <NavigationProgress />
             <div
-              className="theme-cartoon min-h-screen"
+              className="theme-cartoon min-h-dvh"
               style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
             >
               {children}

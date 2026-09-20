@@ -50,11 +50,12 @@ export function CategoryForm({
       }
       if (onSaved) {
         onSaved();
+        router.refresh(); // stays on this page, so re-fetch it
       } else {
+        // The action revalidated the list; one navigation is enough.
         router.push("/admin/categories");
       }
       if (!existing) setResetCount((n) => n + 1); // remounts the form with blank fields
-      router.refresh();
     });
   }
 

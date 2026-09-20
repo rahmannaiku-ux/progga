@@ -79,7 +79,7 @@ export function ExamAnalysis({ analytics }: { analytics: AssessmentAnalytics }) 
         </h2>
       </div>
       <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Users className="h-3.5 w-3.5" /> Based on {participantCount.toLocaleString()} heroes'
+        <Users className="h-3.5 w-3.5" /> Based on {participantCount.toLocaleString("en-US")} heroes'
         best attempts on this encounter
       </p>
 

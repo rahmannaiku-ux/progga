@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { History, Radio, Archive, PlusCircle } from "lucide-react";
+import { History, Radio, Archive } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { getLiveExamStatus } from "@/lib/live-exam";
 import { RISK_LEVEL_LABEL } from "@/lib/exam-integrity";
 import { archiveAssessment, unarchiveAssessment, duplicateAssessment } from "@/server/actions/assessment-actions";
+import { MissionExamPicker } from "@/components/mentor-dashboard/mission-exam-picker";
 import { PaginationControls, parsePageParam } from "@/components/shared/pagination-controls";
 
 const PAGE_SIZE = 25;
@@ -131,12 +131,6 @@ export default async function ExamsHubPage({
     "use server";
     await duplicateAssessment(assessmentId);
   };
-  const goToMissionExams = async (formData: FormData) => {
-    "use server";
-    const courseId = String(formData.get("courseId") ?? "");
-    if (!courseId) return;
-    redirect(`/mentor/missions/${courseId}/assessments`);
-  };
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -158,27 +152,7 @@ export default async function ExamsHubPage({
           [id]/assessments) already IS the full create/configure flow
           (questions, settings, security, rewards, publish), so this
           only routes there instead of duplicating it. */}
-      <form action={goToMissionExams} className="glass-panel mt-4 flex flex-wrap items-center gap-3 p-4">
-        <PlusCircle className="h-5 w-5 shrink-0 text-primary" />
-        <select
-          name="courseId"
-          required
-          defaultValue=""
-          className="h-10 flex-1 rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
-        >
-          <option value="" disabled>
-            Choose a mission to create an exam in…
-          </option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.title}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="comic-btn h-10 shrink-0 bg-primary px-4 text-xs font-bold text-primary-foreground">
-          Create exam
-        </button>
-      </form>
+      <MissionExamPicker courses={courses.map((c) => ({ id: c.id, title: c.title }))} />
 
       <div className="mt-6 space-y-3">
         {rows.map((a) => (

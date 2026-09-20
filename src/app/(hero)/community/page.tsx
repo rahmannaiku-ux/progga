@@ -158,7 +158,7 @@ export default async function CommunityPage() {
                       </span>
                     </span>
                   </span>
-                  <span className="font-mono text-xs font-bold text-xp">{c.xp.toLocaleString()} XP</span>
+                  <span className="font-mono text-xs font-bold text-xp">{c.xp.toLocaleString("en-US")} XP</span>
                 </li>
               );
             })}

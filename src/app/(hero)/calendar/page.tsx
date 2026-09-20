@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { subMonths, addMonths } from "date-fns";
 import { Calendar, Video, ClipboardList, CalendarDays } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { getStudentCalendarItems, getStudentGamificationTimeline, type CalendarItem } from "@/server/services/calendar";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
-import { formatDhakaTime, formatDhakaDate, dhakaDateKey } from "@/lib/timezone";
+import { formatDhakaTime, formatDhakaDate, dhakaDateKey, addDhakaMonths } from "@/lib/timezone";
 
 const KIND_ICON = { event: Calendar, live_class: Video, assignment_due: ClipboardList } as const;
 const KIND_LABEL = { event: "Event", live_class: "Live Class", assignment_due: "Due" } as const;
@@ -40,8 +39,8 @@ export default async function CalendarPage() {
   // scale (matches the "acceptable inline for the scale this platform
   // is built for at launch" precedent elsewhere in this codebase).
   const now = new Date();
-  const gamificationRangeStart = subMonths(now, 3);
-  const gamificationRangeEnd = addMonths(now, 2);
+  const gamificationRangeStart = addDhakaMonths(now, -3);
+  const gamificationRangeEnd = addDhakaMonths(now, 2);
 
   const [allItems, heroStats, gamificationMap] = await Promise.all([
     getStudentCalendarItems(user.id),

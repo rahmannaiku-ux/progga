@@ -129,7 +129,7 @@ export default async function LeaderboardPage({
                   Lvl {xpProgressWithinLevel(row.xp).level}
                 </span>
                 <span className="font-mono text-[11px] font-bold text-xp sm:text-xs">
-                  {row.xp.toLocaleString()} XP
+                  {row.xp.toLocaleString("en-US")} XP
                 </span>
               </StaggerItem>
             );
@@ -164,7 +164,7 @@ export default async function LeaderboardPage({
                 </span>
               )}
               <span className="font-mono text-sm font-semibold text-xp">
-                {row.xp.toLocaleString()} XP
+                {row.xp.toLocaleString("en-US")} XP
               </span>
             </StaggerItem>
           );
@@ -188,7 +188,7 @@ export default async function LeaderboardPage({
               </p>
             </div>
             <span className="font-mono text-sm font-semibold text-xp">
-              {myRankRow.xp.toLocaleString()} XP
+              {myRankRow.xp.toLocaleString("en-US")} XP
             </span>
           </div>
         )}

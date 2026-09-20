@@ -8,6 +8,26 @@ substitute for one.
 
 ## Already in place
 
+- **No animation library**: framer-motion was removed from every component
+  (page transition, stagger, fade-in, drawers, sheets, nav pills, "pop"
+  banners are CSS; drawers use `useMountTransition`). Run
+  `node scripts/find-unused-deps.mjs` for the `npm uninstall` line.
+- **Lighter visuals**: no backdrop-blur on mobile or on overlays, thinner
+  outlines and softer hard-shadows, a lighter dot-pattern, system monospace
+  instead of a third web font, no community/achievement/daily-goal panels
+  on the dashboard (they live on their own pages).
+- **Navigation feel**: a CSS-only page enter animation (pages mount once), an instant top progress bar on link click, and
+  a `loading.tsx` skeleton in every route group (also what makes `<Link>`
+  prefetch work for dynamic routes). `prefetch={false}` remains only on long
+  lists (curriculum sidebar, search, community, calendar).
+- **No redirect ping-pong**: unauthenticated `/api/*` calls get a JSON 401
+  instead of a redirect to `/sign-in`; self-authenticating API routes skip the
+  Clerk redirect entirely; redirect-only Server Actions were replaced by client
+  navigation; `router.push` is no longer followed by `router.refresh()`.
+- **Fewer round trips per page**: the hero layout runs its lookups in parallel,
+  `SiteSettings` is read once per request (`getSiteSettingsRow`), and
+  `HeroStats` is read (not upserted) on every page view (`getOrCreateHeroStats`).
+
 - **Server Components by default** — nearly every page in this app is a
   server component (data fetched directly with Prisma, no client-side
   waterfall). `"use client"` is used only where interactivity requires it

@@ -3,6 +3,7 @@ import { Radio, History } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { getLiveExamStatus } from "@/lib/live-exam";
+import { formatDhakaTime } from "@/lib/timezone";
 
 /**
  * Teacher's "🔴 LIVE EXAMS" view — only assessments (across every
@@ -65,10 +66,10 @@ export default async function LiveExamsPage() {
               <p className="mt-2 text-xs text-muted-foreground">
                 Live:{" "}
                 {a.monitoringStartsAt &&
-                  new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(a.monitoringStartsAt)}
+                  formatDhakaTime(a.monitoringStartsAt)}
                 {" → "}
                 {a.monitoringEndsAt &&
-                  new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(a.monitoringEndsAt)}
+                  formatDhakaTime(a.monitoringEndsAt)}
               </p>
 
               <div className="mt-4 grid grid-cols-4 gap-3 text-center text-xs">

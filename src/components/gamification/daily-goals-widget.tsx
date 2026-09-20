@@ -1,16 +1,9 @@
 import { CheckCircle2, Circle, Flame } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { cn } from "@/lib/utils";
+import { dhakaStartOfDay, dhakaStartOfWeek } from "@/lib/timezone";
 
 const WEEKLY_GOAL_LESSONS = 5;
-
-function startOfWeek(d: Date) {
-  const date = new Date(d);
-  const day = date.getDay(); // 0 = Sunday
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() - day);
-  return date;
-}
 
 export async function DailyGoalsWidget({
   userId,
@@ -19,9 +12,9 @@ export async function DailyGoalsWidget({
   userId: string;
   className?: string;
 }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const weekStart = startOfWeek(today);
+  // Day/week boundaries are Bangladesh midnight, not the server's.
+  const today = dhakaStartOfDay();
+  const weekStart = dhakaStartOfWeek();
 
   const [completedToday, completedThisWeek, stats] = await Promise.all([
     db.lessonProgress.count({
@@ -37,9 +30,7 @@ export async function DailyGoalsWidget({
   const weeklyDone = completedThisWeek >= WEEKLY_GOAL_LESSONS;
   const streakLoggedToday = (() => {
     if (!stats?.lastActivityDate) return false;
-    const last = new Date(stats.lastActivityDate);
-    last.setHours(0, 0, 0, 0);
-    return last.getTime() === today.getTime();
+    return dhakaStartOfDay(stats.lastActivityDate).getTime() === today.getTime();
   })();
 
   return (

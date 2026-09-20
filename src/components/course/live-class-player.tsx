@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Image from "next/image";
 import YouTube, { type YouTubeEvent, type YouTubePlayer } from "react-youtube";
 import { PlayCircle, Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 // YT.PlayerState numeric values — same constants video-player.tsx uses.
 const YT_STATE = { PLAYING: 1, PAUSED: 2 } as const;
@@ -37,23 +38,10 @@ export function LiveClassPlayer({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
-  // Guarantee we never leave the browser stuck in fullscreen if the
-  // student navigates away mid-class (same reasoning as video-player.tsx).
-  useEffect(() => {
-    return () => {
-      if (document.fullscreenElement === containerRef.current) {
-        document.exitFullscreen().catch(() => {});
-      }
-    };
-  }, []);
+  // Native / iPad-prefixed / iPhone CSS-fallback fullscreen, Escape and
+  // unmount cleanup — see src/hooks/use-fullscreen.ts.
+  const { isFullscreen, isPseudoFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } =
+    useFullscreen(containerRef);
 
   function handleReady(e: YouTubeEvent) {
     playerRef.current = e.target;
@@ -89,18 +77,6 @@ export function LiveClassPlayer({
     }
   }
 
-  async function toggleFullscreen() {
-    const el = containerRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    } else if (el.requestFullscreen) {
-      await el.requestFullscreen();
-    } else {
-      setIsFullscreen((prev) => !prev);
-    }
-  }
-
   if (!joined) {
     return (
       <div className="relative aspect-video overflow-hidden rounded-2xl bg-black">
@@ -131,7 +107,7 @@ export function LiveClassPlayer({
       ref={containerRef}
       className={cn(
         "comic-panel overflow-hidden bg-surface p-0",
-        isFullscreen && "!fixed !inset-0 !z-50 flex !rounded-none !border-0 !shadow-none flex-col !bg-black"
+        isFullscreen && "!fixed !inset-0 !z-50 flex !rounded-none !border-0 !shadow-none flex-col !bg-black touch-manipulation overscroll-none"
       )}
     >
       <div
@@ -188,9 +164,22 @@ export function LiveClassPlayer({
           </button>
         )}
 
+        {/* iPhone has no native fullscreen chrome for this container, so the
+            CSS fallback always gets its own exit button, clear of the notch. */}
+        {isPseudoFullscreen && status === "ready" && (
+          <button
+            type="button"
+            aria-label="Exit fullscreen"
+            onClick={() => void exitFullscreen()}
+            className="absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white"
+          >
+            <Minimize className="h-5 w-5" />
+          </button>
+        )}
+
         {status === "loading" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/90 text-white">
-            <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             <p className="text-xs text-white/70">Joining live class...</p>
           </div>
         )}
@@ -204,7 +193,13 @@ export function LiveClassPlayer({
       </div>
 
       {status === "ready" && (
-        <div className="flex items-center justify-between gap-2 bg-surface p-3">
+        <div
+          className={cn(
+            "flex items-center justify-between gap-2 bg-surface p-3",
+            isFullscreen &&
+              "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
+          )}
+        >
           <div className="flex items-center gap-1">
             <button
               type="button"

@@ -64,7 +64,7 @@ export default async function AdminPaymentSettingsPage() {
                 aria-describedby="auto-verify-desc"
                 className="peer sr-only"
               />
-              <div className="h-7 w-13 rounded-full border-[3px] border-border bg-surface transition-colors peer-checked:bg-accent" />
+              <div className="h-7 w-13 rounded-full border-2 border-border bg-surface transition-colors peer-checked:bg-accent" />
               <div className="absolute left-1 h-4 w-4 rounded-full bg-border transition-transform peer-checked:translate-x-6 peer-checked:bg-accent-foreground" />
             </label>
           </div>

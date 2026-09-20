@@ -16,7 +16,7 @@ export default async function AdminLayout({
   const brandLabel = `${branding.siteName} · Admin`;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-dvh bg-background">
       <Sidebar navKey="admin" brandLabel={brandLabel} />
       {/* min-w-0: see the identical comment in (hero)/layout.tsx —
           same missing-shrink bug, same fix. */}

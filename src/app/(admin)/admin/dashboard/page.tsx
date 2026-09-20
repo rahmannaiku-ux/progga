@@ -3,7 +3,7 @@ import { Users, GraduationCap, BookOpen, Activity, Award, FileClock, Wallet } fr
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { formatMoney } from "@/lib/payments/format";
-import { formatDhakaDateTime } from "@/lib/timezone";
+import { dhakaStartOfMonth, formatDhakaDateTime } from "@/lib/timezone";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
 export default async function AdminDashboardPage() {
@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
     db.payment.count({ where: { status: "AWAITING_VERIFICATION" } }),
     db.payment.aggregate({
       _sum: { amountCents: true },
-      where: { status: "PAID", verifiedAt: { gte: new Date(new Date().setDate(1)) } },
+      where: { status: "PAID", verifiedAt: { gte: dhakaStartOfMonth() } },
     }),
   ]);
 

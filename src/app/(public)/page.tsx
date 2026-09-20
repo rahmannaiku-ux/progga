@@ -108,13 +108,13 @@ export default async function LandingPage() {
             <div className="mt-10 flex flex-wrap gap-4">
               <div className="sticker flex flex-col items-center justify-center px-5 py-3">
                 <p className="font-cartoon text-2xl font-bold text-foreground">
-                  {courseCount.toLocaleString()}
+                  {courseCount.toLocaleString("en-US")}
                 </p>
                 <p className="text-xs font-medium text-muted-foreground">Missions live</p>
               </div>
               <div className="sticker flex flex-col items-center justify-center px-5 py-3">
                 <p className="font-cartoon text-2xl font-bold text-foreground">
-                  {studentCount.toLocaleString()}
+                  {studentCount.toLocaleString("en-US")}
                 </p>
                 <p className="text-xs font-medium text-muted-foreground">Heroes learning</p>
               </div>
@@ -177,7 +177,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------------- How it works ---------------- */}
-      <section className="halftone-dots relative border-y-[3px] border-border">
+      <section className="halftone-dots relative border-y-2 border-border">
         <div className="container py-20">
           <FadeIn>
             <h2 className="font-cartoon text-3xl font-bold text-foreground">
@@ -231,7 +231,7 @@ export default async function LandingPage() {
       )}
 
       {/* ---------------- Testimonials ---------------- */}
-      <section className="halftone-dots relative border-y-[3px] border-border">
+      <section className="halftone-dots relative border-y-2 border-border">
         <div className="container py-20">
           <FadeIn>
             <h2 className="font-cartoon text-3xl font-bold text-foreground">

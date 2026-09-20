@@ -70,7 +70,7 @@ export function AssignmentSubmissionForm({ assignmentId }: { assignmentId: strin
         </div>
       ) : (
         <>
-          <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-[3px] border-dashed border-border bg-muted px-6 py-8 text-center transition-colors hover:border-primary hover:bg-primary/5">
+          <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted px-6 py-8 text-center transition-colors hover:border-primary hover:bg-primary/5">
             {uploading ? (
               <Loader2 className="h-7 w-7 animate-spin text-accent" />
             ) : (

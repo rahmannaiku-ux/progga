@@ -15,6 +15,7 @@ import { checkEncounterAchievements } from "@/lib/gamification/check-achievement
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
 import { isPassing, summarizeAttemptScore } from "@/lib/grading";
 import { requireMentorUser } from "./require-user";
+import { parseOptionalDhakaInput } from "@/lib/timezone";
 
 async function assertOwnsCourse(courseId: string, userId: string, role: string) {
   const course = await db.course.findUnique({
@@ -167,10 +168,10 @@ export async function createAssessment(formData: FormData) {
       passPercentage: data.passPercentage,
       showResultsInstantly: data.showResultsInstantly,
       isLiveExam: data.isLiveExam,
-      monitoringStartsAt: data.monitoringStartsAt ? new Date(data.monitoringStartsAt) : null,
-      monitoringEndsAt: data.monitoringEndsAt ? new Date(data.monitoringEndsAt) : null,
-      accessOpensAt: data.accessOpensAt ? new Date(data.accessOpensAt) : null,
-      accessClosesAt: data.accessClosesAt ? new Date(data.accessClosesAt) : null,
+      monitoringStartsAt: parseOptionalDhakaInput(data.monitoringStartsAt),
+      monitoringEndsAt: parseOptionalDhakaInput(data.monitoringEndsAt),
+      accessOpensAt: parseOptionalDhakaInput(data.accessOpensAt),
+      accessClosesAt: parseOptionalDhakaInput(data.accessClosesAt),
       coinReward: data.coinReward,
       minimumScoreForCoinReward: data.minimumScoreForCoinReward || null,
     },
@@ -241,10 +242,10 @@ export async function updateAssessment(assessmentId: string, formData: FormData)
       passPercentage: data.passPercentage,
       showResultsInstantly: data.showResultsInstantly,
       isLiveExam: data.isLiveExam,
-      monitoringStartsAt: data.monitoringStartsAt ? new Date(data.monitoringStartsAt) : null,
-      monitoringEndsAt: data.monitoringEndsAt ? new Date(data.monitoringEndsAt) : null,
-      accessOpensAt: data.accessOpensAt ? new Date(data.accessOpensAt) : null,
-      accessClosesAt: data.accessClosesAt ? new Date(data.accessClosesAt) : null,
+      monitoringStartsAt: parseOptionalDhakaInput(data.monitoringStartsAt),
+      monitoringEndsAt: parseOptionalDhakaInput(data.monitoringEndsAt),
+      accessOpensAt: parseOptionalDhakaInput(data.accessOpensAt),
+      accessClosesAt: parseOptionalDhakaInput(data.accessClosesAt),
       coinReward: data.coinReward,
       minimumScoreForCoinReward: data.minimumScoreForCoinReward || null,
     },

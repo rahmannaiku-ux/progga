@@ -27,15 +27,28 @@ export async function awardXp(
   amount: number,
   source: { type: string; id: string; rewardType: string }
 ) {
+  // The ledger row and the XP increment commit together. Before, the
+  // ledger insert happened first and the increment second, so a failure in
+  // between (DB hiccup, deploy restart) left a RewardEvent behind with no
+  // XP granted — and the unique constraint then made every retry a no-op,
+  // so that XP was lost for good.
+  let stats;
   try {
-    await db.rewardEvent.create({
-      data: {
-        userId,
-        sourceType: source.type,
-        sourceId: source.id,
-        rewardType: source.rewardType,
-        amount,
-      },
+    stats = await db.$transaction(async (tx) => {
+      await tx.rewardEvent.create({
+        data: {
+          userId,
+          sourceType: source.type,
+          sourceId: source.id,
+          rewardType: source.rewardType,
+          amount,
+        },
+      });
+      return tx.heroStats.upsert({
+        where: { userId },
+        create: { userId, xp: amount },
+        update: { xp: { increment: amount } },
+      });
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -43,12 +56,6 @@ export async function awardXp(
     }
     throw err;
   }
-
-  const stats = await db.heroStats.upsert({
-    where: { userId },
-    create: { userId, xp: amount },
-    update: { xp: { increment: amount } },
-  });
 
   const newLevel = levelForXp(stats.xp);
   if (newLevel !== stats.level) {

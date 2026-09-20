@@ -19,6 +19,7 @@ import { formatBytes, getQuotaWarning } from "@/lib/storage/quota-thresholds";
 import { disconnectGoogleDrive, adminDeleteUpload } from "@/server/actions/storage-actions";
 import { DisconnectDriveButton } from "@/components/admin-dashboard/disconnect-drive-button";
 import type { UploadContext } from "@prisma/client";
+import { formatDhakaDate } from "@/lib/timezone";
 
 // Course-content categories (LESSON_RESOURCE) are a deliberately
 // separate system and never appear on this page — see the
@@ -304,7 +305,7 @@ export default async function AdminStoragePage({
                     {" · "}
                     {f.provider === "GOOGLE_DRIVE" ? "Drive" : "Backup"}
                     {" · "}
-                    {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(f.createdAt)}
+                    {formatDhakaDate(f.createdAt, { dateStyle: "medium" })}
                   </p>
                 </li>
               ))}
@@ -343,7 +344,7 @@ export default async function AdminStoragePage({
                     {f.provider === "GOOGLE_DRIVE" ? "Drive" : "Backup"}
                   </td>
                   <td className="py-2 pr-3 text-muted-foreground">
-                    {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(f.createdAt)}
+                    {formatDhakaDate(f.createdAt, { dateStyle: "medium" })}
                   </td>
                   <td className="py-2">
                     <div className="flex items-center gap-2">

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { LayoutDashboard, Rocket, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +26,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden"
       aria-label="Primary"
     >
       <ul className="grid grid-cols-4">
@@ -54,11 +53,7 @@ export function MobileBottomNav() {
                   )}
                 >
                   {isActive && (
-                    <motion.span
-                      layoutId="mobile-bottom-nav-pill"
-                      className="absolute inset-0 rounded-full bg-xp shadow-card"
-                      transition={{ type: "spring", stiffness: 500, damping: 32 }}
-                    />
+                    <span className="nav-pill-in absolute inset-0 rounded-full bg-xp shadow-card" />
                   )}
                   <Icon className="relative z-10 h-5 w-5" />
                 </span>

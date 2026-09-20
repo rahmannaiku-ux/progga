@@ -1,0 +1,45 @@
+{
+  "root": true,
+  "extends": ["next/core-web-vitals"],
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "coverage/",
+    "public/",
+    "next-env.d.ts",
+    "prisma/migrations/"
+  ],
+  "rules": {
+    // Real bugs — keep these as errors.
+    "react-hooks/rules-of-hooks": "error",
+    "no-var": "error",
+    "no-debugger": "error",
+    "no-dupe-keys": "error",
+    "no-unreachable": "error",
+    "no-self-assign": "error",
+
+    // Worth fixing but not build-breaking.
+    "react-hooks/exhaustive-deps": "warn",
+    "prefer-const": "warn",
+    "eqeqeq": ["warn", "always", { "null": "ignore" }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "@next/next/no-img-element": "warn",
+
+    // The UI copy is full of apostrophes and quotes ("You're", "hero's");
+    // escaping every one as &apos; / &quot; only makes the JSX harder to read.
+    "react/no-unescaped-entities": "off"
+  },
+  "overrides": [
+    {
+      // Vitest specs
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      // Node scripts and config files may log.
+      "files": ["scripts/**", "prisma/**", "*.config.*"],
+      "rules": { "no-console": "off" }
+    }
+  ]
+}

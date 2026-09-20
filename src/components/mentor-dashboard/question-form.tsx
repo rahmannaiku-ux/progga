@@ -372,7 +372,7 @@ export function QuestionForm({ assessmentId }: { assessmentId: string }) {
                 <div
                   key={i}
                   className={
-                    "flex min-h-[44px] items-center gap-2.5 rounded-xl border-[3px] p-3 text-sm font-medium " +
+                    "flex min-h-[44px] items-center gap-2.5 rounded-xl border-2 p-3 text-sm font-medium " +
                     (correctIndexes.has(i)
                       ? "border-accent bg-accent/10 text-foreground"
                       : "border-border/40 text-foreground")
@@ -394,7 +394,7 @@ export function QuestionForm({ assessmentId }: { assessmentId: string }) {
                 <div
                   key={label}
                   className={
-                    "flex min-h-[44px] items-center gap-2.5 rounded-xl border-[3px] p-3 text-sm font-medium " +
+                    "flex min-h-[44px] items-center gap-2.5 rounded-xl border-2 p-3 text-sm font-medium " +
                     (correctIndexes.has(i) || (i === 0 && correctIndexes.size === 0)
                       ? "border-accent bg-accent/10 text-foreground"
                       : "border-border/40 text-foreground")

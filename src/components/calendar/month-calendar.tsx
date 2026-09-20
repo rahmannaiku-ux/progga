@@ -1,26 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  addDays,
-  addMonths,
-  addWeeks,
-  eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
-  format,
-  isSameMonth,
-  isToday,
-  startOfMonth,
-  startOfWeek,
-  subMonths,
-  subWeeks,
-} from "date-fns";
 import { ChevronLeft, ChevronRight, Flame, Video, ClipboardList, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatDhakaTime, formatDhakaDate, dhakaDateKey } from "@/lib/timezone";
+import {
+  addDhakaDays,
+  addDhakaMonths,
+  dhakaDateKey,
+  dhakaStartOfDay,
+  dhakaStartOfMonth,
+  dhakaStartOfWeek,
+  formatDhakaDate,
+  formatDhakaTime,
+} from "@/lib/timezone";
 import type { CalendarItem } from "@/server/services/calendar";
 import type { DayGamificationSummary } from "@/server/services/calendar";
 
@@ -76,32 +70,46 @@ export function MonthCalendar({
     const keys = new Set<string>();
     if (!streak.lastActivityDate || streak.current <= 0) return keys;
     const last = new Date(streak.lastActivityDate);
-    const dayDiff = Math.round((Date.now() - last.getTime()) / 86_400_000);
+    // Whole Bangladesh calendar days between today and the last active day.
+    const dayDiff = Math.round(
+      (dhakaStartOfDay().getTime() - dhakaStartOfDay(last).getTime()) / 86_400_000
+    );
     if (dayDiff > 1) return keys;
     for (let i = 0; i < streak.current; i++) {
-      keys.add(dhakaDateKey(addDays(last, -i)));
+      keys.add(dhakaDateKey(addDhakaDays(last, -i)));
     }
     return keys;
   }, [streak]);
 
+  // Every day here is an instant at 00:00 *Dhaka* time, and every
+  // "which day / which month / is it today" question is answered from
+  // the Dhaka date key — never from the browser's local zone.
   const days = useMemo(() => {
-    if (view === "month") {
-      const start = startOfWeek(startOfMonth(cursor));
-      const end = endOfWeek(endOfMonth(cursor));
-      return eachDayOfInterval({ start, end });
-    }
-    const start = startOfWeek(cursor);
-    const end = endOfWeek(cursor);
-    return eachDayOfInterval({ start, end });
+    const first = view === "month" ? dhakaStartOfWeek(dhakaStartOfMonth(cursor)) : dhakaStartOfWeek(cursor);
+    const lastDayOfRange =
+      view === "month"
+        ? addDhakaDays(dhakaStartOfMonth(addDhakaMonths(cursor, 1)), -1)
+        : addDhakaDays(first, 6);
+    const last = addDhakaDays(dhakaStartOfWeek(lastDayOfRange), 6);
+    const out: Date[] = [];
+    for (let d = first; d.getTime() <= last.getTime(); d = addDhakaDays(d, 1)) out.push(d);
+    return out;
   }, [cursor, view]);
+
+  const todayKey = dhakaDateKey(new Date());
+  const cursorMonthKey = dhakaDateKey(cursor).slice(0, 7);
 
   const headerLabel =
     view === "month"
-      ? format(cursor, "MMMM yyyy")
-      : `${format(startOfWeek(cursor), "MMM d")} – ${format(endOfWeek(cursor), "MMM d, yyyy")}`;
+      ? formatDhakaDate(cursor, { month: "long", year: "numeric" })
+      : `${formatDhakaDate(days[0]!, { month: "short", day: "numeric" })} – ${formatDhakaDate(days[days.length - 1]!, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}`;
 
-  const goPrev = () => setCursor((c) => (view === "month" ? subMonths(c, 1) : subWeeks(c, 1)));
-  const goNext = () => setCursor((c) => (view === "month" ? addMonths(c, 1) : addWeeks(c, 1)));
+  const goPrev = () => setCursor((c) => (view === "month" ? addDhakaMonths(c, -1) : addDhakaDays(c, -7)));
+  const goNext = () => setCursor((c) => (view === "month" ? addDhakaMonths(c, 1) : addDhakaDays(c, 7)));
 
   const selectedDay = selectedKey ? new Date(selectedKey) : null;
   const selectedItems = selectedKey ? (itemsByDay.get(selectedKey) ?? []) : [];
@@ -168,8 +176,9 @@ export function MonthCalendar({
           const overflow = dayItems.length - visibleItems.length;
           const dayGamification = gamification[key];
           const inStreak = streakDayKeys.has(key);
-          const outsideMonth = view === "month" && !isSameMonth(day, cursor);
+          const outsideMonth = view === "month" && key.slice(0, 7) !== cursorMonthKey;
           const selected = selectedKey === key;
+          const isTodayCell = key === todayKey;
 
           return (
             <button
@@ -178,14 +187,14 @@ export function MonthCalendar({
               className={cn(
                 "relative flex flex-col items-stretch gap-0.5 rounded-lg border p-1 text-left transition-colors",
                 outsideMonth ? "border-transparent opacity-40" : "border-border/40 hover:border-primary/40",
-                isToday(day) && "border-accent bg-accent/5",
+                isTodayCell && "border-accent bg-accent/5",
                 selected && "ring-2 ring-primary",
                 inStreak && !outsideMonth && "shadow-[inset_0_0_0_1.5px_hsl(var(--xp))]"
               )}
             >
               <div className="flex items-center justify-between">
-                <span className={cn("text-xs font-bold", isToday(day) ? "text-accent" : "text-foreground")}>
-                  {format(day, "d")}
+                <span className={cn("text-xs font-bold", isTodayCell ? "text-accent" : "text-foreground")}>
+                  {Number(key.slice(8, 10))}
                 </span>
                 <div className="flex items-center gap-0.5">
                   {inStreak && !outsideMonth && <Flame className="h-3 w-3 text-xp" />}

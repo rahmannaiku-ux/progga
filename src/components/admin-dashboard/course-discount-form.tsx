@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { upsertCourseDiscount, setCourseDiscountActive, deleteCourseDiscount } from "@/server/actions/discount-actions";
 import { computeDiscountedPriceCents, getDiscountStatus, type DiscountStatus } from "@/lib/payments/discount";
 import { formatMoney } from "@/lib/payments/format";
+import { parseOptionalDhakaInput, toDhakaInputValue } from "@/lib/timezone";
 
 type DiscountType = "PERCENTAGE" | "FIXED";
 
@@ -27,12 +28,8 @@ const STATUS_META: Record<DiscountStatus, { label: string; variant: "default" | 
   disabled: { label: "Disabled", variant: "outline" },
 };
 
-/** `<input type="datetime-local">` wants "YYYY-MM-DDTHH:mm" in local time, not a Date or ISO string with a timezone. */
-function toLocalInputValue(date: Date | null): string {
-  if (!date) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+/** `<input type="datetime-local">` wants "YYYY-MM-DDTHH:mm" — always shown (and saved) as Bangladesh time. */
+const toLocalInputValue = toDhakaInputValue;
 
 export function CourseDiscountForm({
   courseId,
@@ -63,8 +60,8 @@ export function CourseDiscountForm({
     type,
     percentOff: type === "PERCENTAGE" ? Number(percentOff) || 0 : null,
     amountOffCents: type === "FIXED" ? Math.round((Number(amountOffCents) || 0)) : null,
-    startsAt: startsAt ? new Date(startsAt) : null,
-    endsAt: endsAt ? new Date(endsAt) : null,
+    startsAt: parseOptionalDhakaInput(startsAt),
+    endsAt: parseOptionalDhakaInput(endsAt),
   };
   const preview = computeDiscountedPriceCents(priceCents, previewDiscount);
   const previewStatus = getDiscountStatus(previewDiscount);
@@ -165,7 +162,7 @@ export function CourseDiscountForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-foreground">
-              Starts (optional)
+              Starts (optional, Bangladesh time)
             </label>
             <input
               type="datetime-local"
@@ -177,7 +174,7 @@ export function CourseDiscountForm({
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-foreground">
-              Ends (optional)
+              Ends (optional, Bangladesh time)
             </label>
             <input
               type="datetime-local"

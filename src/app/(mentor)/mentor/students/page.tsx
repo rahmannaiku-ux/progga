@@ -125,7 +125,7 @@ export default async function MentorStudentsPage({
       <div className="comic-panel mt-4 hidden overflow-x-auto bg-surface md:block">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
-            <tr className="border-b-[3px] border-border text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b-2 border-border text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3">Student</th>
               <th className="px-4 py-3">Mission</th>
               <th className="px-4 py-3">Level</th>

@@ -35,7 +35,7 @@ export async function sendTemplatedEmail(
   const bodyHtml = interpolate(template?.bodyHtml ?? fallback.bodyHtml, vars, true);
 
   if (!resend) {
-    console.log(`[email:skipped, no RESEND_API_KEY] to=${to} subject="${subject}"`);
+    console.warn(`[email:skipped, no RESEND_API_KEY] to=${to} subject="${subject}"`);
     return { sent: false as const };
   }
 

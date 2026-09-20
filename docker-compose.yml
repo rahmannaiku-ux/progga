@@ -1,13 +1,14 @@
-version: "3.9"
-
-# Production-oriented compose file. Postgres and Redis are intentionally
-# NOT published to the host (no top-level `ports:` on either) — the app
-# container reaches them over the internal Docker network by service
-# name (db:5432, redis:6379), which is all it needs. If you need a
+# Production-oriented compose file. Postgres is intentionally NOT published
+# to the host (no top-level `ports:`) — the app container reaches it over
+# the internal Docker network as db:5432, which is all it needs. There is no
+# Redis service: rate limiting uses Upstash over REST (UPSTASH_REDIS_REST_*)
+# or an in-process fallback, so the old redis container and its REDIS_URL /
+# REDIS_PASSWORD were never read by the app — and made `docker compose up`
+# refuse to start unless REDIS_PASSWORD was set. If you need a
 # database GUI locally, use `docker compose exec db psql ...` or a
 # temporary port-forward, not a permanent public port mapping.
 #
-# POSTGRES_PASSWORD and REDIS_PASSWORD have NO default here on purpose —
+# POSTGRES_PASSWORD has NO default here on purpose —
 # docker compose will refuse to start with a clear error if they aren't
 # set, rather than silently falling back to a guessable password. Put
 # real values in a local `.env` (already gitignored) or your deployment
@@ -22,11 +23,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:?POSTGRES_DB is required}
-      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+      TZ: Asia/Dhaka
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -42,6 +41,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      TZ: Asia/Dhaka
     volumes:
       - pgdata:/var/lib/postgresql/data
     # No `ports:` here — reachable only from other containers on this
@@ -49,20 +49,6 @@ services:
     # production.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-heroic}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
-    # No `ports:` here either — Redis has no auth by default, so
-    # publishing it (even with a password set) unnecessarily widens the
-    # attack surface for no benefit; the app reaches it as `redis:6379`
-    # over the internal network.
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5

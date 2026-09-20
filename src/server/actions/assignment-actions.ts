@@ -10,6 +10,7 @@ import { checkAssignmentAchievements } from "@/lib/gamification/check-achievemen
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
 import { requireMentorUser } from "./require-user";
+import { parseOptionalDhakaInput } from "@/lib/timezone";
 
 async function assertOwnsCourse(courseId: string, userId: string, role: string) {
   const course = await db.course.findUnique({
@@ -79,7 +80,7 @@ export async function createAssignment(formData: FormData) {
       lessonId: data.lessonId,
       title: data.title,
       instructions: data.instructions,
-      dueAt: data.dueAt ? new Date(data.dueAt) : null,
+      dueAt: parseOptionalDhakaInput(data.dueAt),
       maxPoints: data.maxPoints,
       allowLateSubmission: data.allowLateSubmission,
       rubric: rubric.length > 0 ? rubric : undefined,

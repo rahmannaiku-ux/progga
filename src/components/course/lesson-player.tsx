@@ -2,12 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { updateLessonProgress } from "@/server/actions/learning-actions";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/course/video-player";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
-import { celebratePop } from "@/lib/motion";
 
 const AUTOSAVE_INTERVAL_MS = 15_000;
 
@@ -90,22 +88,14 @@ export function LessonPlayer({
         }}
       />
 
-      <AnimatePresence>
-        {justCompleted && (
-          <motion.div
-            variants={celebratePop}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="comic-panel mt-3 flex items-center gap-3 border-accent/60 bg-accent/10 p-3"
-          >
+      {justCompleted && (
+          <div className="pop-in comic-panel mt-3 flex items-center gap-3 border-accent/60 bg-accent/10 p-3">
             <ProggyMascot state="celebrating" className="h-10 w-10 shrink-0" animated={false} />
             <p className="font-display text-sm font-bold text-foreground">
               Patrol complete! Nice work, hero. 🎉
             </p>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       <div className="comic-panel mt-3 flex flex-col gap-3 bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">

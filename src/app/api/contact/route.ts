@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     // No email provider or no support address configured — log it so
     // it isn't silently lost, and tell the caller honestly rather than
     // pretending success.
-    console.log(`[contact:undeliverable] from=${name} <${email}>: ${message}`);
+    console.warn(`[contact:undeliverable] from=${name} <${email}>: ${message}`);
     return NextResponse.json(
       { error: "Messaging isn't fully configured yet — please try again later." },
       { status: 503 }

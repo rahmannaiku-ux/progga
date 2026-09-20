@@ -21,7 +21,7 @@ export default async function TelegramSettingsPage() {
   const backHref = user.role === "TEACHER" ? "/mentor/dashboard" : user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? "/admin/dashboard" : "/dashboard";
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10 sm:px-6">
+    <div className="min-h-dvh bg-background px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-lg space-y-6">
         <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />

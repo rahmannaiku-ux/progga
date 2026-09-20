@@ -12,7 +12,7 @@ export default async function PublicLayout({
   if (await isMaintenanceBlocking()) return <MaintenancePage />;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <SiteHeader />
       <main className="relative flex-1">
         <PageTransition>{children}</PageTransition>

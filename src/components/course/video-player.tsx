@@ -16,6 +16,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 /**
  * Maps YouTube's internal quality identifiers to the human labels the
@@ -112,7 +113,8 @@ export function VideoPlayer({
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const [currentQuality, setCurrentQuality] = useState("auto");
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { isFullscreen, isPseudoFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } =
+    useFullscreen(containerRef);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
 
@@ -144,35 +146,9 @@ export function VideoPlayer({
     return () => clearInterval(interval);
   }, [isPlaying, isSeeking, status]);
 
-  // Fullscreen state tracking — the browser can exit fullscreen via Esc
-  // or the OS UI without going through our button, so this has to be a
-  // listener, not just state we set locally on click.
-  useEffect(() => {
-    const handler = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
-  // Guarantee the browser never gets stuck in fullscreen after leaving
-  // this lesson. requestFullscreen()/exitFullscreen() are only ever
-  // triggered by our own button (see toggleFullscreen below) or by the
-  // user pressing Esc/using OS chrome — both of those are covered by
-  // the fullscreenchange listener above. But navigating away entirely
-  // (a <Link>, "Next Lesson", browser back/forward) unmounts this
-  // component directly, without ever going through that button — so if
-  // the container is still the real fullscreen element at the moment
-  // we unmount, explicitly exit first. Otherwise the browser stays in
-  // fullscreen chrome on whatever page the student lands on next, with
-  // no VideoPlayer left mounted to ever call exitFullscreen() for them.
-  useEffect(() => {
-    return () => {
-      if (document.fullscreenElement === containerRef.current) {
-        document.exitFullscreen().catch(() => {
-          // Nothing to recover — we're already unmounting either way.
-        });
-      }
-    };
-  }, []);
+  // Fullscreen (native, iPad-prefixed, or the iPhone CSS fallback), its
+  // Escape handling and its unmount cleanup all live in useFullscreen —
+  // see src/hooks/use-fullscreen.ts for the iPhone-specific reasons.
 
   // Close the speed/quality dropdowns on an outside click — neither
   // menu closes itself otherwise, so a tap anywhere else on the page
@@ -191,28 +167,19 @@ export function VideoPlayer({
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [showSpeedMenu, showQualityMenu]);
 
-  // Escape closes an open dropdown first (standard menu behavior), or
-  // — failing that — exits the iOS "fake fullscreen" fallback (see
-  // toggleFullscreen below). Real fullscreen already gets Escape
-  // handling for free from the browser itself, which the
-  // fullscreenchange listener above picks up; this only covers the
-  // fake-fullscreen path, which never touches the real Fullscreen API
-  // and so never receives the browser's own Escape handling.
+  // Escape closes an open dropdown first (standard menu behavior).
+  // Leaving fullscreen with Escape is handled by useFullscreen.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
       if (showSpeedMenu || showQualityMenu) {
         setShowSpeedMenu(false);
         setShowQualityMenu(false);
-        return;
-      }
-      if (isFullscreen && !document.fullscreenElement) {
-        setIsFullscreen(false);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [showSpeedMenu, showQualityMenu, isFullscreen]);
+  }, [showSpeedMenu, showQualityMenu]);
 
   // Schedules the controls to fade out after 3s of inactivity — but only
   // while fullscreen, playing, and with no menu open or seek in progress
@@ -365,22 +332,6 @@ export function VideoPlayer({
     }
   }
 
-  async function toggleFullscreen() {
-    const el = containerRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    } else if (el.requestFullscreen) {
-      await el.requestFullscreen();
-    } else {
-      // Safari on iOS doesn't support the Fullscreen API on arbitrary
-      // elements (only on <video>) — fall back to a fixed-position
-      // "fake fullscreen" that still keeps our custom controls, rather
-      // than silently doing nothing.
-      setIsFullscreen((prev) => !prev);
-    }
-  }
-
   const displayTime = isSeeking ? seekPreview : currentTime;
 
   return (
@@ -403,7 +354,7 @@ export function VideoPlayer({
         // as a washed-out frame around the video instead of clean
         // edge-to-edge black.
         isFullscreen &&
-          "!fixed !inset-0 !z-50 flex !rounded-none !border-0 !shadow-none flex-col !bg-black",
+          "!fixed !inset-0 !z-50 flex !rounded-none !border-0 !shadow-none flex-col !bg-black touch-manipulation overscroll-none",
         // Hide the cursor along with the controls in fullscreen —
         // otherwise an idle mouse arrow sits frozen over the video,
         // which looks broken even with the controls bar gone.
@@ -457,7 +408,14 @@ export function VideoPlayer({
           <button
             type="button"
             aria-label={isPlaying ? "Pause video" : "Play video"}
-            onClick={togglePlay}
+            onClick={() => {
+              // In fullscreen with the controls faded out, the first tap
+              // only brings them back (it's the container's onClick that
+              // does that) — otherwise every "show controls" tap on a
+              // phone also paused or resumed the video.
+              if (isFullscreen && !controlsVisible) return;
+              togglePlay();
+            }}
             className="absolute inset-0 flex items-center justify-center bg-transparent"
           >
             {!isPlaying && (
@@ -468,9 +426,28 @@ export function VideoPlayer({
           </button>
         )}
 
+        {/* iPhone has no native fullscreen chrome for this container, so the
+            CSS fallback always gets its own exit button, clear of the notch. */}
+        {isPseudoFullscreen && status === "ready" && (
+          <button
+            type="button"
+            aria-label="Exit fullscreen"
+            onClick={(e) => {
+              e.stopPropagation();
+              void exitFullscreen();
+            }}
+            className={cn(
+              "absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white transition-opacity duration-300",
+              controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            )}
+          >
+            <Minimize className="h-5 w-5" />
+          </button>
+        )}
+
         {status === "loading" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/90 text-white">
-            <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             <p className="text-xs text-white/70">Loading video...</p>
           </div>
         )}
@@ -494,7 +471,7 @@ export function VideoPlayer({
             "flex flex-col gap-2 bg-surface p-3 transition-opacity duration-300",
             isFullscreen
               ? cn(
-                  "absolute inset-x-0 bottom-0 z-20",
+                  "absolute inset-x-0 bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
                   controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
                 )
               : "opacity-100"

@@ -28,8 +28,9 @@ export function SiteLogo({ siteName, logoUrl }: SiteLogoProps) {
 
   if (showImage) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- admin-configured
-      // arbitrary URL, no fixed set of remote domains to allow-list for next/image
+      // Admin-configured arbitrary URL: there is no fixed set of remote domains
+      // to allow-list for next/image, so a plain <img> is intentional here.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={logoUrl!}
         alt={siteName}
