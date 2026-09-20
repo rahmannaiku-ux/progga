@@ -18,7 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
-import { VideoWatermark } from "@/components/security/video-watermark";
 
 /**
  * Maps YouTube's internal quality identifiers to the human labels the
@@ -428,8 +427,6 @@ export function VideoPlayer({
             onError={handleError}
           />
         </div>
-
-        <VideoWatermark />
 
         {shielded && (
           <div

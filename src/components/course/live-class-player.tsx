@@ -7,7 +7,6 @@ import { PlayCircle, Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTri
 import { cn } from "@/lib/utils";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
-import { VideoWatermark } from "@/components/security/video-watermark";
 
 // YT.PlayerState numeric values — same constants video-player.tsx uses.
 const YT_STATE = { PLAYING: 1, PAUSED: 2 } as const;
@@ -160,8 +159,6 @@ export function LiveClassPlayer({
             onError={handleError}
           />
         </div>
-
-        <VideoWatermark />
 
         {shielded && (
           <div
