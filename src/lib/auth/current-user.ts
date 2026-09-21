@@ -113,3 +113,25 @@ export const getCurrentUserRoleOptional = cache(async () => {
 
   return user.role;
 });
+
+/**
+ * Same non-redirecting, no-lazy-create contract as
+ * getCurrentUserRoleOptional above, but returns the row a public page
+ * actually needs to know "is this specific visitor enrolled / do they
+ * have an in-flight payment" (e.g. the /courses/[slug] buying page) —
+ * id and role — without forcing sign-in just to view a public page.
+ * Returns null for anyone not signed in or not (yet) provisioned.
+ */
+export const getCurrentUserOptional = cache(async () => {
+  const { userId } = auth();
+  if (!userId) return null;
+
+  const user = await db.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true, role: true, isActive: true, isSuspended: true },
+  });
+
+  if (!user || !user.isActive || user.isSuspended) return null;
+
+  return user;
+});

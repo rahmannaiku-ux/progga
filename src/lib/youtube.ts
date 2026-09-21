@@ -48,8 +48,10 @@ export function youtubeThumbnailUrl(videoId: string) {
  * that, just a plain, responsive iframe. `autoplay=1` only takes effect
  * once the student has explicitly chosen to join (see
  * live-class-player.tsx, which doesn't mount this iframe until then),
- * so this never autoplays on page load.
+ * so this never autoplays on page load. `cc_load_policy=0` keeps
+ * captions off by default, matching every other YouTube embed in the
+ * app — see video-player.tsx and live-class-player.tsx.
  */
 export function liveEmbedUrl(videoId: string) {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1`;
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&cc_load_policy=0`;
 }

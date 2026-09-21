@@ -9,9 +9,14 @@ import { startBkashPayment } from "@/server/actions/payment-actions";
 export function EnrollButton({
   courseId,
   isFree,
+  couponCode,
 }: {
   courseId: string;
   isFree: boolean;
+  /** A currently-applied, already-validated coupon code from the buying
+   * page's CouponApplyForm, if any — passed through as a hint only.
+   * startBkashPayment re-validates and re-prices it from the DB itself. */
+  couponCode?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +35,7 @@ export function EnrollButton({
               if (isFree) {
                 await enrollInCourse(courseId);
               } else {
-                await startBkashPayment(courseId);
+                await startBkashPayment(courseId, couponCode);
               }
             } catch (e) {
               const digest = (e as { digest?: string })?.digest;

@@ -14,7 +14,8 @@ const YT_STATE = { PLAYING: 1, PAUSED: 2 } as const;
 /**
  * Same locked-down IFrame API setup as video-player.tsx (controls: 0,
  * disablekb: 1, fs: 0, modestbranding: 1, rel: 0, iv_load_policy: 3,
- * plus a pointer-events-none iframe behind a click-catching overlay)
+ * cc_load_policy: 0, plus a pointer-events-none iframe behind a
+ * click-catching overlay)
  * so a live stream gets the same branded Proggaa chrome — no YouTube
  * logo, no title link, no "Watch on YouTube" button — instead of
  * YouTube's native player. Deliberately still simpler than
@@ -150,6 +151,8 @@ export function LiveClassPlayer({
                 modestbranding: 1,
                 fs: 0,
                 iv_load_policy: 3,
+                // Captions off by default; same as the lesson player.
+                cc_load_policy: 0,
                 playsinline: 1,
                 origin: typeof window !== "undefined" ? window.location.origin : undefined,
               },

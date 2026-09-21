@@ -261,6 +261,114 @@ model CourseDiscount {
   @@index([courseId])
 }
 
+// Assigns a teacher to a course, in addition to Course.teacherId (the
+// original owner/primary teacher, kept as-is for backward
+// compatibility — every existing ownership check against teacherId
+// keeps working unchanged). This is purely additive: a course with no
+// CourseTeacher rows behaves exactly as it did before this model
+// existed, showing just its one teacherId owner.
+//
+// Deliberately does NOT duplicate teacher profile data (name, photo,
+// bio) — those stay on User/TeacherProfile and are read through the
+// `teacher` relation. `roleLabel` is the one course-specific field
+// this table owns: an optional per-course label (e.g. "Lead
+// Instructor", "Teaching Assistant — Algebra") shown on the course's
+// "Course Teachers" showcase instead of duplicating User.headline,
+// since the same teacher's role can differ from one course to the
+// next. Falls back to the teacher's own headline when unset.
+model CourseTeacher {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User     @relation("CourseTeacherAssignment", fields: [teacherId], references: [id], onDelete: Cascade)
+  roleLabel String? // e.g. "Lead Instructor" — display-only, overrides User.headline for this course
+  order     Int      @default(0) // display order in the teacher showcase
+  addedById String
+  addedBy   User     @relation("CourseTeacherAddedBy", fields: [addedById], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, teacherId])
+  @@index([teacherId])
+}
+
+// A teacher-created, code-based discount for one specific course — a
+// separate, additive layer from CourseDiscount above (admin-managed,
+// codeless, automatic). The two are deliberately never combined in one
+// checkout: computeCouponPriceCents() below always discounts off the
+// course's raw priceCents, so a coupon's effect is exactly what its
+// code promises ("SAVE20 = 20% off list price") regardless of whether
+// an unrelated admin discount also happens to be active. See
+// src/lib/payments/coupon.ts for why this split was chosen over
+// stacking the two.
+model CourseCoupon {
+  id               String           @id @default(cuid())
+  courseId         String
+  course           Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Always stored normalized (uppercased, trimmed) — see normalizeCouponCode()
+  // in src/lib/payments/coupon.ts, the one place that normalization happens,
+  // used identically when creating a coupon and when a student applies one.
+  code             String
+
+  discountType     DiscountType
+  // Exactly one of these is meaningful, matching discountType — same
+  // application-layer-only rule as CourseDiscount.percentOff/amountOffCents
+  // above (enforced in Zod, not a DB CHECK constraint).
+  percentOff       Int? // 1-100, required when discountType = PERCENTAGE
+  amountOffCents   Int? // >=0, required when discountType = FIXED
+
+  expiresAt        DateTime? // null = never expires on its own
+  usageLimit       Int? // null = unlimited
+  // Denormalized count of successful redemptions (incremented atomically
+  // — see redeemCourseCoupon() in coupon-actions.ts — only when a
+  // Payment actually reaches PAID, never at "student typed the code"
+  // time, so an abandoned checkout never consumes a limited coupon's
+  // uses). CouponRedemption below is the source of truth this is kept
+  // in sync with; usageCount exists so the teacher's UI doesn't need a
+  // separate count query per coupon.
+  usageCount       Int              @default(0)
+  isActive         Boolean          @default(true)
+
+  createdByTeacherId String
+  createdByTeacher User             @relation("CouponCreatedBy", fields: [createdByTeacherId], references: [id])
+
+  redemptions      CouponRedemption[]
+  payments         Payment[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  // Codes only need to be unique within a course, not site-wide — two
+  // different teachers on two different courses can both run "SAVE20".
+  @@unique([courseId, code])
+  @@index([courseId])
+  @@index([code])
+}
+
+// One row per successful (PAID) coupon use — the audit trail
+// CourseCoupon.usageCount is a cached count of. Also the mechanism
+// that makes "coupon applied to an already-enrolled student" and
+// "concurrent coupon redemption" safe: the @@unique below means the
+// DB itself rejects a second redemption row for the same
+// (couponId, userId), independent of any application-level check,
+// closing the exact race two simultaneous verify-clicks could
+// otherwise open.
+model CouponRedemption {
+  id             String       @id @default(cuid())
+  couponId       String
+  coupon         CourseCoupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId      String       @unique
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  discountCents  Int // snapshot of the amount actually taken off this payment
+  createdAt      DateTime     @default(now())
+
+  @@unique([couponId, userId])
+  @@index([couponId])
+}
+
 // Manual bKash payments (Phase 11). Mirrors the real-world lifecycle:
 // a student submits evidence of a payment they already sent, and that
 // evidence is either verified by an admin or by a future trusted
@@ -333,6 +441,10 @@ model User {
   payments          Payment[]           @relation("PaymentBuyer")
   paymentsVerified  Payment[]           @relation("PaymentVerifier")
   discountsCreated  CourseDiscount[]    @relation("DiscountCreatedBy")
+  courseTeacherOf   CourseTeacher[]     @relation("CourseTeacherAssignment")
+  courseTeachersAdded CourseTeacher[]   @relation("CourseTeacherAddedBy")
+  couponsCreated    CourseCoupon[]      @relation("CouponCreatedBy")
+  couponRedemptions CouponRedemption[]
   rewardEvents      RewardEvent[]
   coinTransactions  ProggyCoinTransaction[]
   coinPurchases     CoinPurchase[]
@@ -463,6 +575,12 @@ model Course {
   // lost and every other read of priceCents (analytics, past Payment
   // snapshots, etc.) keeps meaning exactly what it always has.
   discount         CourseDiscount?
+
+  // Co-teachers, in addition to the primary `teacher` above (see
+  // CourseTeacher's own comment for why this is additive rather than
+  // a replacement for teacherId).
+  courseTeachers   CourseTeacher[]
+  coupons          CourseCoupon[]
 
   // Course-level exam/quiz feature gate (storage spec: "COURSE EXAM
   // TOGGLE"). Off by default — a course doesn't get an Exams tab, and
@@ -1208,6 +1326,17 @@ model Payment {
   amountCents       Int
   currency          String              @default("BDT")
 
+  // Set only when a student applied a coupon at checkout. `couponCode`
+  // and `couponDiscountCents` are snapshots (same philosophy as
+  // amountCents itself) so this payment's history stays meaningful even
+  // if the coupon is later edited or deleted by the teacher — deleting
+  // a CourseCoupon never touches past Payments (onDelete: SetNull).
+  couponId              String?
+  coupon                CourseCoupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode            String?
+  couponDiscountCents   Int?
+  couponRedemption      CouponRedemption?
+
   provider          PaymentProvider     @default(MANUAL_BKASH)
   paymentReference  String              @unique // e.g. "PRG-8F42K7", generated server-side
   transactionId     String?             @unique // bKash TXID, set once the student submits it
@@ -1240,6 +1369,7 @@ model Payment {
   @@index([courseId])
   @@index([status])
   @@index([provider])
+  @@index([couponId])
 }
 
 // Revocable auth for the future Proggaa Payment Bridge (Android app).

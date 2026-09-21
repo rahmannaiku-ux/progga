@@ -5,8 +5,15 @@ import { buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/shared/submit-button";
 
 export default async function NewMissionPage() {
-  await requireRole("TEACHER");
-  const categories = await db.category.findMany({ orderBy: { name: "asc" } });
+  const user = await requireRole("TEACHER");
+  const [categories, otherTeachers] = await Promise.all([
+    db.category.findMany({ orderBy: { name: "asc" } }),
+    db.user.findMany({
+      where: { role: "TEACHER", isActive: true, isSuspended: false, id: { not: user.id } },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      select: { id: true, firstName: true, lastName: true, email: true },
+    }),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -110,6 +117,29 @@ export default async function NewMissionPage() {
             className="h-11 w-full rounded-xl border border-border/60 bg-surface px-4 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
+
+        {otherTeachers.length > 0 && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Co-teachers <span className="text-muted-foreground">(optional)</span>
+            </label>
+            <select
+              name="coTeacherIds"
+              multiple
+              size={Math.min(4, otherTeachers.length)}
+              className="w-full rounded-xl border border-border/60 bg-surface px-4 py-2 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              {otherTeachers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.firstName} {t.lastName} ({t.email})
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ctrl/Cmd-click to select more than one. You can also manage the team later.
+            </p>
+          </div>
+        )}
 
         <SubmitButton
           pendingLabel="Creating mission…"

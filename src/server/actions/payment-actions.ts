@@ -11,6 +11,7 @@ import { notifyPaymentAdmins } from "@/lib/payments/notify-admins";
 import { sendPaymentVerifiedAlert, sendPaymentReviewAlert, sendPaymentRejectedAlert } from "@/lib/payments/telegram";
 import { formatMoney } from "@/lib/payments/format";
 import { computeDiscountedPriceCents } from "@/lib/payments/discount";
+import { computeCouponPriceCents, validateCouponUsable, normalizeCouponCode, type CouponLike } from "@/lib/payments/coupon";
 import { requireActiveUser, requireAdminUser } from "./require-user";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 
@@ -85,6 +86,59 @@ async function markPaidAndEnroll(
       data: { enrollmentId: enrollment.id },
     });
 
+    // Redeem the coupon (if one was applied at checkout) only now that
+    // the payment has actually been verified — never at checkout time,
+    // so an abandoned/rejected payment never consumes a limited
+    // coupon's uses. The WHERE-guarded updateMany is the same
+    // race-safe pattern as the payment-status claim above: only a
+    // transaction that still finds the coupon under its usage limit
+    // actually increments it, closing the exact "two students redeem
+    // the last slot at once" race a plain `update` would leave open.
+    //
+    // If the limit was hit by a concurrent verification between this
+    // student's checkout and now, the increment below is skipped, but
+    // enrollment still proceeds and the CouponRedemption row is still
+    // written — the discount was already locked into amountCents at
+    // checkout and the student already paid that amount, so declining
+    // to honor it now would mean charging one price and delivering
+    // another. usageCount simply reflects "successful redemptions,"
+    // and a redemption made in good faith before the limit was reached
+    // still counts as one.
+    if (payment.couponId) {
+      // A single atomic UPDATE ... WHERE, evaluated against the row's
+      // current committed value by Postgres itself — this is the one
+      // guard that genuinely can't be expressed as a typed Prisma
+      // `updateMany` filter (it compares two columns of the same row,
+      // usageCount against usageLimit), so it's the one place in this
+      // codebase that reaches for $executeRaw rather than the ORM API.
+      await tx.$executeRaw`
+        UPDATE "CourseCoupon"
+        SET "usageCount" = "usageCount" + 1
+        WHERE "id" = ${payment.couponId}
+          AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
+      `;
+
+      try {
+        await tx.couponRedemption.create({
+          data: {
+            couponId: payment.couponId,
+            userId: payment.userId,
+            paymentId,
+            discountCents: payment.couponDiscountCents ?? 0,
+          },
+        });
+      } catch (err) {
+        // P2002 on (couponId, userId) or the paymentId unique — this
+        // exact redemption was already recorded (e.g. a retried
+        // verification after a slow first response). Idempotent no-op,
+        // matching the payment-status claim's own idempotent-return
+        // philosophy above.
+        if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) {
+          throw err;
+        }
+      }
+    }
+
     await tx.activityLog.create({
       data: {
         userId: verifiedById ?? payment.userId,
@@ -104,8 +158,17 @@ async function markPaidAndEnroll(
  * a second reference for the same attempt), otherwise creates a new
  * PENDING row with the price re-derived from the DB — the browser never
  * supplies an amount.
+ *
+ * `couponCode` is optional and, like everything else here, only ever a
+ * hint about which coupon to look up — the discount actually charged
+ * is always recomputed from the DB coupon row and the course's current
+ * priceCents, never from anything else the client sends alongside the
+ * code. A coupon and the course's admin CourseDiscount are never
+ * combined in one checkout: a valid coupon code takes over the price
+ * calculation entirely (see computeCouponPriceCents), matching what
+ * the buying page already showed the student in the apply preview.
  */
-export async function startBkashPayment(courseId: string) {
+export async function startBkashPayment(courseId: string, couponCode?: string) {
   const user = await requireActiveUser();
 
   if (!(await isFeatureEnabled("course_purchases", { userId: user.id, role: user.role }))) {
@@ -133,20 +196,41 @@ export async function startBkashPayment(courseId: string) {
     throw new Error("This mission is free — use Enroll directly, no payment needed.");
   }
 
-  // The only place a paid mission's charge amount is decided. `now` is
-  // the server's own clock — never anything supplied by the client —
-  // so a scheduled discount can't be forced early, an expired one
-  // can't be reused, and a disabled one can't be toggled back on from
-  // outside the admin action. The browser never sends a price at all
-  // (startBkashPayment only takes courseId), so there's nothing here
-  // for a manipulated client value to override in the first place.
-  const { finalCents: chargeCents } = computeDiscountedPriceCents(course.priceCents, course.discount);
-
   const alreadyEnrolled = await db.enrollment.findUnique({
     where: { userId_courseId: { userId: user.id, courseId } },
   });
   if (alreadyEnrolled) {
     throw new Error("You're already enrolled in this mission.");
+  }
+
+  // The only place a paid mission's charge amount is decided. `now` is
+  // the server's own clock — never anything supplied by the client —
+  // so a scheduled discount can't be forced early, an expired one
+  // can't be reused, and a disabled one can't be toggled back on from
+  // outside the admin action. The browser never sends a price at all,
+  // only (optionally) a coupon code — there's nothing here for a
+  // manipulated client value to override.
+  let chargeCents: number;
+  let redeemedCoupon: { id: string; code: string; discountCents: number } | null = null;
+
+  if (couponCode && couponCode.trim()) {
+    const normalized = normalizeCouponCode(couponCode);
+    const coupon = await db.courseCoupon.findUnique({
+      where: { courseId_code: { courseId, code: normalized } },
+    });
+    const usable = validateCouponUsable(coupon as CouponLike | null);
+    if (!usable.ok) throw new Error(usable.reason);
+
+    const alreadyRedeemed = await db.couponRedemption.findUnique({
+      where: { couponId_userId: { couponId: coupon!.id, userId: user.id } },
+    });
+    if (alreadyRedeemed) throw new Error("You've already used this coupon.");
+
+    const price = computeCouponPriceCents(course.priceCents, coupon!);
+    chargeCents = price.finalCents;
+    redeemedCoupon = { id: coupon!.id, code: normalized, discountCents: price.amountOffCents };
+  } else {
+    chargeCents = computeDiscountedPriceCents(course.priceCents, course.discount).finalCents;
   }
 
   const existing = await db.payment.findFirst({
@@ -175,6 +259,13 @@ export async function startBkashPayment(courseId: string) {
           paymentReference: reference,
           status: "PENDING",
           source: "web",
+          ...(redeemedCoupon
+            ? {
+                couponId: redeemedCoupon.id,
+                couponCode: redeemedCoupon.code,
+                couponDiscountCents: redeemedCoupon.discountCents,
+              }
+            : {}),
         },
       });
       redirect(`/payments/${payment.id}`);

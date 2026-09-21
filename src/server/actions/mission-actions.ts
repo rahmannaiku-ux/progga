@@ -17,18 +17,32 @@ import { requireMentorUser } from "./require-user";
 import { parseDhakaInput } from "@/lib/timezone";
 
 /**
- * Verifies `courseId` exists and is owned by `teacherId` (or the caller
- * is an admin). Throws rather than silently no-op-ing, so a spoofed ID
- * from the client fails loudly instead of pretending to succeed.
+ * Verifies `courseId` exists and the caller may manage it: the
+ * course's primary teacher (teacherId), a co-teacher assigned via
+ * CourseTeacher, or an admin. Throws rather than silently no-op-ing,
+ * so a spoofed ID from the client fails loudly instead of pretending
+ * to succeed.
+ *
+ * Exported so every other course-management action — coupon
+ * create/edit/delete, teacher-assignment, avatar-in-course-context,
+ * etc. — shares this exact same ownership check instead of each
+ * reimplementing its own "am I allowed to touch this course" logic
+ * (and risking one of the copies drifting, e.g. forgetting the
+ * co-teacher case).
  */
-async function assertOwnsCourse(courseId: string, userId: string, role: string) {
+export async function assertOwnsCourse(courseId: string, userId: string, role: string) {
   const course = await db.course.findUnique({
     where: { id: courseId },
-    select: { teacherId: true },
+    select: {
+      teacherId: true,
+      courseTeachers: { where: { teacherId: userId }, select: { id: true } },
+    },
   });
   if (!course) throw new Error("Mission not found.");
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
-  if (!isAdmin && course.teacherId !== userId) {
+  const isPrimaryTeacher = course.teacherId === userId;
+  const isCoTeacher = course.courseTeachers.length > 0;
+  if (!isAdmin && !isPrimaryTeacher && !isCoTeacher) {
     throw new Error("You don't have access to this mission.");
   }
 }
@@ -139,6 +153,31 @@ export async function createCourse(formData: FormData) {
       status: "DRAFT",
     },
   });
+
+  // Optional co-teachers picked at creation time (see the multi-select
+  // on the "new mission" form) — additional teacher accounts to assign
+  // via CourseTeacher, on top of the creator as primary teacherId
+  // above. Silently ignores anything that isn't actually an active
+  // TEACHER account or is the creator themself, rather than failing
+  // the whole course creation over a stale/tampered selection — the
+  // Team page (which re-validates the same way) is always available
+  // afterward to fix up the team properly.
+  const coTeacherIds = formData
+    .getAll("coTeacherIds")
+    .map(String)
+    .filter((id) => id && id !== user.id);
+  if (coTeacherIds.length > 0) {
+    const validTeachers = await db.user.findMany({
+      where: { id: { in: coTeacherIds }, role: "TEACHER", isActive: true, isSuspended: false },
+      select: { id: true },
+    });
+    if (validTeachers.length > 0) {
+      await db.courseTeacher.createMany({
+        data: validTeachers.map((t) => ({ courseId: course.id, teacherId: t.id, addedById: user.id })),
+        skipDuplicates: true,
+      });
+    }
+  }
 
   await db.activityLog.create({
     data: {

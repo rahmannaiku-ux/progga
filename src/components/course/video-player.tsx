@@ -418,6 +418,9 @@ export function VideoPlayer({
                 modestbranding: 1,
                 fs: 0,
                 iv_load_policy: 3,
+                // Captions off by default; the student can still turn them
+                // on manually via YouTube's own CC control if they want to.
+                cc_load_policy: 0,
                 playsinline: 1,
                 origin: typeof window !== "undefined" ? window.location.origin : undefined,
               },

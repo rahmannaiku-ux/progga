@@ -9,7 +9,10 @@ export default async function MentorMissionsPage() {
   const user = await requireRole("TEACHER");
 
   const courses = await db.course.findMany({
-    where: { teacherId: user.id },
+    // Primary-authored missions, plus any this teacher was added to as
+    // a co-teacher (see CourseTeacher) — so a co-teacher can find their
+    // coupon/team management links here too, not just the owner.
+    where: { OR: [{ teacherId: user.id }, { courseTeachers: { some: { teacherId: user.id } } }] },
     orderBy: { updatedAt: "desc" },
     include: {
       _count: { select: { enrollments: true, modules: true } },
@@ -37,12 +40,14 @@ export default async function MentorMissionsPage() {
       {courses.length > 0 ? (
         <div className="mt-8 space-y-3">
           {courses.map((c) => (
-            <Link
+            <div
               key={c.id}
-              href={`/mentor/missions/${c.id}/builder`}
-              className="glass-panel flex items-center justify-between p-5 transition-transform hover:-translate-y-0.5"
+              className="glass-panel flex flex-wrap items-center justify-between gap-3 p-5"
             >
-              <div>
+              <Link
+                href={`/mentor/missions/${c.id}/builder`}
+                className="min-w-0 flex-1 transition-transform hover:-translate-y-0.5"
+              >
                 <div className="flex items-center gap-3">
                   <p className="font-display font-semibold text-foreground">
                     {c.title}
@@ -52,11 +57,27 @@ export default async function MentorMissionsPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {c._count.modules} operations · {c._count.enrollments} heroes enrolled
                 </p>
+              </Link>
+              <div className="flex items-center gap-2">
+                {!c.isFree && (
+                  <Link
+                    href={`/mentor/missions/${c.id}/coupons`}
+                    className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface"
+                  >
+                    Coupons
+                  </Link>
+                )}
+                <Link
+                  href={`/mentor/missions/${c.id}/team`}
+                  className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface"
+                >
+                  Team
+                </Link>
+                <span className="font-mono text-sm text-muted-foreground">
+                  {c.isFree ? "Free" : `$${(c.priceCents / 100).toFixed(2)}`}
+                </span>
               </div>
-              <span className="font-mono text-sm text-muted-foreground">
-                {c.isFree ? "Free" : `$${(c.priceCents / 100).toFixed(2)}`}
-              </span>
-            </Link>
+            </div>
           ))}
         </div>
       ) : (
