@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { getSiteBranding } from "@/lib/site-branding";
+import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { db } from "@/lib/db/client";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
@@ -37,12 +37,15 @@ export default async function HeroLayout({
   ]);
 
   const { level, xpIntoLevel, xpForNextLevel, percent } = xpProgressWithinLevel(stats.xp);
+  const logoUrl = branding.logoUrl && isSafeLogoUrl(branding.logoUrl) ? branding.logoUrl : null;
 
   return (
     <div className="flex min-h-dvh bg-background">
       <Sidebar
         navKey="hero"
         brandLabel={branding.siteName}
+        siteName={branding.siteName}
+        logoUrl={logoUrl}
         heroStats={{ xp: stats.xp, currentStreak: stats.currentStreak, coinBalance: stats.coinBalance }}
       />
       {/* min-w-0 is required here: a flex item's default min-width is
@@ -64,6 +67,8 @@ export default async function HeroLayout({
             <MobileNavDrawer
               navKey="hero"
               brandLabel={branding.siteName}
+              siteName={branding.siteName}
+              logoUrl={logoUrl}
               heroProfile={{
                 name: user.firstName || "Hero",
                 avatarUrl: user.avatarUrl,

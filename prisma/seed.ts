@@ -17,7 +17,18 @@ async function main() {
   // -------------------------------------------------------------
   await db.siteSettings.upsert({
     where: { id: "singleton" },
-    create: { id: "singleton", siteName: "Proggaa", primaryColor: "#F4349A", bkashNumber: "01700000000" },
+    create: {
+      id: "singleton",
+      siteName: "Proggaa",
+      // Official logo (public/branding/proggaa-logo.png is the untouched
+      // source; this is the optimized derivative actually served). Also
+      // falls back the same way via DEFAULT_BRANDING in site-branding.ts,
+      // so this just keeps a freshly seeded row's row-level value in sync
+      // with what a from-scratch app already shows.
+      logoUrl: "/branding/proggaa-logo-512.png",
+      primaryColor: "#F4349A",
+      bkashNumber: "01700000000",
+    },
     update: {},
   });
 

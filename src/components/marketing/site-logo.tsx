@@ -12,6 +12,13 @@ interface SiteLogoProps {
    * avoids duplicating it here.
    */
   logoUrl: string | null;
+  /**
+   * Square size classes (both the image and the letter-avatar fallback
+   * need to match). Defaults to the site header's mark size; the
+   * sidebar/mobile-drawer brand marks pass a larger size since they're
+   * the sole brand mark on that surface (no adjacent wordmark text).
+   */
+  sizeClassName?: string;
 }
 
 /**
@@ -21,8 +28,13 @@ interface SiteLogoProps {
  * or the browser couldn't actually load it (wrong content type, dead
  * link, blocked hotlinking, etc. — e.g. a Google Drive "share" link,
  * which points at an HTML viewer page rather than image bytes).
+ *
+ * This is the one place the Proggaa logo is rendered from — the site
+ * header, sidebar, and mobile nav drawer all go through this component
+ * rather than each hardcoding their own mark, so there's a single
+ * source of truth for "what the logo looks like" across the app.
  */
-export function SiteLogo({ siteName, logoUrl }: SiteLogoProps) {
+export function SiteLogo({ siteName, logoUrl, sizeClassName = "h-7 w-7" }: SiteLogoProps) {
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(logoUrl) && !failed;
 
@@ -34,14 +46,16 @@ export function SiteLogo({ siteName, logoUrl }: SiteLogoProps) {
       <img
         src={logoUrl!}
         alt={siteName}
-        className="h-7 w-7 rounded object-contain"
+        className={`${sizeClassName} rounded object-contain`}
         onError={() => setFailed(true)}
       />
     );
   }
 
   return (
-    <span className="sticker flex h-7 w-7 items-center justify-center bg-primary font-display text-xs font-extrabold text-primary-foreground">
+    <span
+      className={`sticker flex ${sizeClassName} items-center justify-center bg-primary font-display text-xs font-extrabold text-primary-foreground`}
+    >
       {siteName.charAt(0).toUpperCase() || "P"}
     </span>
   );

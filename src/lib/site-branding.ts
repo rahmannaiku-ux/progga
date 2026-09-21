@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { db } from "@/lib/db/client";
+import { isSafeDestinationUrl } from "@/lib/config/destinations";
 
 export interface SiteBranding {
   siteName: string;
@@ -10,9 +11,17 @@ export interface SiteBranding {
   supportEmail: string | null;
 }
 
+// The official Proggaa logo (see public/branding/proggaa-logo.png for the
+// untouched source file this was derived from — resized/optimized only,
+// never redrawn or recolored). This is the canonical brand mark: it's
+// used as the fallback whenever no admin override is set, so a fresh
+// install — or an admin who clears the Logo URL field — still shows the
+// real logo instead of the bare letter-avatar.
+const DEFAULT_LOGO_URL = "/branding/proggaa-logo-512.png";
+
 const DEFAULT_BRANDING: SiteBranding = {
   siteName: "Proggaa",
-  logoUrl: null,
+  logoUrl: DEFAULT_LOGO_URL,
   faviconUrl: null,
   primaryColor: "#7C3AED",
   supportEmail: null,
@@ -43,7 +52,12 @@ export const getSiteBranding = cache(async (): Promise<SiteBranding> => {
     if (!settings) return DEFAULT_BRANDING;
     return {
       siteName: settings.siteName || DEFAULT_BRANDING.siteName,
-      logoUrl: settings.logoUrl,
+      // Same fallback pattern as siteName above: settings.logoUrl is only
+      // ever non-null once an admin has explicitly typed a different URL
+      // into Settings → Branding. Until then (a fresh install, or a row
+      // where it's never been touched) this falls back to the official
+      // logo rather than the bare letter-avatar SiteLogo shows for null.
+      logoUrl: settings.logoUrl || DEFAULT_BRANDING.logoUrl,
       faviconUrl: settings.faviconUrl,
       primaryColor: settings.primaryColor || DEFAULT_BRANDING.primaryColor,
       supportEmail: settings.supportEmail,
@@ -52,6 +66,21 @@ export const getSiteBranding = cache(async (): Promise<SiteBranding> => {
     return DEFAULT_BRANDING;
   }
 });
+
+/**
+ * Same safe-scheme check every other branding consumer (site header,
+ * sidebar, mobile nav drawer) needs before putting `logoUrl` into an
+ * <img src>. Separate from `isSafeDestinationUrl` because the default
+ * logo is our own site-relative `/branding/...` path — not a full URL,
+ * so `new URL()` inside that check would throw and reject it — while an
+ * admin-supplied override (via Settings → Branding) is still a full
+ * external URL that needs the same scheme allow-list as any other
+ * admin-provided destination.
+ */
+export function isSafeLogoUrl(url: string): boolean {
+  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  return isSafeDestinationUrl(url);
+}
 
 /**
  * "#RRGGBB" -> "H S% L%" (the raw-triplet format globals.css uses for

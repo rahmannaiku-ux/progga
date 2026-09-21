@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { DoodleSparkle } from "@/components/marketing/cartoon-doodles";
+import { SiteLogo } from "@/components/marketing/site-logo";
 import { getDestinations } from "@/lib/config/destinations";
+import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { dhakaYear } from "@/lib/timezone";
 
 const columns = [
@@ -48,6 +50,8 @@ export async function SiteFooter() {
     "facebook",
     "instagram",
   ]);
+  const branding = await getSiteBranding();
+  const logoUrl = branding.logoUrl && isSafeLogoUrl(branding.logoUrl) ? branding.logoUrl : null;
 
   return (
     <footer className="relative border-t border-border/10 bg-surface/60">
@@ -55,11 +59,9 @@ export async function SiteFooter() {
       <div className="container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2">
-            <span className="sticker flex h-8 w-8 items-center justify-center bg-primary font-display text-sm font-extrabold text-primary-foreground">
-              P
-            </span>
+            <SiteLogo siteName={branding.siteName} logoUrl={logoUrl} sizeClassName="h-8 w-8" />
             <span className="font-display text-base font-bold text-foreground">
-              Proggaa
+              {branding.siteName}
             </span>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -101,7 +103,7 @@ export async function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-border/10 py-6 text-center text-xs text-muted-foreground">
-        © {dhakaYear()} Proggaa. All rights reserved.
+        © {dhakaYear()} {branding.siteName}. All rights reserved.
       </div>
     </footer>
   );

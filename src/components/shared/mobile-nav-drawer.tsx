@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/shared/avatar";
+import { SiteLogo } from "@/components/marketing/site-logo";
 import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
 import { useMountTransition } from "@/hooks/use-mount-transition";
 
@@ -32,6 +33,8 @@ export type DrawerHeroProfile = {
 export function MobileNavDrawer({
   navKey,
   brandLabel,
+  siteName,
+  logoUrl,
   heroProfile,
   open: controlledOpen,
   onOpenChange,
@@ -39,6 +42,11 @@ export function MobileNavDrawer({
 }: {
   navKey: "hero" | "mentor" | "admin";
   brandLabel: string;
+  /** Same official-logo props the desktop Sidebar takes — passed down
+   *  from the layout's getSiteBranding() call so the drawer's brand
+   *  mark renders through the same SiteLogo component. */
+  siteName: string;
+  logoUrl: string | null;
   /** Hero layout only — renders a profile/XP summary below the brand
    *  header, mirroring what the desktop Sidebar footer already shows. */
   heroProfile?: DrawerHeroProfile;
@@ -124,9 +132,7 @@ export function MobileNavDrawer({
             >
               <div className="flex h-16 shrink-0 items-center justify-between px-4">
                 <div className="flex items-center gap-2">
-                  <span className="sticker flex h-8 w-8 items-center justify-center bg-xp font-display text-sm font-extrabold text-xp-foreground">
-                    P
-                  </span>
+                  <SiteLogo siteName={siteName} logoUrl={logoUrl} sizeClassName="h-8 w-8" />
                   <span className="font-display text-base font-extrabold tracking-wide text-sidebar-foreground">
                     {brandLabel.toUpperCase()}
                   </span>

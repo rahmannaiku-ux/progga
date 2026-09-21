@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
+import { SiteLogo } from "@/components/marketing/site-logo";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 
 const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNav };
@@ -13,14 +14,23 @@ const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNav };
  * heroStats is only passed by the (hero) layout — mentor/admin sidebars
  * render the same purple HUD shell and nav list, just without the
  * level/XP/Proggy footer block, since those roles don't have XP.
+ *
+ * logoUrl/siteName come from the same getSiteBranding() call each
+ * layout already makes for brandLabel — reusing SiteLogo here (instead
+ * of a second hardcoded mark) keeps the official logo as the single
+ * component every brand surface renders through.
  */
 export function Sidebar({
   navKey,
   brandLabel,
+  siteName,
+  logoUrl,
   heroStats,
 }: {
   navKey: "hero" | "mentor" | "admin";
   brandLabel: string;
+  siteName: string;
+  logoUrl: string | null;
   heroStats?: { xp: number; currentStreak: number; coinBalance?: number };
 }) {
   const pathname = usePathname();
@@ -40,9 +50,7 @@ export function Sidebar({
       />
 
       <div className="relative flex h-16 shrink-0 items-center gap-2.5 px-6">
-        <span className="sticker flex h-9 w-9 items-center justify-center bg-xp font-display text-base font-extrabold text-xp-foreground">
-          P
-        </span>
+        <SiteLogo siteName={siteName} logoUrl={logoUrl} sizeClassName="h-9 w-9" />
         <span className="font-display text-lg font-extrabold tracking-wide text-sidebar-foreground">
           {brandLabel.toUpperCase()}
         </span>

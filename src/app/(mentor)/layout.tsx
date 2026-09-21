@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth/require-role";
-import { getSiteBranding } from "@/lib/site-branding";
+import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
 import { RoleMobileNav } from "@/components/shared/role-mobile-nav";
@@ -25,10 +25,11 @@ export default async function MentorLayout({
     isAntiDevToolsEnabledFor(user),
   ]);
   const brandLabel = `${branding.siteName} · Mentor`;
+  const logoUrl = branding.logoUrl && isSafeLogoUrl(branding.logoUrl) ? branding.logoUrl : null;
 
   return (
     <div className="flex min-h-dvh bg-background">
-      <Sidebar navKey="mentor" brandLabel={brandLabel} />
+      <Sidebar navKey="mentor" brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
       {/* min-w-0: see the identical comment in (hero)/layout.tsx —
           same missing-shrink bug, same fix. */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -42,7 +43,7 @@ export default async function MentorLayout({
           </AntiDevToolsProvider>
         </main>
       </div>
-      <RoleMobileNav navKey="mentor" brandLabel={brandLabel} />
+      <RoleMobileNav navKey="mentor" brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
     </div>
   );
 }

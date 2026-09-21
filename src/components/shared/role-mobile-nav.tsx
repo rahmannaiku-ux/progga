@@ -61,9 +61,13 @@ const ROLE_MOBILE_NAV_ITEMS: Record<"mentor" | "admin", RoleMobileNavItem[]> = {
 export function RoleMobileNav({
   navKey,
   brandLabel,
+  siteName,
+  logoUrl,
 }: {
   navKey: "mentor" | "admin";
   brandLabel: string;
+  siteName: string;
+  logoUrl: string | null;
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -128,6 +132,8 @@ export function RoleMobileNav({
       <MobileNavDrawer
         navKey={navKey}
         brandLabel={brandLabel}
+        siteName={siteName}
+        logoUrl={logoUrl}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         hideTrigger

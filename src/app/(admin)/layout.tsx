@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth/require-role";
-import { getSiteBranding } from "@/lib/site-branding";
+import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
 import { RoleMobileNav } from "@/components/shared/role-mobile-nav";
@@ -14,10 +14,11 @@ export default async function AdminLayout({
 
   const branding = await getSiteBranding();
   const brandLabel = `${branding.siteName} · Admin`;
+  const logoUrl = branding.logoUrl && isSafeLogoUrl(branding.logoUrl) ? branding.logoUrl : null;
 
   return (
     <div className="flex min-h-dvh bg-background">
-      <Sidebar navKey="admin" brandLabel={brandLabel} />
+      <Sidebar navKey="admin" brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
       {/* min-w-0: see the identical comment in (hero)/layout.tsx —
           same missing-shrink bug, same fix. */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -27,7 +28,7 @@ export default async function AdminLayout({
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
-      <RoleMobileNav navKey="admin" brandLabel={brandLabel} />
+      <RoleMobileNav navKey="admin" brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
     </div>
   );
 }

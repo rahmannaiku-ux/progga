@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PublicMobileNav } from "@/components/marketing/public-mobile-nav";
 import { SiteLogo } from "@/components/marketing/site-logo";
 import { getCurrentUserRoleOptional } from "@/lib/auth/current-user";
-import { getSiteBranding } from "@/lib/site-branding";
-import { isSafeDestinationUrl } from "@/lib/config/destinations";
+import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 
 const navLinks = [
   { href: "/courses", label: "Missions" },
@@ -28,7 +27,7 @@ export async function SiteHeader() {
   const role = await getCurrentUserRoleOptional();
   const isSignedIn = role !== null;
   const branding = await getSiteBranding();
-  const hasSafeLogo = Boolean(branding.logoUrl && isSafeDestinationUrl(branding.logoUrl));
+  const hasSafeLogo = Boolean(branding.logoUrl && isSafeLogoUrl(branding.logoUrl));
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background md:bg-background/85 md:backdrop-blur-md">
