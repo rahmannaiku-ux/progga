@@ -286,7 +286,11 @@ Signals (weighted; ≥ 3 combined within 8s triggers): a real `debugger` pause (
 DevTools reading a logged object (2, +1 if persistent), a docked-window size jump
 that survives zoom/resizes (2), slow `console.table` (1), a stalled timer while the
 tab is visible (1), repeated tampering with the monitor (3). A window-size change
-alone never triggers. Blocked shortcuts: F12, Ctrl+Shift+I/J/C/K, Cmd+Option+I/J/C/K,
+alone never triggers. The monitor ticks every 500 ms (`TICK_MS`) and also probes
+immediately on load, window focus, tab-visible and resize, so a console signal is caught
+in about 0.5–1.5 s and a `debugger` pause the moment the user resumes; the `debugger`
+probe uses a fresh random `sourceURL` each time and backs off after a detection.
+Blocked shortcuts: F12, Ctrl+Shift+I/J/C/K/E/M, Cmd+Option+I/J/C/K/E/M,
 Cmd+Shift+C, Ctrl+U / Cmd+Option+U; right-click is blocked outside text fields on
 non-touch devices.
 

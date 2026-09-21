@@ -1,0 +1,317 @@
+diff -ruN pa/CHANGELOG.md pb/CHANGELOG.md
+--- pa/CHANGELOG.md	2026-09-21 13:05:51.902440094 +0000
++++ pb/CHANGELOG.md	2026-09-21 13:06:08.153600674 +0000
+@@ -67,6 +67,14 @@
+ - Kill-switches: `ANTI_DEVTOOLS`, `ANTI_DEVTOOLS_ROLES`, feature flag `devtools_protection`. Off in `next dev`.
+ - Player controls are now a clear overlay (soft fade, auto-hide while playing) instead of a solid bar; iframe pinned edge-to-edge,
+   and `viewport-fit=cover` removed (it shifted the page/video sideways on iPhone landscape).
++- Faster detection: 500 ms tick (was 1 s), `debugger` + console probes every tick (were every 5th / 2nd), an immediate probe on
++  load / focus / tab-visible / resize, and a shorter window-gap streak. Persistent console signal ~6 s → ≤ ~1.5 s; first
++  `debugger` probe 5 s → immediate. Debugger pause threshold 250 → 120 ms.
++- Hardening: `debugger` probe gets a random `sourceURL` per call (defeats "never pause here"/ignore-list); the object probe now
++  also uses `console.log` (Info level) since `console.debug` (Verbose) is hidden by DevTools' default filter; blocks Firefox
++  Network (Ctrl/Cmd+Shift/Option+E) and responsive-design (…+M) shortcuts.
++- Fix: the key guard no longer calls `stopPropagation()`, so the exam runner's own `document` keydown listener again logs
++  DevTools shortcuts to the attempt's integrity record (they were being swallowed at the window capture phase).
+ 
+ ### Automatic lesson completion
+ - Removed the "Mark as complete" button: students can no longer choose to complete a lesson.
+diff -ruN pa/README.md pb/README.md
+--- pa/README.md	2026-09-21 13:05:51.901330417 +0000
++++ pb/README.md	2026-09-21 13:06:08.153340631 +0000
+@@ -286,7 +286,11 @@
+ DevTools reading a logged object (2, +1 if persistent), a docked-window size jump
+ that survives zoom/resizes (2), slow `console.table` (1), a stalled timer while the
+ tab is visible (1), repeated tampering with the monitor (3). A window-size change
+-alone never triggers. Blocked shortcuts: F12, Ctrl+Shift+I/J/C/K, Cmd+Option+I/J/C/K,
++alone never triggers. The monitor ticks every 500 ms (`TICK_MS`) and also probes
++immediately on load, window focus, tab-visible and resize, so a console signal is caught
++in about 0.5–1.5 s and a `debugger` pause the moment the user resumes; the `debugger`
++probe uses a fresh random `sourceURL` each time and backs off after a detection.
++Blocked shortcuts: F12, Ctrl+Shift+I/J/C/K/E/M, Cmd+Option+I/J/C/K/E/M,
+ Cmd+Shift+C, Ctrl+U / Cmd+Option+U; right-click is blocked outside text fields on
+ non-touch devices.
+ 
+diff -ruN pa/src/lib/security/anti-devtools.test.ts pb/src/lib/security/anti-devtools.test.ts
+--- pa/src/lib/security/anti-devtools.test.ts	2026-09-21 13:05:51.900169755 +0000
++++ pb/src/lib/security/anti-devtools.test.ts	2026-09-21 13:06:08.151472723 +0000
+@@ -2,6 +2,7 @@
+ import {
+   GapBaseline,
+   SignalTracker,
++  TICK_MS,
+   TRIGGER_SCORE,
+   claimRedirect,
+   classifyShortcut,
+@@ -39,6 +40,17 @@
+     expect(classifyShortcut(key({ code: "KeyC", metaKey: true, shiftKey: true }))).toBe("devtools");
+   });
+ 
++  it("blocks the Firefox Network (E) and responsive-design (M) panels", () => {
++    for (const code of ["KeyE", "KeyM"]) {
++      expect(classifyShortcut(key({ code, ctrlKey: true, shiftKey: true }))).toBe("devtools");
++      expect(classifyShortcut(key({ code, metaKey: true, altKey: true }))).toBe("devtools");
++    }
++  });
++
++  it("does not block Ctrl+Shift+Z (redo), so the Firefox debugger key is left alone", () => {
++    expect(classifyShortcut(key({ code: "KeyZ", ctrlKey: true, shiftKey: true }))).toBeNull();
++  });
++
+   it("blocks view-source: Ctrl+U and Cmd+Option+U", () => {
+     expect(classifyShortcut(key({ code: "KeyU", ctrlKey: true }))).toBe("view-source");
+     expect(classifyShortcut(key({ code: "KeyU", metaKey: true, altKey: true }))).toBe("view-source");
+@@ -90,6 +102,15 @@
+     expect(t.record("console-getter", 4_000).triggered).toBe(true); // 3rd hit in the window
+   });
+ 
++  it("catches a persistent console signal within ~2s at the monitor's tick rate", () => {
++    const t = new SignalTracker();
++    t.record("console-getter", 0);
++    t.record("console-getter", TICK_MS);
++    const r = t.record("console-getter", TICK_MS * 2);
++    expect(r.triggered).toBe(true);
++    expect(TICK_MS * 2).toBeLessThanOrEqual(2_000);
++  });
++
+   it("forgets signals that are older than the window", () => {
+     const t = new SignalTracker();
+     t.record("window-gap", 0);
+diff -ruN pa/src/lib/security/anti-devtools.ts pb/src/lib/security/anti-devtools.ts
+--- pa/src/lib/security/anti-devtools.ts	2026-09-21 13:05:51.898778089 +0000
++++ pb/src/lib/security/anti-devtools.ts	2026-09-21 13:06:08.151681097 +0000
+@@ -173,8 +173,19 @@
+   const macInspect = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey; // Cmd+Shift+C
+ 
+   if (winStyle || macStyle) {
+-    // I = Inspector, J = Console, C = pick element, K = Firefox web console
+-    if (e.code === "KeyI" || e.code === "KeyJ" || e.code === "KeyC" || e.code === "KeyK") return "devtools";
++    // I = Inspector, J = Console, C = pick element, K = Firefox web console,
++    // E = Firefox Network panel, M = Firefox responsive-design mode.
++    // (Z = Firefox debugger is deliberately NOT blocked: Ctrl+Shift+Z is "redo".)
++    if (
++      e.code === "KeyI" ||
++      e.code === "KeyJ" ||
++      e.code === "KeyC" ||
++      e.code === "KeyK" ||
++      e.code === "KeyE" ||
++      e.code === "KeyM"
++    ) {
++      return "devtools";
++    }
+   }
+   if (macInspect && e.code === "KeyC") return "devtools";
+ 
+@@ -200,8 +211,11 @@
+     if (!kind) return;
+     // Ctrl+U is "underline" in rich-text fields — never steal it while typing.
+     if (kind === "view-source" && isEditableTarget(e.target)) return;
++    // preventDefault only — NOT stopPropagation. The exam runner listens for
++    // these same shortcuts on `document` to write them to the attempt's
++    // integrity log; stopping propagation here (window capture runs first)
++    // would hide them from it.
+     e.preventDefault();
+-    e.stopPropagation();
+   };
+ 
+   const onContextMenu = (e: MouseEvent) => {
+@@ -224,27 +238,24 @@
+ // Individual browser probes (each cheap, each wrapped so it can't throw)
+ // ---------------------------------------------------------------------
+ 
+-/** Chromium: DevTools reads properties of logged objects; closed consoles don't. */
++/**
++ * Chromium: DevTools reads properties of logged objects; closed consoles don't.
++ * The element goes through console.log (an Info-level message, shown by
++ * DevTools' default filter) and the error through console.debug (Verbose,
++ * hidden by default), so a default-configured console still gets probed.
++ */
+ function probeConsoleGetter(): boolean {
+   let hit = false;
++  const trap = () => {
++    hit = true;
++    return "";
++  };
+   try {
+     const el = new Image();
+-    Object.defineProperty(el, "id", {
+-      configurable: true,
+-      get() {
+-        hit = true;
+-        return "";
+-      },
+-    });
++    Object.defineProperty(el, "id", { configurable: true, get: trap });
+     const err = new Error("probe");
+-    Object.defineProperty(err, "stack", {
+-      configurable: true,
+-      get() {
+-        hit = true;
+-        return "";
+-      },
+-    });
+-    console.debug(el);
++    Object.defineProperty(err, "stack", { configurable: true, get: trap });
++    console.log(el);
+     console.debug(err);
+   } catch {
+     /* console unavailable/patched — no signal */
+@@ -269,18 +280,20 @@
+ /**
+  * Runs ONE `debugger;` statement and measures how long it took. With DevTools
+  * closed it is a no-op (microseconds). With DevTools open and breakpoints
+- * active the page stops until the user resumes. It runs once every few
+- * seconds — never in a loop — and only until the first detection redirects
+- * away. Created via `new Function` because the production minifier strips
+- * literal `debugger` statements. Needs 'unsafe-eval' in the CSP (the app's
+- * next.config.mjs already allows it); if that is ever removed the probe
+- * disables itself instead of throwing.
++ * active the page stops until the user resumes. It runs every tick (see
++ * TICK_MS) until the first detection, then backs off; it is never a tight
++ * loop. Created via `new Function` because the production minifier strips
++ * literal `debugger` statements. Each call gets a fresh random `sourceURL`,
++ * so "Never pause here" / adding the script to DevTools' ignore list can't
++ * be made to stick (best effort — browsers may ignore the comment). Needs
++ * 'unsafe-eval' in the CSP (the app's next.config.mjs already allows it); if
++ * that is ever removed the probe disables itself instead of throwing.
+  */
+ function probeDebuggerMs(): number {
+   if (!debuggerProbeSupported) return 0;
+   try {
+     const t0 = performance.now();
+-    new Function("debugger;")();
++    new Function(`debugger;\n//# sourceURL=pd-${Math.random().toString(36).slice(2)}.js`)();
+     return performance.now() - t0;
+   } catch {
+     debuggerProbeSupported = false;
+@@ -288,7 +301,7 @@
+   }
+ }
+ 
+-const DEBUGGER_PAUSE_MS = 250;
++const DEBUGGER_PAUSE_MS = 120; // a human needs longer than this to hit Resume
+ const CONSOLE_TIMING_ABS_MS = 25;
+ 
+ // ---------------------------------------------------------------------
+@@ -387,8 +400,18 @@
+ const GLOBAL_KEY = Symbol.for("proggaa.antiDevTools.controller");
+ type GlobalWithController = typeof globalThis & { [GLOBAL_KEY]?: Controller };
+ 
+-const TICK_MS = 1_000;
++/**
++ * Monitor heartbeat. Was 1 s with the debugger probe on every 5th tick and
++ * the console probe on every 2nd (so a persistent console signal took ~6 s).
++ * Now: debugger + console probes every tick, so DevTools is caught within
++ * ~0.5 s (debugger, the moment the user resumes) or ~1.5 s (console, which
++ * needs PERSISTENCE_HITS consecutive hits). Each probe is microseconds when
++ * DevTools is closed.
++ */
++export const TICK_MS = 500;
+ const WATCHDOG_MS = 4_000;
++/** After a detection, probe the debugger only this often (avoid a pause loop). */
++const DEBUGGER_BACKOFF_TICKS = 10;
+ /** A tick this late (while visible) means the page/timers were suspended, not that DevTools is open. */
+ const STALL_MS = 3_500;
+ 
+@@ -441,6 +464,7 @@
+   let lastWatchdogAt = performance.now();
+   let lastVisibleChangeAt = performance.now();
+   let gapStreak = 0;
++  let debuggerEveryTicks = observeOnly ? DEBUGGER_BACKOFF_TICKS : 1; // the warning page must not machine-gun pauses
+   let restarts: number[] = [];
+   let lastStatus: boolean | null = null;
+   const timingBaselineMs: number[] = [];
+@@ -453,6 +477,7 @@
+ 
+   const report = (kind: SignalKind) => {
+     const result = tracker.record(kind, Date.now());
++    if (result.triggered) debuggerEveryTicks = DEBUGGER_BACKOFF_TICKS;
+     if (!observeOnly && result.triggered) handleDetection(result.reasons);
+     return result;
+   };
+@@ -475,10 +500,10 @@
+       },
+       Date.now()
+     );
+-    // Must hold across consecutive checks (>= ~2s): a drag-resize or a
++    // Must hold across consecutive checks (>= ~1.5s): a drag-resize or a
+     // sidebar animating open is momentary.
+     gapStreak = over ? gapStreak + 1 : 0;
+-    if (gapStreak >= 2) report("window-gap");
++    if (gapStreak >= 3) report("window-gap");
+   };
+ 
+   const tick = () => {
+@@ -500,7 +525,7 @@
+ 
+     checkWindowGap();
+ 
+-    if (tickCount % 2 === 0 && probeConsoleGetter()) report("console-getter");
++    if (probeConsoleGetter()) report("console-getter");
+ 
+     if (tickCount % 4 === 0) {
+       const ms = probeConsoleTimingMs();
+@@ -512,7 +537,7 @@
+       }
+     }
+ 
+-    if (tickCount % 5 === 0) {
++    if (tickCount % debuggerEveryTicks === 0) {
+       const ms = probeDebuggerMs();
+       if (ms > DEBUGGER_PAUSE_MS) report("debugger-pause");
+     }
+@@ -520,6 +545,16 @@
+     publishStatus();
+   };
+ 
++  // One immediate console + debugger probe, outside the regular schedule.
++  // Runs at start-up and whenever the user comes back to the page (focus,
++  // tab becomes visible, resize settles) — those are the moments DevTools is
++  // most likely to have just been opened, so don't wait for the next tick.
++  const probeNow = () => {
++    if (observeOnly || stopped || shouldSkipWork()) return;
++    if (probeConsoleGetter()) report("console-getter");
++    if (probeDebuggerMs() > DEBUGGER_PAUSE_MS) report("debugger-pause");
++  };
++
+   const publishStatus = () => {
+     if (!options.onStatus) return;
+     const open = tracker.evaluate(Date.now()).triggered;
+@@ -556,6 +591,7 @@
+   const onVisibility = () => {
+     lastVisibleChangeAt = performance.now();
+     lastTickAt = performance.now();
++    probeNow();
+   };
+ 
+   // A real resize gets a quick re-check once it has stopped changing
+@@ -563,14 +599,19 @@
+   const onResize = () => {
+     if (resizeTimer) clearTimeout(resizeTimer);
+     resizeTimer = setTimeout(() => {
+-      if (!stopped && !shouldSkipWork()) checkWindowGap();
+-    }, 500);
++      if (!stopped && !shouldSkipWork()) {
++        checkWindowGap();
++        probeNow();
++      }
++    }, 300);
+   };
+ 
+   document.addEventListener("visibilitychange", onVisibility);
+   window.addEventListener("resize", onResize, { passive: true });
++  window.addEventListener("focus", probeNow);
+   startTick();
+   watchdogTimer = setInterval(watchdog, WATCHDOG_MS);
++  probeNow();
+ 
+   return {
+     stop: () => {
+@@ -580,6 +621,7 @@
+       if (resizeTimer) clearTimeout(resizeTimer);
+       document.removeEventListener("visibilitychange", onVisibility);
+       window.removeEventListener("resize", onResize);
++      window.removeEventListener("focus", probeNow);
+       removeGuards();
+       tracker.reset();
+     },

@@ -173,8 +173,19 @@ export function classifyShortcut(e: KeyLike): "devtools" | "view-source" | null 
   const macInspect = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey; // Cmd+Shift+C
 
   if (winStyle || macStyle) {
-    // I = Inspector, J = Console, C = pick element, K = Firefox web console
-    if (e.code === "KeyI" || e.code === "KeyJ" || e.code === "KeyC" || e.code === "KeyK") return "devtools";
+    // I = Inspector, J = Console, C = pick element, K = Firefox web console,
+    // E = Firefox Network panel, M = Firefox responsive-design mode.
+    // (Z = Firefox debugger is deliberately NOT blocked: Ctrl+Shift+Z is "redo".)
+    if (
+      e.code === "KeyI" ||
+      e.code === "KeyJ" ||
+      e.code === "KeyC" ||
+      e.code === "KeyK" ||
+      e.code === "KeyE" ||
+      e.code === "KeyM"
+    ) {
+      return "devtools";
+    }
   }
   if (macInspect && e.code === "KeyC") return "devtools";
 
@@ -200,8 +211,11 @@ export function installInputGuards(): () => void {
     if (!kind) return;
     // Ctrl+U is "underline" in rich-text fields — never steal it while typing.
     if (kind === "view-source" && isEditableTarget(e.target)) return;
+    // preventDefault only — NOT stopPropagation. The exam runner listens for
+    // these same shortcuts on `document` to write them to the attempt's
+    // integrity log; stopping propagation here (window capture runs first)
+    // would hide them from it.
     e.preventDefault();
-    e.stopPropagation();
   };
 
   const onContextMenu = (e: MouseEvent) => {
@@ -224,27 +238,24 @@ export function installInputGuards(): () => void {
 // Individual browser probes (each cheap, each wrapped so it can't throw)
 // ---------------------------------------------------------------------
 
-/** Chromium: DevTools reads properties of logged objects; closed consoles don't. */
+/**
+ * Chromium: DevTools reads properties of logged objects; closed consoles don't.
+ * The element goes through console.log (an Info-level message, shown by
+ * DevTools' default filter) and the error through console.debug (Verbose,
+ * hidden by default), so a default-configured console still gets probed.
+ */
 function probeConsoleGetter(): boolean {
   let hit = false;
+  const trap = () => {
+    hit = true;
+    return "";
+  };
   try {
     const el = new Image();
-    Object.defineProperty(el, "id", {
-      configurable: true,
-      get() {
-        hit = true;
-        return "";
-      },
-    });
+    Object.defineProperty(el, "id", { configurable: true, get: trap });
     const err = new Error("probe");
-    Object.defineProperty(err, "stack", {
-      configurable: true,
-      get() {
-        hit = true;
-        return "";
-      },
-    });
-    console.debug(el);
+    Object.defineProperty(err, "stack", { configurable: true, get: trap });
+    console.log(el);
     console.debug(err);
   } catch {
     /* console unavailable/patched — no signal */
@@ -269,18 +280,20 @@ let debuggerProbeSupported = true;
 /**
  * Runs ONE `debugger;` statement and measures how long it took. With DevTools
  * closed it is a no-op (microseconds). With DevTools open and breakpoints
- * active the page stops until the user resumes. It runs once every few
- * seconds — never in a loop — and only until the first detection redirects
- * away. Created via `new Function` because the production minifier strips
- * literal `debugger` statements. Needs 'unsafe-eval' in the CSP (the app's
- * next.config.mjs already allows it); if that is ever removed the probe
- * disables itself instead of throwing.
+ * active the page stops until the user resumes. It runs every tick (see
+ * TICK_MS) until the first detection, then backs off; it is never a tight
+ * loop. Created via `new Function` because the production minifier strips
+ * literal `debugger` statements. Each call gets a fresh random `sourceURL`,
+ * so "Never pause here" / adding the script to DevTools' ignore list can't
+ * be made to stick (best effort — browsers may ignore the comment). Needs
+ * 'unsafe-eval' in the CSP (the app's next.config.mjs already allows it); if
+ * that is ever removed the probe disables itself instead of throwing.
  */
 function probeDebuggerMs(): number {
   if (!debuggerProbeSupported) return 0;
   try {
     const t0 = performance.now();
-    new Function("debugger;")();
+    new Function(`debugger;\n//# sourceURL=pd-${Math.random().toString(36).slice(2)}.js`)();
     return performance.now() - t0;
   } catch {
     debuggerProbeSupported = false;
@@ -288,7 +301,7 @@ function probeDebuggerMs(): number {
   }
 }
 
-const DEBUGGER_PAUSE_MS = 250;
+const DEBUGGER_PAUSE_MS = 120; // a human needs longer than this to hit Resume
 const CONSOLE_TIMING_ABS_MS = 25;
 
 // ---------------------------------------------------------------------
@@ -387,8 +400,18 @@ type Controller = { refs: number; stop: () => void };
 const GLOBAL_KEY = Symbol.for("proggaa.antiDevTools.controller");
 type GlobalWithController = typeof globalThis & { [GLOBAL_KEY]?: Controller };
 
-const TICK_MS = 1_000;
+/**
+ * Monitor heartbeat. Was 1 s with the debugger probe on every 5th tick and
+ * the console probe on every 2nd (so a persistent console signal took ~6 s).
+ * Now: debugger + console probes every tick, so DevTools is caught within
+ * ~0.5 s (debugger, the moment the user resumes) or ~1.5 s (console, which
+ * needs PERSISTENCE_HITS consecutive hits). Each probe is microseconds when
+ * DevTools is closed.
+ */
+export const TICK_MS = 500;
 const WATCHDOG_MS = 4_000;
+/** After a detection, probe the debugger only this often (avoid a pause loop). */
+const DEBUGGER_BACKOFF_TICKS = 10;
 /** A tick this late (while visible) means the page/timers were suspended, not that DevTools is open. */
 const STALL_MS = 3_500;
 
@@ -441,6 +464,7 @@ function runController(options: StartOptions): { stop: () => void } {
   let lastWatchdogAt = performance.now();
   let lastVisibleChangeAt = performance.now();
   let gapStreak = 0;
+  let debuggerEveryTicks = observeOnly ? DEBUGGER_BACKOFF_TICKS : 1; // the warning page must not machine-gun pauses
   let restarts: number[] = [];
   let lastStatus: boolean | null = null;
   const timingBaselineMs: number[] = [];
@@ -453,6 +477,7 @@ function runController(options: StartOptions): { stop: () => void } {
 
   const report = (kind: SignalKind) => {
     const result = tracker.record(kind, Date.now());
+    if (result.triggered) debuggerEveryTicks = DEBUGGER_BACKOFF_TICKS;
     if (!observeOnly && result.triggered) handleDetection(result.reasons);
     return result;
   };
@@ -475,10 +500,10 @@ function runController(options: StartOptions): { stop: () => void } {
       },
       Date.now()
     );
-    // Must hold across consecutive checks (>= ~2s): a drag-resize or a
+    // Must hold across consecutive checks (>= ~1.5s): a drag-resize or a
     // sidebar animating open is momentary.
     gapStreak = over ? gapStreak + 1 : 0;
-    if (gapStreak >= 2) report("window-gap");
+    if (gapStreak >= 3) report("window-gap");
   };
 
   const tick = () => {
@@ -500,7 +525,7 @@ function runController(options: StartOptions): { stop: () => void } {
 
     checkWindowGap();
 
-    if (tickCount % 2 === 0 && probeConsoleGetter()) report("console-getter");
+    if (probeConsoleGetter()) report("console-getter");
 
     if (tickCount % 4 === 0) {
       const ms = probeConsoleTimingMs();
@@ -512,12 +537,22 @@ function runController(options: StartOptions): { stop: () => void } {
       }
     }
 
-    if (tickCount % 5 === 0) {
+    if (tickCount % debuggerEveryTicks === 0) {
       const ms = probeDebuggerMs();
       if (ms > DEBUGGER_PAUSE_MS) report("debugger-pause");
     }
 
     publishStatus();
+  };
+
+  // One immediate console + debugger probe, outside the regular schedule.
+  // Runs at start-up and whenever the user comes back to the page (focus,
+  // tab becomes visible, resize settles) — those are the moments DevTools is
+  // most likely to have just been opened, so don't wait for the next tick.
+  const probeNow = () => {
+    if (observeOnly || stopped || shouldSkipWork()) return;
+    if (probeConsoleGetter()) report("console-getter");
+    if (probeDebuggerMs() > DEBUGGER_PAUSE_MS) report("debugger-pause");
   };
 
   const publishStatus = () => {
@@ -556,6 +591,7 @@ function runController(options: StartOptions): { stop: () => void } {
   const onVisibility = () => {
     lastVisibleChangeAt = performance.now();
     lastTickAt = performance.now();
+    probeNow();
   };
 
   // A real resize gets a quick re-check once it has stopped changing
@@ -563,14 +599,19 @@ function runController(options: StartOptions): { stop: () => void } {
   const onResize = () => {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (!stopped && !shouldSkipWork()) checkWindowGap();
-    }, 500);
+      if (!stopped && !shouldSkipWork()) {
+        checkWindowGap();
+        probeNow();
+      }
+    }, 300);
   };
 
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("resize", onResize, { passive: true });
+  window.addEventListener("focus", probeNow);
   startTick();
   watchdogTimer = setInterval(watchdog, WATCHDOG_MS);
+  probeNow();
 
   return {
     stop: () => {
@@ -580,6 +621,7 @@ function runController(options: StartOptions): { stop: () => void } {
       if (resizeTimer) clearTimeout(resizeTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("focus", probeNow);
       removeGuards();
       tracker.reset();
     },

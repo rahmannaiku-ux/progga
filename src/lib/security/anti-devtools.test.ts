@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   GapBaseline,
   SignalTracker,
+  TICK_MS,
   TRIGGER_SCORE,
   claimRedirect,
   classifyShortcut,
@@ -37,6 +38,17 @@ describe("classifyShortcut", () => {
 
   it("blocks Cmd+Shift+C (Chrome on macOS inspect mode)", () => {
     expect(classifyShortcut(key({ code: "KeyC", metaKey: true, shiftKey: true }))).toBe("devtools");
+  });
+
+  it("blocks the Firefox Network (E) and responsive-design (M) panels", () => {
+    for (const code of ["KeyE", "KeyM"]) {
+      expect(classifyShortcut(key({ code, ctrlKey: true, shiftKey: true }))).toBe("devtools");
+      expect(classifyShortcut(key({ code, metaKey: true, altKey: true }))).toBe("devtools");
+    }
+  });
+
+  it("does not block Ctrl+Shift+Z (redo), so the Firefox debugger key is left alone", () => {
+    expect(classifyShortcut(key({ code: "KeyZ", ctrlKey: true, shiftKey: true }))).toBeNull();
   });
 
   it("blocks view-source: Ctrl+U and Cmd+Option+U", () => {
@@ -88,6 +100,15 @@ describe("SignalTracker (confidence)", () => {
     expect(t.record("console-getter", 0).triggered).toBe(false);
     expect(t.record("console-getter", 2_000).triggered).toBe(false);
     expect(t.record("console-getter", 4_000).triggered).toBe(true); // 3rd hit in the window
+  });
+
+  it("catches a persistent console signal within ~2s at the monitor's tick rate", () => {
+    const t = new SignalTracker();
+    t.record("console-getter", 0);
+    t.record("console-getter", TICK_MS);
+    const r = t.record("console-getter", TICK_MS * 2);
+    expect(r.triggered).toBe(true);
+    expect(TICK_MS * 2).toBeLessThanOrEqual(2_000);
   });
 
   it("forgets signals that are older than the window", () => {
