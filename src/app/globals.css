@@ -128,13 +128,10 @@
   --foreground: 44 40% 96%;
   --surface: 258 32% 13%;
   --surface-glass: 258 32% 16%;
-  /* Pinned to the SAME values as light mode on purpose — dark mode
-     should only change background/surface/foreground for readability,
-     never the brand purple itself. */
-  --primary: 262 47% 37%;
-  --primary-foreground: 0 0% 100%;
-  --accent: 268 72% 44%;
-  --accent-foreground: 0 0% 100%;
+  --primary: 262 68% 72%;
+  --primary-foreground: 258 40% 10%;
+  --accent: 262 90% 76%; /* was a dark purple that vanished (1.4:1) on the dark background */
+  --accent-foreground: 258 42% 10%;
   --xp: 42 96% 60%;
   --xp-ink: 42 96% 60%;
   --xp-foreground: 258 42% 10%;
