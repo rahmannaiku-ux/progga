@@ -59,7 +59,7 @@ export async function SiteFooter() {
       <div className="container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2">
-            <SiteLogo siteName={branding.siteName} logoUrl={logoUrl} sizeClassName="h-8 w-8" />
+            <SiteLogo siteName={branding.siteName} logoUrl={logoUrl} sizeClassName="h-11 w-11" />
             <span className="font-display text-base font-bold text-foreground">
               {branding.siteName}
             </span>

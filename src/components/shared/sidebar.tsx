@@ -50,7 +50,7 @@ export function Sidebar({
       />
 
       <div className="relative flex h-16 shrink-0 items-center gap-2.5 px-6">
-        <SiteLogo siteName={siteName} logoUrl={logoUrl} sizeClassName="h-9 w-9" />
+        <SiteLogo siteName={siteName} logoUrl={logoUrl} sizeClassName="h-12 w-12" />
         <span className="font-display text-lg font-extrabold tracking-wide text-sidebar-foreground">
           {brandLabel.toUpperCase()}
         </span>

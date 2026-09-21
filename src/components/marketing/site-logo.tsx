@@ -34,7 +34,7 @@ interface SiteLogoProps {
  * rather than each hardcoding their own mark, so there's a single
  * source of truth for "what the logo looks like" across the app.
  */
-export function SiteLogo({ siteName, logoUrl, sizeClassName = "h-7 w-7" }: SiteLogoProps) {
+export function SiteLogo({ siteName, logoUrl, sizeClassName = "h-11 w-11" }: SiteLogoProps) {
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(logoUrl) && !failed;
 

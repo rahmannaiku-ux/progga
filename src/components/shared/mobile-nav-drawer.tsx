@@ -132,7 +132,7 @@ export function MobileNavDrawer({
             >
               <div className="flex h-16 shrink-0 items-center justify-between px-4">
                 <div className="flex items-center gap-2">
-                  <SiteLogo siteName={siteName} logoUrl={logoUrl} sizeClassName="h-8 w-8" />
+                  <SiteLogo siteName={siteName} logoUrl={logoUrl} sizeClassName="h-11 w-11" />
                   <span className="font-display text-base font-extrabold tracking-wide text-sidebar-foreground">
                     {brandLabel.toUpperCase()}
                   </span>
