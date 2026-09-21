@@ -87,7 +87,7 @@ export default async function AdminCategoriesPage({
       <div className="glass-panel mt-6 p-5">
         <h2 className="font-display text-sm font-bold text-foreground">Add a category</h2>
         <div className="mt-3">
-          <CategoryForm onSaved={() => {}} />
+          <CategoryForm />
         </div>
       </div>
     </div>

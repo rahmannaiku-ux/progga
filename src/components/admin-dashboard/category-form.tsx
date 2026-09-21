@@ -18,19 +18,7 @@ const inputClass =
   "h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent";
 const labelClass = "text-xs font-semibold text-muted-foreground";
 
-export function CategoryForm({
-  existing,
-  onSaved,
-}: {
-  existing?: ExistingCategory;
-  /** Called after a successful save. New-category pages typically
-   * reset the form (return `false`/void to skip the redirect a plain
-   * page.tsx would otherwise not have); the edit page navigates back
-   * to the list. Kept as a callback instead of a hardcoded redirect so
-   * this one form works for both create and edit without a prop just
-   * to switch behavior. */
-  onSaved?: () => void;
-}) {
+export function CategoryForm({ existing }: { existing?: ExistingCategory }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -48,14 +36,12 @@ export function CategoryForm({
         setError(result.error);
         return;
       }
-      if (onSaved) {
-        onSaved();
-        router.refresh(); // stays on this page, so re-fetch it
-      } else {
-        // The action revalidated the list; one navigation is enough.
+      if (existing) {
         router.push("/admin/categories");
+      } else {
+        router.refresh();
+        setResetCount((n) => n + 1);
       }
-      if (!existing) setResetCount((n) => n + 1); // remounts the form with blank fields
     });
   }
 
