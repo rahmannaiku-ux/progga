@@ -1,6 +1,7 @@
 import { db } from "@/lib/db/client";
 import { getLiveClassStatus } from "@/lib/live-classes";
 import { isLiveRoomEnabled } from "@/lib/live/flag";
+import { ensureLiveClassesForLessons } from "@/server/live/ensure-live-class";
 
 export type StudentLiveClass = {
   id: string;
@@ -119,6 +120,33 @@ export async function getStudentLiveClasses(
   const live: StudentLiveClass[] = [];
   const upcoming: StudentLiveClass[] = [];
   const ended: StudentLiveClass[] = [];
+
+  // Same lazy-creation gap as the patrol-page redirect: a LiveClass
+  // row only exists once someone has opened /live or the room itself
+  // for that lesson, so a freshly-scheduled class would otherwise show
+  // the old href here even with the flag on. Backfill it for anything
+  // live or upcoming right now (mirrors live-room-service.ts's own
+  // VISIBLE_WINDOW_MS backfill) — skipped for `ended` since those never
+  // route into the room anyway (see the ENDED check below).
+  if (liveRoomEnabled) {
+    const missingIds = lessons
+      .filter((l) => !l.liveClass && l.scheduledStart && getLiveClassStatus(l.scheduledStart, l.scheduledEnd, now) !== "ENDED")
+      .map((l) => l.id);
+    if (missingIds.length > 0) {
+      await ensureLiveClassesForLessons(missingIds);
+      const created = await db.liveClass.findMany({
+        where: { lessonId: { in: missingIds } },
+        select: { id: true, lessonId: true },
+      });
+      const byLesson = new Map(created.map((c) => [c.lessonId, c]));
+      for (const l of lessons) {
+        if (!l.liveClass) {
+          const found = byLesson.get(l.id);
+          if (found) l.liveClass = { id: found.id };
+        }
+      }
+    }
+  }
 
   for (const l of lessons) {
     // Guarded by the `where` clause above, but scheduledStart is

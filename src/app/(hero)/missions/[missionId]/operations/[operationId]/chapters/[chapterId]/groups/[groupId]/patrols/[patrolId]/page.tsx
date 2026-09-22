@@ -13,6 +13,7 @@ import {
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isLiveRoomEnabled } from "@/lib/live/flag";
 import { resolveLiveClassState } from "@/lib/live/state";
+import { ensureLiveClass } from "@/server/live/ensure-live-class";
 import { db } from "@/lib/db/client";
 import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { GroupSidebar } from "@/components/course/curriculum-sidebar";
@@ -103,12 +104,21 @@ export default async function LessonPlayerPage({
 
   // This URL is also the legacy "join live" destination (dashboard
   // card / live-classes listing used to always send students here).
-  // If the live_room flag is on for this user AND a room already
-  // exists for this lesson, forward into the new experience instead
-  // of silently rendering the old embed underneath it — otherwise
-  // this route becomes a second, stale way to "join live" that
-  // disagrees with /live/[liveClassId] (no chat, no attendance,
-  // wrong state) for the exact same class.
+  // If the live_room flag is on for this user, forward into the new
+  // experience instead of silently rendering the old embed underneath
+  // it — otherwise this route becomes a second, stale way to "join
+  // live" that disagrees with /live/[liveClassId] (no chat, no
+  // attendance, wrong state) for the exact same class.
+  //
+  // ensureLiveClass() (not just reading lesson.liveClass) matters here:
+  // a LiveClass row is only ever created lazily, by the /live
+  // dashboard's backfill or by the room page itself on open — nothing
+  // creates it on the way in through THIS page. Without calling it, a
+  // class nobody has opened /live for yet has no row, lesson.liveClass
+  // is null, and this redirect silently never fires — exactly the
+  // "still doesn't redirect me" symptom. Calling it here makes the
+  // patrol page a valid entry point on its own, not just a follower of
+  // whichever page happened to create the room first.
   //
   // Gated on a real ACTIVE/COMPLETED enrollment (not just isPreview or
   // a CoinStoreItem unlock): assertCanJoinLiveRoom — the access check
@@ -129,7 +139,20 @@ export default async function LessonPlayerPage({
   // joining it live.
   if (
     lesson.scheduledStart &&
-    lesson.liveClass &&
+    enrollment &&
+    (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
+    (await isLiveRoomEnabled(user))
+  ) {
+    const liveClass = lesson.liveClass ?? (await ensureLiveClass(lesson.id));
+    const state = resolveLiveClassState(
+      { scheduledStart: lesson.scheduledStart, scheduledEnd: lesson.scheduledEnd },
+      liveClass,
+      new Date()
+    );
+    if (state !== "ENDED") {
+      redirect(`/live/${liveClass.id}`);
+    }
+  }
     enrollment &&
     (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
     (await isLiveRoomEnabled(user))
