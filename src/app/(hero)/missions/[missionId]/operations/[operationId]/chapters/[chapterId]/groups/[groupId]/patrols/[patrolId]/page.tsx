@@ -153,19 +153,6 @@ export default async function LessonPlayerPage({
       redirect(`/live/${liveClass.id}`);
     }
   }
-    enrollment &&
-    (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
-    (await isLiveRoomEnabled(user))
-  ) {
-    const state = resolveLiveClassState(
-      { scheduledStart: lesson.scheduledStart, scheduledEnd: lesson.scheduledEnd },
-      lesson.liveClass,
-      new Date()
-    );
-    if (state !== "ENDED") {
-      redirect(`/live/${lesson.liveClass.id}`);
-    }
-  }
 
   // Fetched only now that we know the request isn't about to be
   // redirected. Only id/title are ever read from this tree
