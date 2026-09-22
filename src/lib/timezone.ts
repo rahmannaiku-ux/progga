@@ -195,3 +195,71 @@ export function dhakaGreeting(date: Date | string | number = new Date()): "Good 
   if (h < 18) return "Good afternoon";
   return "Good evening";
 }
+
+// ---------------------------------------------------------------------
+// Live Class additions — Bangladesh Standard Time labelling + calendar-day math
+// ---------------------------------------------------------------------
+// The Live Class system reuses everything above (parseDhakaInput,
+// toDhakaInputValue, dhakaStartOfDay, …) and only adds what it needs
+// on top: the "BST" label the product copy requires and a few
+// Dhaka-calendar boundary helpers. Storage stays UTC; interpretation
+// and display are always Asia/Dhaka. Device/browser timezone is never
+// consulted. NB: `timeZoneName: "short"` renders "GMT+6", not "BST",
+// so the abbreviation is an explicit constant rather than an Intl output.
+
+export const DHAKA_TIME_ZONE = DHAKA_TZ;
+export const DHAKA_UTC_OFFSET_LABEL = "UTC+06:00";
+export const DHAKA_TIME_ZONE_NAME = "Bangladesh Standard Time";
+export const DHAKA_TZ_ABBREVIATION = "BST";
+/** "Bangladesh Standard Time (UTC+06:00)" — the fixed label shown next to schedule inputs. */
+export const DHAKA_TIME_ZONE_FULL_LABEL = `${DHAKA_TIME_ZONE_NAME} (${DHAKA_UTC_OFFSET_LABEL})`;
+
+/** Newer ICU builds put a narrow no-break space before AM/PM; normalise so output is stable everywhere. */
+function normalizeSpaces(value: string): string {
+  return value.replace(/[\u202f\u00a0]/g, " ");
+}
+
+/** "7:30 PM BST" */
+export function formatDhakaTimeBST(date: Date | string): string {
+  return `${normalizeSpaces(formatDhakaTime(date))} ${DHAKA_TZ_ABBREVIATION}`;
+}
+
+/** "September 25, 2026 · 7:30 PM BST" */
+export function formatDhakaDateTimeBST(date: Date | string): string {
+  return `${formatDhakaDate(date)} · ${formatDhakaTimeBST(date)}`;
+}
+
+/** "Sep 25 · 7:30 PM BST" */
+export function formatDhakaDateTimeShortBST(date: Date | string): string {
+  const day = formatDhakaDate(date, { month: "short", day: "numeric" });
+  return `${day} · ${formatDhakaTimeBST(date)}`;
+}
+
+/**
+ * The exclusive end of the Dhaka calendar day containing `date` — i.e. the
+ * next 00:00 Dhaka. Use it as `t < dhakaEndOfDay(d)` (a half-open range),
+ * not as a "23:59:59.999" instant.
+ */
+export function dhakaEndOfDay(date: Date | string | number = new Date()): Date {
+  return new Date(dhakaStartOfDay(date).getTime() + DAY_MS);
+}
+
+/** 00:00 on the 1st of the *next* Dhaka month (rolls the year in December). */
+export function dhakaStartOfNextMonth(date: Date | string | number = new Date()): Date {
+  const d = shiftToDhaka(date);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) - DHAKA_OFFSET_MS);
+}
+
+/** True when both instants fall on the same Dhaka calendar day. */
+export function isSameDhakaDay(a: Date | string | number, b: Date | string | number): boolean {
+  return dhakaStartOfDay(a).getTime() === dhakaStartOfDay(b).getTime();
+}
+
+/**
+ * Whole Dhaka calendar days from `from` to `to` (positive when `to` is
+ * later). 0 = same Dhaka day, 1 = tomorrow, -1 = yesterday — regardless of
+ * the time of day on either side. Drives "Today / Tomorrow" labels.
+ */
+export function dhakaDayDiff(from: Date | string | number, to: Date | string | number): number {
+  return Math.round((dhakaStartOfDay(to).getTime() - dhakaStartOfDay(from).getTime()) / DAY_MS);
+}

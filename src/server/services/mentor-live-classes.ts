@@ -25,10 +25,22 @@ export async function getMentorLiveClasses(teacherId: string): Promise<{
   upcoming: MentorLiveClass[];
   ended: MentorLiveClass[];
 }> {
+  // Owner OR co-teacher (matches assertOwnsCourse in
+  // server/actions/mission-actions.ts) -- this previously only matched
+  // course.teacherId, so a co-teacher's live classes never showed up in
+  // their own mentor dashboard.
   const lessons = await db.lesson.findMany({
     where: {
       scheduledStart: { not: null },
-      group: { chapter: { module: { course: { teacherId } } } },
+      group: {
+        chapter: {
+          module: {
+            course: {
+              OR: [{ teacherId }, { courseTeachers: { some: { teacherId } } }],
+            },
+          },
+        },
+      },
     },
     orderBy: { scheduledStart: "asc" },
     select: {

@@ -40,6 +40,27 @@
       // Node scripts and config files may log.
       "files": ["scripts/**", "prisma/**", "*.config.*"],
       "rules": { "no-console": "off" }
+    },
+    {
+      // Live Class code must never read or format time in the runtime's
+      // (server/device) timezone. Use lib/timezone.ts (Asia/Dhaka) instead.
+      "files": [
+        "src/lib/live/**/*.{ts,tsx}",
+        "src/components/live/**/*.{ts,tsx}",
+        "src/server/**/live-*.ts",
+        "src/app/**/live/**/*.{ts,tsx}",
+        "src/app/api/live/**/*.ts"
+      ],
+      "excludedFiles": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "CallExpression[callee.property.name=/^(toLocaleString|toLocaleDateString|toLocaleTimeString|getHours|getMinutes|getSeconds|getDay|getDate|getMonth|getFullYear|setHours|setMinutes|setDate|setMonth|setFullYear)$/]",
+            "message": "Live Class code must not use runtime-local time APIs. Use the Asia/Dhaka helpers in src/lib/timezone.ts."
+          }
+        ]
+      }
     }
   ]
 }

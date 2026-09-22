@@ -29,6 +29,18 @@ function clerkFrontendOrigin() {
 }
 const clerkOrigin = clerkFrontendOrigin();
 
+// Stream Chat (Live Room, behind the `live_room` feature flag). Only added
+// to the CSP when the public key is actually configured, so environments
+// without Live Room enabled get no extra allowance. Exact origins per
+// Stream's docs: REST at chat.stream-io-api.com, WebSocket at the same
+// host under /connect. UNVERIFIED: whether Stream's edge/regional
+// infrastructure routes some browsers to a different hostname -- confirm
+// with Content-Security-Policy-Report-Only in a real browser before
+// relying on this in production.
+const streamConnectSrc = process.env.NEXT_PUBLIC_STREAM_API_KEY
+  ? " https://chat.stream-io-api.com wss://chat.stream-io-api.com"
+  : "";
+
 const cspDirectives = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://www.youtube.com http://www.youtube.com https://s.ytimg.com ${clerkOrigin}`.trim(),
@@ -37,7 +49,7 @@ const cspDirectives = [
   "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://utfs.io https://img.clerk.com https://*.clerk.com https://lh3.googleusercontent.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "media-src 'self' https://utfs.io",
-  `connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org ${clerkOrigin}`.trim(),
+  `connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org ${clerkOrigin}${streamConnectSrc}`.trim(),
   `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://docs.google.com https://drive.google.com ${clerkOrigin}`.trim(),
   "frame-ancestors 'self'",
   "object-src 'none'",

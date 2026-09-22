@@ -1,0 +1,1 @@
+import { ensureLiveClassChannelTypeConfigured } from "../src/server/live/chat/stream-provider"; ensureLiveClassChannelTypeConfigured().then(() => console.log("liveclass channel type configured")).catch((err) => { console.error(err); process.exit(1); });

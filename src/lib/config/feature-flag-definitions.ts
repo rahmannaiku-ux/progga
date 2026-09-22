@@ -54,6 +54,14 @@ export const FEATURE_FLAG_DEFINITIONS = {
     description: "Allow students to post in mission-level and course-level discussion threads.",
     defaultEnabled: true,
   },
+  live_room: {
+    key: "live_room",
+    category: "Live",
+    label: "Live Room (chat, /live)",
+    description:
+      "Enable the dedicated Live Room system: /live dashboards, realtime chat, teacher controls at /live/manage and the /api/live endpoints. Off by default; turn on only after the Stream acceptance tests pass. The legacy /live-classes pages are never affected by this flag.",
+    defaultEnabled: false,
+  },
   ai_question_generator: {
     key: "ai_question_generator",
     category: "AI",
