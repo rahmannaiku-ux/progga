@@ -6,7 +6,7 @@ import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
 
 export default async function MentorLiveClassesPage() {
   const user = await getCurrentUser();
-  const { live, upcoming, ended } = await getMentorLiveClasses(user.id);
+  const { live, upcoming, ended } = await getMentorLiveClasses(user);
   const isEmpty = live.length === 0 && upcoming.length === 0 && ended.length === 0;
 
   return (

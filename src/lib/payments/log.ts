@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- this is the payment pipeline's designated logging sink; every other call site should go through logPayment() rather than calling console directly */
 /**
  * Structured, PII-minimal logging for the payment pipeline. Callers pass only
  * safe identifiers (payment/transaction/device ids, provider, event). Never

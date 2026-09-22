@@ -14,7 +14,7 @@ export default async function LiveClassesPage({
 }) {
   const user = await getCurrentUser();
   const endedPage = parsePageParam(searchParams.page);
-  const { live, upcoming, ended, endedTotal } = await getStudentLiveClasses(user.id, endedPage);
+  const { live, upcoming, ended, endedTotal } = await getStudentLiveClasses(user, endedPage);
   const serverNow = new Date();
 
   const isEmpty = live.length === 0 && upcoming.length === 0 && endedTotal === 0;

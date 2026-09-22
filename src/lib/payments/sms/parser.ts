@@ -109,7 +109,7 @@ export function parseDhakaTime(text: string, format: string): number | null {
   if (!m) return null;
   const v: Record<string, string> = {};
   order.forEach((t, i) => (v[t] = m[i + 1]!));
-  let year = v.YYYY ? Number(v.YYYY) : v.YY ? 2000 + Number(v.YY) : NaN;
+  const year = v.YYYY ? Number(v.YYYY) : v.YY ? 2000 + Number(v.YY) : NaN;
   const month = Number(v.MM);
   const day = Number(v.DD);
   let hour = v.HH !== undefined ? Number(v.HH) : v.hh !== undefined ? Number(v.hh) : NaN;

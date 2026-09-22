@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { getLiveClassStatus } from "@/lib/live-classes";
+import { isLiveRoomEnabled } from "@/lib/live/flag";
 
 export type StudentLiveClass = {
   id: string;
@@ -32,9 +33,19 @@ const ENDED_PAGE_SIZE = 10;
  * `endedPage` paginates the `ended` bucket only (1-based, ENDED_PAGE_SIZE
  * per page) — `live` and `upcoming` are always returned in full, since
  * those lists are naturally small and time-bounded.
+ *
+ * `href` used to always be the patrol-page path. That collided with the
+ * new Live Room: the `live_room` flag is a per-user rollout, so once it
+ * was on for someone, /live/[liveClassId] became the "real" join
+ * experience (chat + attendance), but every other surface — this
+ * directory, the dashboard card — kept sending that same person to the
+ * old patrol-page embed instead, so "join live" only ever worked from
+ * the room's own URL. Now this resolves the flag once per call and
+ * routes each entry to whichever experience is actually live for that
+ * user, so every "join live" surface and the direct URL agree.
  */
 export async function getStudentLiveClasses(
-  userId: string,
+  user: { id: string; role: string },
   endedPage = 1
 ): Promise<{
   live: StudentLiveClass[];
@@ -42,12 +53,25 @@ export async function getStudentLiveClasses(
   ended: StudentLiveClass[];
   endedTotal: number;
 }> {
+  const userId = user.id;
+  const liveRoomEnabled = await isLiveRoomEnabled(user);
+
   const enrollments = await db.enrollment.findMany({
     where: { userId },
-    select: { courseId: true },
+    select: { courseId: true, status: true },
   });
   const courseIds = enrollments.map((e) => e.courseId);
   if (courseIds.length === 0) return { live: [], upcoming: [], ended: [], endedTotal: 0 };
+
+  // assertCanJoinLiveRoom (the access check /live/[id] itself runs)
+  // only lets in an ACTIVE/COMPLETED enrollment, unlike this directory,
+  // which has always listed a class for any enrollment row regardless
+  // of status. Track which course ids clear that bar so the href
+  // switch below never points someone at a room door that then turns
+  // them away.
+  const activeCourseIds = new Set(
+    enrollments.filter((e) => e.status === "ACTIVE" || e.status === "COMPLETED").map((e) => e.courseId)
+  );
 
   const lessons = await db.lesson.findMany({
     where: {
@@ -63,6 +87,7 @@ export async function getStudentLiveClasses(
       youtubeVideoId: true,
       scheduledStart: true,
       scheduledEnd: true,
+      liveClass: { select: { id: true } },
       group: {
         select: {
           id: true,
@@ -105,6 +130,20 @@ export async function getStudentLiveClasses(
     if (!l.scheduledStart) continue;
 
     const course = l.group.chapter.module.course;
+    const status = getLiveClassStatus(l.scheduledStart, l.scheduledEnd, now);
+    // Only route into the Live Room if the flag is on for this user, a
+    // room row actually exists yet (ensureLiveClass runs lazily — see
+    // live-room-service.ts's VISIBLE_WINDOW_MS backfill — so a class
+    // scheduled far in the future may not have one yet), AND the class
+    // hasn't ended: the room's post-class view is a dead-end "class
+    // has ended" panel with no video, while the patrol page hands off
+    // to the normal resumable recording player once ended — see
+    // LiveLessonSection. So `ended` entries always keep the patrol
+    // link even with the flag on, same as before.
+    const href =
+      liveRoomEnabled && l.liveClass && status !== "ENDED" && activeCourseIds.has(course.id)
+        ? `/live/${l.liveClass.id}`
+        : `/missions/${course.id}/operations/${l.group.chapter.module.id}/chapters/${l.group.chapter.id}/groups/${l.group.id}/patrols/${l.id}`;
     const entry: StudentLiveClass = {
       id: l.id,
       title: l.title,
@@ -112,11 +151,10 @@ export async function getStudentLiveClasses(
       youtubeVideoId: l.youtubeVideoId,
       scheduledStart: l.scheduledStart,
       scheduledEnd: l.scheduledEnd,
-      href: `/missions/${course.id}/operations/${l.group.chapter.module.id}/chapters/${l.group.chapter.id}/groups/${l.group.id}/patrols/${l.id}`,
+      href,
       course,
     };
 
-    const status = getLiveClassStatus(l.scheduledStart, l.scheduledEnd, now);
     (status === "LIVE" ? live : status === "UPCOMING" ? upcoming : ended).push(entry);
   }
 

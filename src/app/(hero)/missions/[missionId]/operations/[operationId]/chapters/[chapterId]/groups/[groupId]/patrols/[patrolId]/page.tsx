@@ -11,6 +11,8 @@ import {
   Swords,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isLiveRoomEnabled } from "@/lib/live/flag";
+import { resolveLiveClassState } from "@/lib/live/state";
 import { db } from "@/lib/db/client";
 import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { GroupSidebar } from "@/components/course/curriculum-sidebar";
@@ -56,6 +58,7 @@ export default async function LessonPlayerPage({
         resources: true,
         assessments: { where: { publishedAt: { not: null } }, select: { id: true, title: true, kind: true } },
         assignments: { select: { id: true, title: true, dueAt: true } },
+        liveClass: { select: { id: true, state: true, actualStart: true, actualEnd: true } },
         group: {
           select: {
             id: true,
@@ -96,6 +99,49 @@ export default async function LessonPlayerPage({
   ]);
   if (!enrollment && !lesson.isPreview && !purchasedAsStoreItem) {
     redirect(`/courses/${course.slug}`);
+  }
+
+  // This URL is also the legacy "join live" destination (dashboard
+  // card / live-classes listing used to always send students here).
+  // If the live_room flag is on for this user AND a room already
+  // exists for this lesson, forward into the new experience instead
+  // of silently rendering the old embed underneath it — otherwise
+  // this route becomes a second, stale way to "join live" that
+  // disagrees with /live/[liveClassId] (no chat, no attendance,
+  // wrong state) for the exact same class.
+  //
+  // Gated on a real ACTIVE/COMPLETED enrollment (not just isPreview or
+  // a CoinStoreItem unlock): assertCanJoinLiveRoom — the access check
+  // the room page itself runs — only recognizes course Enrollment,
+  // with no preview or coin-purchase bypass yet. Redirecting someone
+  // who only has one of those would trade working (if more limited)
+  // access here for a hard "you need to be enrolled" wall over there.
+  // Once the Live Room grows those bypasses, this condition can drop
+  // to match.
+  //
+  // Deliberately skipped once the class has ENDED, too: LiveRoomVideo's
+  // ENDED state is a dead-end "This class has ended." panel with no
+  // video, whereas LiveLessonSection below hands off to the normal
+  // resumable LessonPlayer for the recording. Redirecting an ended
+  // class into the room would trade a working recording for a blank
+  // screen, so the patrol page stays the canonical place to *rewatch*
+  // a class even after it's fully migrated to the Live Room for
+  // joining it live.
+  if (
+    lesson.scheduledStart &&
+    lesson.liveClass &&
+    enrollment &&
+    (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
+    (await isLiveRoomEnabled(user))
+  ) {
+    const state = resolveLiveClassState(
+      { scheduledStart: lesson.scheduledStart, scheduledEnd: lesson.scheduledEnd },
+      lesson.liveClass,
+      new Date()
+    );
+    if (state !== "ENDED") {
+      redirect(`/live/${lesson.liveClass.id}`);
+    }
   }
 
   // Fetched only now that we know the request isn't about to be

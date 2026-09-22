@@ -86,7 +86,7 @@ export default async function HeroDashboardPage() {
       _sum: { watchedSeconds: true },
       where: { userId: user.id, updatedAt: { gte: today } },
     }),
-    getStudentLiveClasses(user.id),
+    getStudentLiveClasses(user),
   ]);
 
   const { level, xpIntoLevel, xpForNextLevel, percent } = xpProgressWithinLevel(stats.xp);
