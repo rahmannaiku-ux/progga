@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Send } from "lucide-react";
 import { submitBkashTxid } from "@/server/actions/payment-actions";
 
-export function TxidForm({ paymentId }: { paymentId: string }) {
+export function TxidForm({ paymentId, providerLabel = "bKash" }: { paymentId: string; providerLabel?: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +27,7 @@ export function TxidForm({ paymentId }: { paymentId: string }) {
       }}
     >
       <label htmlFor="transactionId" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-        bKash Transaction ID (TXID)
+        {providerLabel} Transaction ID (TXID)
       </label>
       <input
         id="transactionId"
@@ -40,11 +40,11 @@ export function TxidForm({ paymentId }: { paymentId: string }) {
         autoComplete="off"
       />
       <p className="mt-1 text-xs text-muted-foreground">
-        Find this in the "Payment Confirmation" SMS from bKash, right after you send the money.
+        Find this in the "Payment Confirmation" SMS from {providerLabel}, right after you send the money.
       </p>
 
       <label htmlFor="payerPhone" className="mt-4 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
-        Your bKash number (optional)
+        Your {providerLabel} number (optional)
       </label>
       <input
         id="payerPhone"

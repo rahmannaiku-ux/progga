@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
-import { formatMoney } from "@/lib/payments/format";
+import { formatMoney, MFS_PROVIDER_META } from "@/lib/payments/format";
+import type { MfsProvider } from "@/lib/payments/sms/types";
 import { formatDhakaDate } from "@/lib/timezone";
 import { PrintButton } from "@/components/payments/print-button";
 
@@ -22,6 +23,7 @@ export default async function InvoicePage({
 
   const invoiceNo = `INV-${payment.paymentReference.replace("PRG-", "")}`;
   const date = payment.verifiedAt ?? payment.createdAt;
+  const providerLabel = MFS_PROVIDER_META[(payment.mfsProvider as MfsProvider | null) ?? "BKASH"].displayName;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -60,7 +62,7 @@ export default async function InvoicePage({
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Payment method
             </p>
-            <p className="text-muted-foreground">bKash · {payment.transactionId ?? "—"}</p>
+            <p className="text-muted-foreground">{providerLabel} · {payment.transactionId ?? "—"}</p>
           </div>
         </div>
 

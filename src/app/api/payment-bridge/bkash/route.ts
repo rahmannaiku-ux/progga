@@ -3,7 +3,7 @@ import { db } from "@/lib/db/client";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { hashToken } from "@/lib/payments/reference";
 import { bkashBridgeEventSchema } from "@/lib/validation/payment-bridge";
-import { markPaidAndEnroll } from "@/server/actions/payment-actions";
+import { markPaidAndEnroll } from "@/server/services/payment-verification";
 import { notifyPaymentAdmins } from "@/lib/payments/notify-admins";
 import { sendPaymentVerifiedAlert, sendPaymentReviewAlert } from "@/lib/payments/telegram";
 import { formatMoney } from "@/lib/payments/format";

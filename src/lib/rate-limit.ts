@@ -23,6 +23,14 @@ const limiters = {
   strict: redis
     ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "1 m"), prefix: "rl:strict" })
     : null,
+  // Authenticated payment devices syncing their upload queue (per device id).
+  device: redis
+    ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(120, "1 m"), prefix: "rl:device" })
+    : null,
+  // Student-facing lookups that touch payment evidence (TrxID submit/status polling).
+  lookup: redis
+    ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "1 m"), prefix: "rl:lookup" })
+    : null,
 };
 
 type LimiterKind = keyof typeof limiters;
@@ -38,6 +46,8 @@ const FALLBACK_LIMITS: Record<LimiterKind, { max: number; windowMs: number }> = 
   api: { max: 60, windowMs: 60_000 },
   write: { max: 20, windowMs: 60_000 },
   strict: { max: 5, windowMs: 60_000 },
+  device: { max: 120, windowMs: 60_000 },
+  lookup: { max: 30, windowMs: 60_000 },
 };
 const fallbackBuckets = new Map<string, { count: number; resetAt: number }>();
 

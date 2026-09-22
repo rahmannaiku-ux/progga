@@ -50,6 +50,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/cron/(.*)",
   "/api/uploadthing(.*)",
   "/api/payment-bridge/(.*)",
+  // Android payment devices authenticate with their own per-device credential + replay ledger
+  // (see server/services/device-guard.ts), never a Clerk session.
+  "/api/payment/device/(.*)",
 ]);
 
 /** Routes that have their own auth/limits and must not share the per-IP API window. */
@@ -59,6 +62,8 @@ const SKIP_IP_RATE_LIMIT = [
   "/api/health",
   "/api/cron/",
   "/api/payment-bridge/",
+  // Device routes are rate-limited per device id inside device-guard (a shared per-IP window would throttle a NAT'd phone fleet).
+  "/api/payment/device/",
 ];
 
 /**

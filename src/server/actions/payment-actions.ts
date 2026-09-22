@@ -14,143 +14,11 @@ import { computeDiscountedPriceCents } from "@/lib/payments/discount";
 import { computeCouponPriceCents, validateCouponUsable, normalizeCouponCode, type CouponLike } from "@/lib/payments/coupon";
 import { requireActiveUser, requireAdminUser } from "./require-user";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
-
-/**
- * Shared by both verification paths (admin click, and the future
- * automatic bridge). Wraps the status flip + enrollment creation in one
- * transaction so it's impossible to end up with a PAID payment and no
- * enrollment, or vice versa — the exact invariant the spec calls out.
- * Callers must have already confirmed the payment is currently
- * AWAITING_VERIFICATION (checked again inside the transaction to close
- * the race between two verifiers hitting the same payment at once).
- */
-async function markPaidAndEnroll(
-  paymentId: string,
-  method: "MANUAL_ADMIN" | "AUTOMATIC_API",
-  verifiedById: string | null
-) {
-  return db.$transaction(async (tx) => {
-    const payment = await tx.payment.findUnique({ where: { id: paymentId } });
-    if (!payment) throw new Error("Payment not found.");
-    if (payment.status === "PAID") {
-      // Already verified (e.g. two admins clicked at once, or the bridge
-      // retried an event after a slow first response) — idempotent no-op
-      // rather than a duplicate enrollment or a confusing error.
-      return payment;
-    }
-    if (payment.status !== "AWAITING_VERIFICATION") {
-      // Explicitly blocks illegal jumps like REJECTED -> PAID or
-      // EXPIRED -> PAID — the only legal transition into PAID is from
-      // AWAITING_VERIFICATION, from either verification path.
-      throw new Error(
-        `Payment is ${payment.status.toLowerCase().replaceAll("_", " ")}, not awaiting verification.`
-      );
-    }
-
-    // Atomically claim the transition. The read above is not enough on
-    // its own — under READ COMMITTED (Postgres/Prisma's default), two
-    // concurrent verifications (an admin double-click, an admin and the
-    // bridge racing, a retried request) can both observe
-    // AWAITING_VERIFICATION before either has written anything. A plain
-    // `update` by id here would let BOTH transactions successfully
-    // overwrite the row and BOTH send verification emails/Telegram
-    // alerts to the student. This WHERE-guarded updateMany is the real
-    // gate: only the transaction that flips AWAITING_VERIFICATION ->
-    // PAID gets `count === 1` and creates the enrollment; the other
-    // gets 0 and falls back to the idempotent-return path below.
-    const claim = await tx.payment.updateMany({
-      where: { id: paymentId, status: "AWAITING_VERIFICATION" },
-      data: {
-        status: "PAID",
-        verificationMethod: method,
-        verifiedById,
-        verifiedAt: new Date(),
-      },
-    });
-    if (claim.count !== 1) {
-      // Lost the race to a concurrent verification of the same payment.
-      // Whoever won already handles enrollment + side effects — return
-      // the current row so this caller's flow completes as a no-op
-      // rather than throwing a confusing error.
-      return tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
-    }
-
-    const enrollment = await tx.enrollment.upsert({
-      where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
-      create: { userId: payment.userId, courseId: payment.courseId },
-      update: {},
-    });
-
-    const updated = await tx.payment.update({
-      where: { id: paymentId },
-      data: { enrollmentId: enrollment.id },
-    });
-
-    // Redeem the coupon (if one was applied at checkout) only now that
-    // the payment has actually been verified — never at checkout time,
-    // so an abandoned/rejected payment never consumes a limited
-    // coupon's uses. The WHERE-guarded updateMany is the same
-    // race-safe pattern as the payment-status claim above: only a
-    // transaction that still finds the coupon under its usage limit
-    // actually increments it, closing the exact "two students redeem
-    // the last slot at once" race a plain `update` would leave open.
-    //
-    // If the limit was hit by a concurrent verification between this
-    // student's checkout and now, the increment below is skipped, but
-    // enrollment still proceeds and the CouponRedemption row is still
-    // written — the discount was already locked into amountCents at
-    // checkout and the student already paid that amount, so declining
-    // to honor it now would mean charging one price and delivering
-    // another. usageCount simply reflects "successful redemptions,"
-    // and a redemption made in good faith before the limit was reached
-    // still counts as one.
-    if (payment.couponId) {
-      // A single atomic UPDATE ... WHERE, evaluated against the row's
-      // current committed value by Postgres itself — this is the one
-      // guard that genuinely can't be expressed as a typed Prisma
-      // `updateMany` filter (it compares two columns of the same row,
-      // usageCount against usageLimit), so it's the one place in this
-      // codebase that reaches for $executeRaw rather than the ORM API.
-      await tx.$executeRaw`
-        UPDATE "CourseCoupon"
-        SET "usageCount" = "usageCount" + 1
-        WHERE "id" = ${payment.couponId}
-          AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
-      `;
-
-      try {
-        await tx.couponRedemption.create({
-          data: {
-            couponId: payment.couponId,
-            userId: payment.userId,
-            paymentId,
-            discountCents: payment.couponDiscountCents ?? 0,
-          },
-        });
-      } catch (err) {
-        // P2002 on (couponId, userId) or the paymentId unique — this
-        // exact redemption was already recorded (e.g. a retried
-        // verification after a slow first response). Idempotent no-op,
-        // matching the payment-status claim's own idempotent-return
-        // philosophy above.
-        if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) {
-          throw err;
-        }
-      }
-    }
-
-    await tx.activityLog.create({
-      data: {
-        userId: verifiedById ?? payment.userId,
-        action: "PAYMENT_VERIFIED",
-        entityType: "Payment",
-        entityId: paymentId,
-      },
-    });
-
-    return updated;
-  });
-}
+import { markPaidAndEnroll } from "@/server/services/payment-verification";
+import { getReceivingNumber } from "@/server/services/payment-config";
+import { matchStoredTransactionForPayment } from "@/server/services/sms-ingestion";
+import { enqueueWebhook } from "@/lib/payments/webhooks";
+import { MFS_PROVIDERS } from "@/lib/payments/sms/types";
 
 /**
  * Entry point from "Enroll" on a paid mission. Returns the existing
@@ -243,6 +111,8 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
   });
   if (existing) redirect(`/payments/${existing.id}`);
 
+  const receivingNumber = await getReceivingNumber("BKASH");
+
   let reference = generatePaymentReference();
   // Collision odds at 6 chars over a 32-char alphabet are ~1 in a
   // billion, but the unique constraint is the real guarantee — retry a
@@ -256,6 +126,10 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
           amountCents: chargeCents,
           currency: course.currency,
           provider: "MANUAL_BKASH",
+          // SMS automation: snapshot which MFS/number the student was told to pay, so matching can
+          // verify provider + receiver later. Legacy checkout is bKash-only.
+          mfsProvider: "BKASH",
+          receivingNumber,
           paymentReference: reference,
           status: "PENDING",
           source: "web",
@@ -267,6 +141,15 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
               }
             : {}),
         },
+      });
+      // Best-effort; a webhook receiver being down must never block checkout.
+      await enqueueWebhook(payment.id, "payment.created", {
+        paymentId: payment.id,
+        status: payment.status,
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        courseId: payment.courseId,
+        provider: payment.mfsProvider,
       });
       redirect(`/payments/${payment.id}`);
     } catch (err) {
@@ -346,8 +229,38 @@ export async function submitBkashTxid(paymentId: string, formData: FormData) {
     txid: transactionId,
   });
 
+  // If the Android payment device already observed this transaction, evaluate it now. The TrxID the
+  // student typed is only a hint; the matching engine re-verifies provider, receiver, amount and window.
+  await matchStoredTransactionForPayment(paymentId);
+
   revalidatePath(`/payments/${paymentId}`);
   redirect(`/payments/${paymentId}`);
+}
+
+/**
+ * Lets the student change which MFS they intend to pay with, for an order that hasn't been paid yet.
+ * Re-snapshots the receiving number the same way startBkashPayment does. A no-op if the payment
+ * already has this provider. Refuses once a TXID has been submitted (AWAITING_VERIFICATION) or the
+ * order is otherwise no longer open — switching after the fact would invalidate what the student
+ * already sent, so the message tells them to start over instead of silently doing nothing.
+ */
+export async function switchPaymentProvider(paymentId: string, provider: string) {
+  const user = await requireActiveUser();
+  if (!(MFS_PROVIDERS as readonly string[]).includes(provider)) throw new Error("Unknown payment method.");
+  const mfsProvider = provider as (typeof MFS_PROVIDERS)[number];
+
+  const payment = await db.payment.findUnique({ where: { id: paymentId } });
+  if (!payment || payment.userId !== user.id) throw new Error("Payment not found.");
+  if (payment.status !== "PENDING") {
+    throw new Error("This order is already in progress with its original payment method. Start a new checkout to switch.");
+  }
+  if (payment.mfsProvider === mfsProvider) return;
+
+  const receivingNumber = await getReceivingNumber(mfsProvider);
+  if (!receivingNumber) throw new Error(`${mfsProvider} isn't configured yet. Please choose another method or contact support.`);
+
+  await db.payment.update({ where: { id: paymentId }, data: { mfsProvider, receivingNumber } });
+  revalidatePath(`/payments/${paymentId}`);
 }
 
 /** Admin manual verification — always available regardless of the automatic-verification setting. */
@@ -451,6 +364,8 @@ export async function rejectPaymentCore(paymentId: string, admin: { id: string }
     },
   });
   await sendPaymentRejectedAlert({ reference: payment.paymentReference, reason });
+  // After the claim above committed: a slow/down webhook receiver must never affect this outcome.
+  await enqueueWebhook(paymentId, "payment.failed", { paymentId, status: "REJECTED", reason, courseId: payment.courseId });
 
   revalidatePath("/admin/payments");
   revalidatePath(`/payments/${paymentId}`);
@@ -502,4 +417,3 @@ export async function revokeBridgeDevice(deviceId: string) {
   revalidatePath("/admin/settings/payments");
 }
 
-export { markPaidAndEnroll };

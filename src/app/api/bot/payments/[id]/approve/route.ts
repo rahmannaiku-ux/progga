@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
-import { markPaidAndEnroll } from "@/server/actions/payment-actions";
+import { markPaidAndEnroll } from "@/server/services/payment-verification";
 import { db } from "@/lib/db/client";
 import { formatMoney } from "@/lib/payments/format";
 import { sendPaymentVerifiedAlert } from "@/lib/payments/telegram";

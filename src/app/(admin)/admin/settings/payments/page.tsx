@@ -2,13 +2,16 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { updatePaymentSettings } from "@/server/actions/admin-settings-actions";
 import { BridgeDeviceManager } from "@/components/admin-dashboard/bridge-device-manager";
+import { SmsAutomationSettings } from "@/components/admin-dashboard/sms-automation-settings";
 
 export default async function AdminPaymentSettingsPage() {
   await requireRole("ADMIN");
 
-  const [settings, devices] = await Promise.all([
+  const [settings, devices, paymentConfigs] = await Promise.all([
     db.siteSettings.findUnique({ where: { id: "singleton" } }),
-    db.paymentBridgeDevice.findMany({ orderBy: { createdAt: "desc" } }),
+    // Legacy bridge tokens only — Android devices are managed on the dedicated Payment Devices page.
+    db.paymentBridgeDevice.findMany({ where: { registeredAt: null, registrationCodeHash: null }, orderBy: { createdAt: "desc" } }),
+    db.paymentConfiguration.findMany(),
   ]);
 
   return (
@@ -82,6 +85,11 @@ export default async function AdminPaymentSettingsPage() {
           Save payment settings
         </button>
       </form>
+
+      <SmsAutomationSettings
+        currentMode={settings?.smsAutoVerifyMode ?? "SHADOW"}
+        numbers={paymentConfigs.map((c) => ({ provider: c.provider, receivingNumber: c.receivingNumber, displayName: c.displayName, enabled: c.enabled }))}
+      />
 
       <div className="mt-6">
         <BridgeDeviceManager devices={devices} />
