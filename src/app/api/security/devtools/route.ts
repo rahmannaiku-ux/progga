@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 /**
  * Advisory log of "the browser reported DevTools". Written to the existing
@@ -15,6 +15,8 @@ import { checkRateLimit } from "@/lib/rate-limit";
  * authenticated user id from the session — never taken from the body),
  * when, which route, and the detection categories. No cookies, tokens or
  * request bodies beyond that are stored.
+ *
+ * PHASE 5: migrated off Clerk.
  */
 const ALLOWED_REASONS = new Set([
   "debugger-pause",
@@ -26,16 +28,8 @@ const ALLOWED_REASONS = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const user = await db.user.findUnique({
-    where: { clerkId },
-    select: { id: true, isActive: true, isSuspended: true },
-  });
-  if (!user || !user.isActive || user.isSuspended) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const user = await getCurrentActiveSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const rl = await checkRateLimit("write", user.id);
   if (!rl.success) return new NextResponse(null, { status: 429 });

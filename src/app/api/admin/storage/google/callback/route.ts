@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db/client";
 import { connectGoogleDriveAccount } from "@/lib/storage/google-drive";
+import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 export async function GET(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.redirect(new URL("/sign-in", req.url));
-
-  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true, role: true, isActive: true } });
-  if (!user?.isActive || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+  // PHASE 5: migrated off Clerk.
+  const user = await getCurrentActiveSessionUser();
+  if (!user) return NextResponse.redirect(new URL("/login", req.url));
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/dashboard?error=insufficient_permissions", req.url));
   }
 

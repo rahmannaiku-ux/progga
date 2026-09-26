@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { requireActiveUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
 
 export async function submitAssignment(input: {
   assignmentId: string;
   fileUrls: string[];
   comment: string;
 }) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
 
   const assignment = await db.assignment.findUnique({
     where: { id: input.assignmentId },

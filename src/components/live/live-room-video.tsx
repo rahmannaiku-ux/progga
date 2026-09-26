@@ -9,12 +9,14 @@ import { formatDhakaDateTimeBST } from "@/lib/timezone";
 import type { LiveClassState } from "@/lib/live/state";
 
 /**
- * Thin wrapper around the existing (unmodified) LiveClassPlayer that
- * adds the states a Live Room needs around it -- missing/invalid video,
- * upcoming (countdown), ended, cancelled -- and reports room presence
- * for attendance. Deliberately does NOT touch LiveClassPlayer itself,
- * preserving its DevTools shield, watermark and click-to-join exactly
- * as-is.
+ * Thin wrapper around LiveClassPlayer that adds the states a Live Room
+ * needs around it -- missing/invalid video, upcoming (countdown),
+ * ended, cancelled -- and reports room presence for attendance.
+ * Preserves LiveClassPlayer's DevTools shield and click-to-join
+ * behavior; Phase 6 only added the shared `.protected-content`
+ * deterrence class and non-draggable poster images to both this
+ * component and LiveClassPlayer itself -- no watermark exists or is
+ * added anywhere in this file or LiveClassPlayer.
  *
  * "Attendance" fires on MOUNT (being in the room), not on clicking Join
  * inside the player -- matching the architecture plan's "presence in
@@ -106,8 +108,10 @@ function UpcomingPanel({
   }, []);
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-2xl bg-black">
-      {posterUrl && <Image src={posterUrl} alt="" fill className="object-cover opacity-40" />}
+    <div className="protected-content relative aspect-video overflow-hidden rounded-2xl bg-black">
+      {posterUrl && (
+        <Image src={posterUrl} alt="" fill draggable={false} className="object-cover opacity-40" />
+      )}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 p-4 text-center text-white">
         <p className="font-display text-base font-bold">{title}</p>
         <p className="text-xs text-white/70" suppressHydrationWarning>

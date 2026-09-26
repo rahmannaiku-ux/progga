@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Readable } from "stream";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
+import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { streamFromDrive } from "@/lib/storage/google-drive";
 
 /**
@@ -16,7 +16,10 @@ import { streamFromDrive } from "@/lib/storage/google-drive";
  * hosted URL directly and never route through here.
  */
 export async function GET(req: NextRequest, { params }: { params: { uploadId: string } }) {
-  const { userId: clerkId } = auth();
+  // PHASE 5: migrated off Clerk. Optional/anonymous-safe, same as
+  // before (AVATAR context is publicly viewable; canAccessUpload below
+  // does the real per-context authorization).
+  const sessionUser = await getCurrentSessionUser();
 
   const upload = await db.upload.findUnique({
     where: { id: params.uploadId },
@@ -27,9 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { uploadId: st
     return NextResponse.json({ error: "File not found." }, { status: 404 });
   }
 
-  const viewer = clerkId
-    ? await db.user.findUnique({ where: { clerkId }, select: { id: true, role: true } })
-    : null;
+  const viewer = sessionUser ? { id: sessionUser.id, role: sessionUser.role } : null;
 
   const allowed = await canAccessUpload(upload, viewer);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

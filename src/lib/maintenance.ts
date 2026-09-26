@@ -1,5 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db/client";
+import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 import { getSiteSettingsRow } from "@/lib/site-branding";
 
 /**
@@ -9,16 +8,18 @@ import { getSiteSettingsRow } from "@/lib/site-branding";
  * middleware.ts for the same reasoning applied to role checks.
  *
  * Admins/super-admins always bypass maintenance mode so there's always a
- * way to turn it back off; sign-in stays reachable since the (auth)
- * route group never calls this.
+ * way to turn it back off; sign-in stays reachable since the auth
+ * route groups never call this.
+ *
+ * PHASE 5: migrated off Clerk — identity now comes from the custom
+ * session via getCurrentActiveSessionUser.
  */
 export async function isMaintenanceBlocking(): Promise<boolean> {
   const settings = await getSiteSettingsRow();
   if (!settings?.maintenanceMode) return false;
 
-  const { userId } = auth();
-  if (!userId) return true;
+  const user = await getCurrentActiveSessionUser();
+  if (!user) return true;
 
-  const user = await db.user.findUnique({ where: { clerkId: userId }, select: { role: true } });
-  return user?.role !== "ADMIN" && user?.role !== "SUPER_ADMIN";
+  return user.role !== "ADMIN" && user.role !== "SUPER_ADMIN";
 }

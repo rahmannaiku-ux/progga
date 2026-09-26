@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db/client";
 import { uploadUserFile } from "@/lib/storage";
+import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 import type { UploadContext } from "@prisma/client";
 
 // CERTIFICATE is deliberately excluded — certificate PDFs are generated
@@ -20,15 +19,12 @@ const CLIENT_UPLOADABLE_CONTEXTS: UploadContext[] = [
  * LESSON_RESOURCE uploads are untouched and keep going straight through
  * the existing /api/uploadthing route — this endpoint doesn't accept
  * that context at all.
+ *
+ * PHASE 5: migrated off Clerk.
  */
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const user = await db.user.findUnique({ where: { clerkId } });
-  if (!user || !user.isActive || user.isSuspended) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const user = await getCurrentActiveSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let form: FormData;
   try {

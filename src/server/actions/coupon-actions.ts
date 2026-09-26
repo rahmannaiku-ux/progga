@@ -12,6 +12,7 @@ import {
 } from "@/lib/payments/coupon";
 import { parseOptionalDhakaInput } from "@/lib/timezone";
 import { requireActiveUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
 import { assertOwnsCourse } from "./mission-actions";
 
 function revalidateCouponPaths(courseId: string, slug: string) {
@@ -240,7 +241,11 @@ export type CouponPreview =
  * student before checkout.
  */
 export async function previewCoupon(courseId: string, rawCode: string): Promise<CouponPreview> {
-  const user = await requireActiveUser();
+  // PHASE 5.5: student-facing (checkout preview), reachable from the
+  // same public /courses/[slug] purchase flow as startBkashPayment —
+  // requireCompletedProfile() for the same reason documented in
+  // enrollment-actions.ts.
+  const user = await requireCompletedProfile();
 
   const parsed = applyCouponSchema.safeParse({ code: rawCode });
   if (!parsed.success) {

@@ -95,12 +95,12 @@ export function PublicMobileNav({
                 ) : (
                   <>
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="/sign-in" onClick={() => setOpen(false)}>
+                      <Link href="/login" onClick={() => setOpen(false)}>
                         Sign in
                       </Link>
                     </Button>
                     <Button asChild variant="accent" className="w-full">
-                      <Link href="/sign-up" onClick={() => setOpen(false)}>
+                      <Link href="/register" onClick={() => setOpen(false)}>
                         Start free
                       </Link>
                     </Button>

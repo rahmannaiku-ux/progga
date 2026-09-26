@@ -40,4 +40,5 @@ next-env.d.ts
 .vscode/
 .idea/
 
-.env side
+# Claude Code local session/config (machine-specific, never shared)
+.claude/

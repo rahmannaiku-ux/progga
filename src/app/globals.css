@@ -657,3 +657,42 @@
   outline-offset: 2px;
   border-radius: 9999px;
 }
+
+/* ------------------------------------------------------------------ *
+ * Phase 6 — content-protection deterrence (globals.css, additive only).
+ *
+ * Scoped utility classes, NOT a blanket site-wide rule: applied only to
+ * the specific protected-content surfaces that opt in (the lesson video
+ * players, live-class player, and protected resource embeds), never to
+ * the whole page, so ordinary text selection, forms, and admin/teacher
+ * authoring UI are completely unaffected.
+ *
+ * Deterrence only, matching the rest of this project's anti-inspection
+ * system (see lib/security/anti-devtools.ts): does not and cannot stop
+ * OS-level screenshots/recording, another device's camera, or a
+ * determined user. It removes the easy "select/drag/print it out"
+ * paths, nothing more.
+ * ------------------------------------------------------------------ */
+.protected-content {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.protected-content img,
+.protected-content video {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+@media print {
+  /* Protected lesson content never renders on a printed page/PDF-of-page.
+     This is a deterrent against the easy case (Ctrl+P), not a security
+     boundary -- see the file-level note above. */
+  .protected-content {
+    display: none !important;
+  }
+  .protected-content::after {
+    content: "This content is not available for printing.";
+  }
+}

@@ -1,21 +1,22 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db/client";
 import { createLinkToken, TelegramLinkError } from "@/server/actions/telegram-link-actions";
+import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 
 /**
  * POST /api/telegram/link-tokens
  *
  * Called from the "Settings → Telegram" page while the user is signed
- * in. Uses the existing Clerk session — never the bot's PROGGAA_API_KEY
- * — since this endpoint acts on behalf of whichever human is currently
- * logged into the website, exactly like every other authenticated
- * browser-facing endpoint in this app.
+ * in. Uses the existing custom session — never the bot's
+ * PROGGAA_API_KEY — since this endpoint acts on behalf of whichever
+ * human is currently logged into the website, exactly like every other
+ * authenticated browser-facing endpoint in this app.
+ *
+ * PHASE 5: migrated off Clerk.
  */
 export async function POST(req: Request) {
   // CSRF defense-in-depth: unlike Server Actions, plain Route Handlers
   // get no automatic same-origin check from Next.js. This mutates state
-  // (issues a usable token) purely off the Clerk session cookie, so a
+  // (issues a usable token) purely off the session cookie, so a
   // cross-site form/fetch could otherwise trigger it silently — reject
   // any request whose Origin doesn't match this deployment, INCLUDING
   // one with no Origin header at all. Modern browsers always send
@@ -27,13 +28,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
   }
 
-  const { userId: clerkId } = auth();
-  if (!clerkId) {
+  const user = await getCurrentSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
-
-  const user = await db.user.findUnique({ where: { clerkId } });
-  if (!user || !user.isActive || user.isSuspended) {
+  if (!user.isActive || user.isSuspended) {
     return NextResponse.json({ error: "Account inactive." }, { status: 403 });
   }
 

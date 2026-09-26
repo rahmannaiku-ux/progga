@@ -368,7 +368,7 @@ export function VideoPlayer({
       onTouchStart={wakeControls}
       onClick={wakeControls}
       className={cn(
-        "comic-panel relative overflow-hidden bg-surface p-0",
+        "protected-content comic-panel relative overflow-hidden bg-surface p-0",
         // .comic-panel (globals.css) applies rounded-2xl, a visible
         // border, bg-surface, and shadow-card — all of which are
         // wrong for a true fullscreen player and must ALL be

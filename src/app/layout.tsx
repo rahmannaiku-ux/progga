@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Baloo_2, Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { getSiteBranding, hexToHslTriplet } from "@/lib/site-branding";
 import "./globals.css";
@@ -100,45 +99,43 @@ export default async function RootLayout({
       : hexToHslTriplet(branding.primaryColor);
 
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        suppressHydrationWarning
-        className={`${display.variable} ${body.variable}`}
-        // Brand-colour override is set on <html> too, not only on the
-        // wrapper below: dialogs/menus portal to <body>, outside the wrapper.
-        style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
-      >
-        <body className="font-body">
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {/* theme-cartoon wraps the ENTIRE app, not just the landing
-                page — every shared component (buttons, cards, badges)
-                picks up the comic palette and comic-panel/comic-btn
-                styling automatically via the CSS variables it redeclares.
-                See globals.css for the full system, including the
-                `.dark .theme-cartoon` night-mode variant.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${display.variable} ${body.variable}`}
+      // Brand-colour override is set on <html> too, not only on the
+      // wrapper below: dialogs/menus portal to <body>, outside the wrapper.
+      style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
+    >
+      <body className="font-body">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {/* theme-cartoon wraps the ENTIRE app, not just the landing
+              page — every shared component (buttons, cards, badges)
+              picks up the comic palette and comic-panel/comic-btn
+              styling automatically via the CSS variables it redeclares.
+              See globals.css for the full system, including the
+              `.dark .theme-cartoon` night-mode variant.
 
-                The inline --primary override (when an admin has set a
-                non-default brand color) sits on this same element, so it
-                wins over both the light and dark theme-cartoon rules
-                below it regardless of which mode is active — an inline
-                style always beats a class selector on the same element,
-                so one override covers both. */}
-            <NavigationProgress />
-            <div
-              className="theme-cartoon min-h-dvh"
-              style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
-            >
-              {children}
-            </div>
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+              The inline --primary override (when an admin has set a
+              non-default brand color) sits on this same element, so it
+              wins over both the light and dark theme-cartoon rules
+              below it regardless of which mode is active — an inline
+              style always beats a class selector on the same element,
+              so one override covers both. */}
+          <NavigationProgress />
+          <div
+            className="theme-cartoon min-h-dvh"
+            style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
+          >
+            {children}
+          </div>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

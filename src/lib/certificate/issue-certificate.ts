@@ -71,16 +71,18 @@ export async function issueCertificate(certificateId: string) {
       data: { status: "ISSUED", issuedAt: new Date(), pdfUrl: result.url },
     });
 
-    await sendTemplatedEmail(
-      "certificate-issued",
-      certificate.user.email,
-      { courseTitle: certificate.course.title },
-      {
-        subject: "Your medal is ready 🏅",
-        bodyHtml:
-          "<p>Congratulations on completing {{courseTitle}}! Your certificate is ready in your Medals tab.</p>",
-      }
-    );
+    if (certificate.user.email) {
+      await sendTemplatedEmail(
+        "certificate-issued",
+        certificate.user.email,
+        { courseTitle: certificate.course.title },
+        {
+          subject: "Your medal is ready 🏅",
+          bodyHtml:
+            "<p>Congratulations on completing {{courseTitle}}! Your certificate is ready in your Medals tab.</p>",
+        }
+      );
+    }
   } catch (err) {
     // Certificate stays PENDING; the medals page offers a manual retry
     // rather than silently failing the enrollment-completion flow.

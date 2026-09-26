@@ -8,10 +8,16 @@ import { checkLessonCompletionAchievements } from "@/lib/gamification/check-achi
 import { checkRateLimit } from "@/lib/rate-limit";
 import { evaluateProgress } from "@/lib/lesson-progress";
 import { requireActiveUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 
 async function requireEnrolledUser(lessonId: string) {
-  const user = await requireActiveUser();
+  // PHASE 5.5: requireCompletedProfile() rather than requireActiveUser()
+  // — this is the single shared chokepoint for every lesson-scoped
+  // student mutation below (progress, bookmarks, notes, discussion
+  // posts), so gating here covers all of them in one place rather than
+  // repeating the check per-function.
+  const user = await requireCompletedProfile();
 
   const lesson = await db.lesson.findUnique({
     where: { id: lessonId },
@@ -204,7 +210,7 @@ export async function createDiscussionPost(
  * poster to be enrolled in the mission, same as lesson-scoped posts.
  */
 export async function createCourseDiscussionPost(courseId: string, content: string) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
   if (!content.trim()) throw new Error("Post can't be empty.");
 
   if (!(await isFeatureEnabled("community", { userId: user.id, role: user.role }))) {

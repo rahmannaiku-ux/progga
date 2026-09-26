@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
+import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 
 export async function GET(
   _req: Request,
   { params }: { params: { courseId: string } }
 ) {
-  const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.json({ wishlisted: false });
-
-  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } });
+  // PHASE 5: migrated off Clerk. Optional/anonymous-safe, same as
+  // before — no active/suspended check here either originally, so
+  // getCurrentSessionUser (not the Active variant) preserves that
+  // exactly rather than silently tightening a harmless read endpoint.
+  const user = await getCurrentSessionUser();
   if (!user) return NextResponse.json({ wishlisted: false });
 
   const entry = await db.wishlist.findUnique({

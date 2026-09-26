@@ -91,7 +91,7 @@ export function LiveClassPlayer({
 
   if (!joined) {
     return (
-      <div className="relative aspect-video overflow-hidden rounded-2xl bg-black">
+      <div className="protected-content relative aspect-video overflow-hidden rounded-2xl bg-black">
         <button
           type="button"
           onClick={() => setJoined(true)}
@@ -102,6 +102,7 @@ export function LiveClassPlayer({
               src={posterUrl}
               alt=""
               fill
+              draggable={false}
               className="object-cover opacity-70 transition-opacity group-hover:opacity-60"
             />
           )}
@@ -118,7 +119,7 @@ export function LiveClassPlayer({
     <div
       ref={containerRef}
       className={cn(
-        "comic-panel relative overflow-hidden bg-surface p-0",
+        "protected-content comic-panel relative overflow-hidden bg-surface p-0",
         isFullscreen && "!fixed !inset-0 !z-50 flex !rounded-none !border-0 !shadow-none flex-col !bg-black touch-manipulation overscroll-none"
       )}
     >

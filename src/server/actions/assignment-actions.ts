@@ -173,19 +173,21 @@ export async function gradeSubmission(input: {
     },
   });
 
-  await sendTemplatedEmail(
-    "grade-posted",
-    submission.user.email,
-    {
-      assignmentTitle: submission.assignment.title,
-      grade: clamped,
-      maxPoints: submission.assignment.maxPoints,
-    },
-    {
-      subject: "Your challenge was graded",
-      bodyHtml: "<p>You scored {{grade}}/{{maxPoints}} on {{assignmentTitle}}.</p>",
-    }
-  );
+  if (submission.user.email) {
+    await sendTemplatedEmail(
+      "grade-posted",
+      submission.user.email,
+      {
+        assignmentTitle: submission.assignment.title,
+        grade: clamped,
+        maxPoints: submission.assignment.maxPoints,
+      },
+      {
+        subject: "Your challenge was graded",
+        bodyHtml: "<p>You scored {{grade}}/{{maxPoints}} on {{assignmentTitle}}.</p>",
+      }
+    );
+  }
 
   if (clamped >= submission.assignment.maxPoints * 0.5) {
     await awardXp(

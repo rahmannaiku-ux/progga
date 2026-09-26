@@ -31,6 +31,30 @@ const limiters = {
   lookup: redis
     ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "1 m"), prefix: "rl:lookup" })
     : null,
+  // OTP issuance (registration + password-reset), keyed by normalized
+  // phone number. Deliberately tight — every successful check here
+  // sends a real SMS and costs money, so this is the main defense
+  // against using Proggaa's OTP endpoint as free spam-SMS infrastructure.
+  // The OTP service's own per-code resend cooldown (src/lib/auth/otp.ts)
+  // is a second, tighter layer on top of this, not a replacement for it.
+  otpRequest: redis
+    ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(3, "10 m"), prefix: "rl:otp-req" })
+    : null,
+  // OTP code-guessing attempts, keyed by normalized phone number. This
+  // is on top of (not instead of) the per-code `maxAttempts` counter
+  // stored on the Otp row itself — that counter resets with each new
+  // code, so this phone-level window is what actually stops someone
+  // from requesting fresh codes purely to reset their attempt budget.
+  otpVerify: redis
+    ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "10 m"), prefix: "rl:otp-verify" })
+    : null,
+  // Login attempts (phone + password) and takeover-confirmation attempts,
+  // keyed by normalized phone. Generous enough that a student who
+  // fat-fingers their password a few times isn't locked out, tight
+  // enough to slow down credential-stuffing against a single number.
+  login: redis
+    ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(8, "10 m"), prefix: "rl:login" })
+    : null,
 };
 
 type LimiterKind = keyof typeof limiters;
@@ -48,6 +72,9 @@ const FALLBACK_LIMITS: Record<LimiterKind, { max: number; windowMs: number }> = 
   strict: { max: 5, windowMs: 60_000 },
   device: { max: 120, windowMs: 60_000 },
   lookup: { max: 30, windowMs: 60_000 },
+  otpRequest: { max: 3, windowMs: 600_000 },
+  otpVerify: { max: 10, windowMs: 600_000 },
+  login: { max: 8, windowMs: 600_000 },
 };
 const fallbackBuckets = new Map<string, { count: number; resetAt: number }>();
 

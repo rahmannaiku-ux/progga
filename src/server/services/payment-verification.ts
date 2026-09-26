@@ -175,15 +175,17 @@ export async function notifyAutomaticVerification(paymentId: string) {
         body: `Your payment for "${fresh.course.title}" was verified automatically. The mission is unlocked!`,
       },
     });
-    await sendTemplatedEmail(
-      "payment-verified",
-      fresh.user.email,
-      { courseTitle: fresh.course.title },
-      {
-        subject: "Payment verified — you're in! 🎉",
-        bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
-      }
-    );
+    if (fresh.user.email) {
+      await sendTemplatedEmail(
+        "payment-verified",
+        fresh.user.email,
+        { courseTitle: fresh.course.title },
+        {
+          subject: "Payment verified — you're in! 🎉",
+          bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
+        }
+      );
+    }
     await sendPaymentVerifiedAlert({
       studentName: `${fresh.user.firstName} ${fresh.user.lastName}`,
       missionTitle: fresh.course.title,

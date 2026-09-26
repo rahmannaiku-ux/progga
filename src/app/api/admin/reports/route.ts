@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 export async function GET() {
-  const { userId } = auth();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
-
-  const admin = await db.user.findUnique({ where: { clerkId: userId } });
-  // A suspended/deactivated admin account must not be able to keep
-  // pulling data exports just because the role check alone would pass —
-  // this route is called directly (not gated by the dashboard UI), so
-  // the account-status check has to happen here, not just in the UI.
-  if (!admin || !admin.isActive || admin.isSuspended || (admin.role !== "ADMIN" && admin.role !== "SUPER_ADMIN")) {
+  // PHASE 5: migrated off Clerk — identity now comes from the custom
+  // session via getCurrentActiveSessionUser (already checks
+  // isActive/isSuspended), role checked here as before.
+  const admin = await getCurrentActiveSessionUser();
+  if (!admin || (admin.role !== "ADMIN" && admin.role !== "SUPER_ADMIN")) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 

@@ -12,7 +12,13 @@ import { sendPaymentVerifiedAlert, sendPaymentReviewAlert, sendPaymentRejectedAl
 import { formatMoney } from "@/lib/payments/format";
 import { computeDiscountedPriceCents } from "@/lib/payments/discount";
 import { computeCouponPriceCents, validateCouponUsable, normalizeCouponCode, type CouponLike } from "@/lib/payments/coupon";
-import { requireActiveUser, requireAdminUser } from "./require-user";
+import { requireAdminUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
+// PHASE 5.5: startBkashPayment/submitBkashTxid/switchPaymentProvider
+// below use requireCompletedProfile() rather than requireActiveUser()
+// for the same reachability reason documented in enrollment-actions.ts
+// — startBkashPayment in particular is reachable straight from the
+// public /courses/[slug] page.
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { markPaidAndEnroll } from "@/server/services/payment-verification";
 import { getReceivingNumber } from "@/server/services/payment-config";
@@ -37,7 +43,7 @@ import { MFS_PROVIDERS } from "@/lib/payments/sms/types";
  * the buying page already showed the student in the apply preview.
  */
 export async function startBkashPayment(courseId: string, couponCode?: string) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
 
   if (!(await isFeatureEnabled("course_purchases", { userId: user.id, role: user.role }))) {
     throw new Error("Course purchases are temporarily paused. Please try again shortly.");
@@ -169,7 +175,7 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
 
 /** Student submits their bKash TXID against a PENDING payment row. */
 export async function submitBkashTxid(paymentId: string, formData: FormData) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
 
   const { success } = await checkRateLimit("strict", user.id);
   if (!success) throw new Error("Too many attempts — please wait a moment and try again.");
@@ -245,7 +251,7 @@ export async function submitBkashTxid(paymentId: string, formData: FormData) {
  * already sent, so the message tells them to start over instead of silently doing nothing.
  */
 export async function switchPaymentProvider(paymentId: string, provider: string) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
   if (!(MFS_PROVIDERS as readonly string[]).includes(provider)) throw new Error("Unknown payment method.");
   const mfsProvider = provider as (typeof MFS_PROVIDERS)[number];
 
@@ -284,15 +290,17 @@ export async function verifyPaymentManually(paymentId: string) {
         body: `Your payment for "${fresh.course.title}" was verified by the Proggaa team. The mission is unlocked!`,
       },
     });
-    await sendTemplatedEmail(
-      "payment-verified",
-      fresh.user.email,
-      { courseTitle: fresh.course.title },
-      {
-        subject: "Payment verified — you're in! 🎉",
-        bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
-      }
-    );
+    if (fresh.user.email) {
+      await sendTemplatedEmail(
+        "payment-verified",
+        fresh.user.email,
+        { courseTitle: fresh.course.title },
+        {
+          subject: "Payment verified — you're in! 🎉",
+          bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
+        }
+      );
+    }
     await sendPaymentVerifiedAlert({
       studentName: `${fresh.user.firstName} ${fresh.user.lastName}`,
       missionTitle: fresh.course.title,

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireActiveUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
 import { purchaseStoreItem, AlreadyOwnedError, InsufficientCoinsError } from "@/lib/gamification/coins";
 
 export type PurchaseResult =
@@ -9,7 +9,7 @@ export type PurchaseResult =
   | { ok: false; error: "ALREADY_OWNED" | "INSUFFICIENT_COINS" | "UNAVAILABLE" };
 
 export async function purchaseCoinStoreItem(itemId: string): Promise<PurchaseResult> {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
 
   try {
     const { item } = await purchaseStoreItem(user.id, itemId);

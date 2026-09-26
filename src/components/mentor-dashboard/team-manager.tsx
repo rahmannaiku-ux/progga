@@ -12,7 +12,7 @@ type CoTeacherRow = {
   teacher: { id: string; firstName: string; lastName: string; avatarUrl: string | null; headline: string | null };
 };
 
-type EligibleTeacher = { id: string; firstName: string; lastName: string; email: string };
+type EligibleTeacher = { id: string; firstName: string; lastName: string; email: string | null };
 
 export function TeamManager({
   courseId,
@@ -147,7 +147,7 @@ function AddTeacherForm({ courseId, eligibleTeachers }: { courseId: string; elig
           </option>
           {eligibleTeachers.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.firstName} {t.lastName} ({t.email})
+              {t.firstName} {t.lastName}{t.email ? ` (${t.email})` : ""}
             </option>
           ))}
         </select>

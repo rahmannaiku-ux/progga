@@ -443,13 +443,44 @@ enum WebhookDeliveryStatus {
 // IDENTITY & ACCESS
 // ---------------------------------------------------------------------
 
+enum StudyVersion {
+  BANGLA
+  ENGLISH
+}
+
 model User {
   id                String   @id @default(cuid())
   questionAnswers   QuestionAnswer[]
-  clerkId           String   @unique
-  email             String   @unique
-  firstName         String
-  lastName          String
+  // --- Legacy Clerk identity -------------------------------------------
+  // Kept through the Phase 1 schema migration only so nothing currently
+  // reading/writing it breaks before the Phase 3 cutover removes Clerk
+  // from the app entirely. Not used by the new Proggaa auth system.
+  // Existing Clerk users are NOT migrated (pre-launch reset).
+  //
+  // Adjusted in Phase 3 (see that phase's migration/report): these were
+  // still NOT NULL from the original Clerk-only schema, which made it
+  // impossible to create a phone-registered User row at all — nothing
+  // about a new Proggaa student has a Clerk id or email.
+  //   - clerkId/email -> made NULLable. Neither is read as always-present
+  //     display text elsewhere in the app the way names are, so this
+  //     doesn't create a wide TypeScript-nullability blast radius.
+  //   - firstName/lastName -> kept NOT NULL but given `@default("")`
+  //     instead. These ARE read as plain (non-null) strings throughout
+  //     existing display code (course cards, certificates, teacher
+  //     bios, admin tables, etc.) — switching them to nullable would
+  //     surface null-safety errors across dozens of unrelated files,
+  //     well outside this phase's scope ("do not modify unrelated
+  //     business logic"). An empty string is absence-of-data, not the
+  //     fabricated-looking value the "no fake profile data" instruction
+  //     is about — nothing invented is displayed anywhere. A
+  //     phone-registered student has both empty until a later phase
+  //     (Phase 4/5) decides how/whether to populate them, e.g. from
+  //     StudentProfile.name once the mandatory profile is completed.
+  //     Flagged here rather than silently patched over.
+  clerkId           String?  @unique
+  email             String?  @unique
+  firstName         String   @default("")
+  lastName          String   @default("")
   avatarUrl         String?
   role              Role     @default(STUDENT)
   bio               String?  @db.Text
@@ -461,6 +492,22 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   lastLoginAt       DateTime?
+
+  // --- Proggaa authentication (phone + password) -----------------------
+  // `phone` is nullable at the DB level (not every existing row has one
+  // yet) but is the primary login identifier going forward; enforced as
+  // required by the application at registration time. Always stored in
+  // normalized canonical form (see Phase 2's phone-normalization util).
+  phone             String?  @unique
+  // Argon2id hash only — never a raw/plaintext password.
+  passwordHash      String?
+  phoneVerified     Boolean  @default(false)
+  // Gates access to the main site until the mandatory first-login
+  // StudentProfile fields are filled in (see Phase 4's server-enforced
+  // profile gate). Non-student roles are unaffected by this flag.
+  profileCompleted  Boolean  @default(false)
+  sessions          Session[]
+  otps              Otp[]
 
   // Relations by role
   teacherProfile    TeacherProfile?
@@ -543,6 +590,23 @@ model StudentProfile {
   weeklyGoalMinutes Int     @default(150)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  // --- Mandatory first-login profile fields -----------------------------
+  // Nullable at the DB level for migration safety (existing rows have no
+  // values yet); the profile-completion flow in a later phase requires
+  // all of these (collegeEIIN, fatherPhone, motherPhone excepted — see
+  // below) before User.profileCompleted can be set to true. The "at
+  // least one parent phone" rule is an application-layer check, not a
+  // DB constraint.
+  name             String?
+  district         String?
+  zipCode          String?
+  collegeName      String?
+  collegeEIIN      String? // optional, per product requirements
+  fatherPhone      String? // at least one of father/mother required (app-enforced)
+  motherPhone      String? // at least one of father/mother required (app-enforced)
+  hscBatch         String?
+  studyVersion     StudyVersion?
 }
 
 model RoleChangeLog {
@@ -555,6 +619,63 @@ model RoleChangeLog {
   toRole       Role
   reason       String?
   createdAt    DateTime @default(now())
+}
+
+// Server-side session for the Proggaa custom auth system. The browser only
+// ever holds a random opaque token in an HttpOnly cookie — `tokenHash` is
+// the SHA-256 (or equivalent) hash of that token; the raw token itself is
+// never persisted. `deviceId` is a client-generated opaque identifier
+// (e.g. a random value stored in localStorage), NOT an IP address, used to
+// tell devices apart for the student single-active-session rule; admin
+// roles are exempt from that rule at the application layer, not here.
+model Session {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash      String    @unique
+  deviceId       String?
+  deviceLabel    String? // e.g. a user-agent-derived display string, for "log out other devices" UI
+  createdAt      DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  @@index([userId])
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  PASSWORD_RESET
+}
+
+// Generic OTP record for both registration phone-verification and
+// password-reset. `userId` is nullable because a REGISTRATION otp is
+// requested before any User row exists yet (only `phone` is known at that
+// point); PASSWORD_RESET otps are tied to an existing user. Only a hash of
+// the OTP is ever stored.
+model Otp {
+  id          String     @id @default(cuid())
+  phone       String
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     OtpPurpose
+  codeHash    String
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(5)
+  consumedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+  // Set when an SMS send is triggered, so a later phase's resend-cooldown
+  // check has something to compare "now" against without recomputing from
+  // createdAt (which stays fixed across resends of the same record if a
+  // resend chooses to reuse rather than recreate the row).
+  lastSentAt  DateTime   @default(now())
+
+  @@index([phone, purpose])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ---------------------------------------------------------------------

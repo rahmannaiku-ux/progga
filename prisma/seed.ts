@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/lib/auth/password";
 
 const db = new PrismaClient();
 
@@ -92,10 +93,22 @@ async function main() {
 
   // -------------------------------------------------------------
   // Demo mentor + student
-  // NOTE: these use fake clerkIds and can't sign in directly. Sign up
-  // for real, then use Admin → Roles & Permissions → "promote by email"
-  // to make your own account a TEACHER (or ADMIN) for hands-on testing.
+  //
+  // PHASE 5.5: these still keep their historical fake clerkId (as
+  // compatibility data only — Clerk itself is fully removed, nothing
+  // reads this for auth anymore) but now ALSO have a real phone +
+  // password, so they're actually loginable through the current
+  // phone+password system for local dev/testing. The passwords below
+  // are dev-only placeholders, hashed for real with this project's own
+  // Argon2id hashPassword (never stored/logged in plaintext) — replace
+  // them for anything beyond a local sandbox. For your OWN account,
+  // register normally at /register, then use Admin → Roles &
+  // Permissions → "promote by email" (if you set one during
+  // /complete-profile) to make it a TEACHER/ADMIN for hands-on testing.
   // -------------------------------------------------------------
+  const DEMO_MENTOR_PASSWORD = "DemoMentor#2026"; // dev-only — see note above
+  const DEMO_STUDENT_PASSWORD = "DemoStudent#2026"; // dev-only — see note above
+
   const mentor = await db.user.upsert({
     where: { clerkId: "seed_mentor_demo" },
     create: {
@@ -106,6 +119,10 @@ async function main() {
       role: "TEACHER",
       bio: "Full-stack engineer turned mentor. Loves shipping and teaching in equal measure.",
       headline: "Full-Stack Mentor",
+      phone: "+8801700000001",
+      passwordHash: await hashPassword(DEMO_MENTOR_PASSWORD),
+      phoneVerified: true,
+      profileCompleted: true,
       teacherProfile: { create: { expertiseTags: ["React", "Node.js", "TypeScript"], isVerified: true } },
     },
     update: {},
@@ -119,7 +136,22 @@ async function main() {
       firstName: "Jordan",
       lastName: "Lee",
       role: "STUDENT",
-      studentProfile: { create: { interests: ["Web Development"] } },
+      phone: "+8801700000002",
+      passwordHash: await hashPassword(DEMO_STUDENT_PASSWORD),
+      phoneVerified: true,
+      profileCompleted: true,
+      studentProfile: {
+        create: {
+          interests: ["Web Development"],
+          name: "Jordan Lee",
+          district: "Dhaka",
+          zipCode: "1207",
+          collegeName: "Demo College",
+          hscBatch: "2025",
+          studyVersion: "ENGLISH",
+          fatherPhone: "+8801700000003",
+        },
+      },
       heroStats: { create: { xp: 120, level: 2, currentStreak: 3, longestStreak: 5 } },
     },
     update: {},
@@ -346,8 +378,8 @@ async function main() {
   });
 
   console.log("Seed complete.");
-  console.log(`  Demo mentor: ${mentor.email} (clerkId: seed_mentor_demo — not sign-in-able)`);
-  console.log(`  Demo student: ${student.email} (clerkId: seed_student_demo — not sign-in-able)`);
+  console.log(`  Demo mentor login: +8801700000001 / ${DEMO_MENTOR_PASSWORD}`);
+  console.log(`  Demo student login: +8801700000002 / ${DEMO_STUDENT_PASSWORD}`);
   console.log("  Sign up for real, then use Admin → Roles & Permissions to promote your account.");
 }
 

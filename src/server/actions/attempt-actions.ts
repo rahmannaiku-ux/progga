@@ -20,6 +20,7 @@ import { isWithinStudentAccessWindow } from "@/lib/live-exam";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { computeRisk, buildSessionFingerprint, TAB_SWITCH_DISQUALIFY_THRESHOLD, type RiskInput } from "@/lib/exam-integrity";
 import { requireActiveUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
 import { AttemptRedirectSignal } from "./attempt-redirect-signal";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -139,7 +140,13 @@ async function assertAccessToAssessment(assessmentId: string, userId: string) {
 // ---------------------------------------------------------------------
 
 export async function startAttempt(assessmentId: string) {
-  const user = await requireActiveUser();
+  // PHASE 5.5: the true creation entry point for an exam attempt — the
+  // rest of this file's actions (saveAnswer, recordTabSwitch, etc.) all
+  // operate on an attempt row that could only exist if this succeeded,
+  // and already verify attempt.userId === user.id ownership, so gating
+  // here is the meaningful chokepoint rather than repeating the check
+  // on every sub-action.
+  const user = await requireCompletedProfile();
 
   if (!(await isFeatureEnabled("exams", { userId: user.id, role: user.role }))) {
     throw new Error("Exams are temporarily paused. Please try again shortly.");

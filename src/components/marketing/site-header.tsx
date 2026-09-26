@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { AccountMenu } from "@/components/shared/account-menu";
 import { PublicMobileNav } from "@/components/marketing/public-mobile-nav";
 import { SiteLogo } from "@/components/marketing/site-logo";
 import { getCurrentUserRoleOptional } from "@/lib/auth/current-user";
@@ -60,7 +60,7 @@ export async function SiteHeader() {
               <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
                 <Link href={dashboardHrefForRole(role)}>Command Center</Link>
               </Button>
-              <UserButton afterSignOutUrl="/" />
+              <AccountMenu />
             </>
           ) : (
             <>
@@ -69,10 +69,10 @@ export async function SiteHeader() {
                   header at 320-375px (logo + hamburger + 2 buttons is
                   already tight; 3 is worse). Desktop is unaffected. */}
               <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
-                <Link href="/sign-in">Sign in</Link>
+                <Link href="/login">Sign in</Link>
               </Button>
               <Button asChild variant="accent" size="sm">
-                <Link href="/sign-up">Start free</Link>
+                <Link href="/register">Start free</Link>
               </Button>
             </>
           )}

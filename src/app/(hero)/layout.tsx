@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { db } from "@/lib/db/client";
@@ -29,6 +30,17 @@ export default async function HeroLayout({
     getSiteBranding(),
   ]);
   if (blocked) return <MaintenancePage />;
+
+  // PHASE 5 / Step 6: mandatory first-login profile gate, applied only
+  // to students — (hero) is the student-facing area (XP/coins/streak
+  // sidebar, hero stats), but getCurrentUser() itself doesn't restrict
+  // by role, so this checks role explicitly rather than assuming.
+  // Teachers/admins reaching this layout (if that ever happens) are
+  // deliberately NOT bounced to /complete-profile — that page and its
+  // StudentProfile fields are student-only by design.
+  if (user.role === "STUDENT" && !user.profileCompleted) {
+    redirect("/complete-profile");
+  }
 
   const [stats, unreadNotifications, devtoolsGuard] = await Promise.all([
     getOrCreateHeroStats(user.id),

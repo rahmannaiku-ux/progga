@@ -12,7 +12,7 @@ import { isLiveRoomEnabled } from "@/lib/live/flag";
  * mounted and "leave" on unmount/page hide. Must be safe to call from
  * `navigator.sendBeacon` on page unload (which cannot set an
  * Authorization header or read the response), so authorization here
- * relies entirely on the browser's existing Clerk session cookie, same
+ * relies entirely on the browser's existing session cookie, same
  * as every other same-origin fetch in this app -- no bearer token is
  * needed or accepted.
  *

@@ -1,32 +1,23 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
+import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 const f = createUploadthing();
 
-async function requireMentorForUpload() {
-  const { userId } = auth();
-  if (!userId) throw new Error("Unauthorized");
+// PHASE 5: migrated off Clerk — both helpers below now resolve identity
+// via the custom session instead of Clerk auth() + a clerkId lookup.
 
-  const user = await db.user.findUnique({ where: { clerkId: userId } });
-  if (
-    !user ||
-    !user.isActive ||
-    user.isSuspended ||
-    !["TEACHER", "ADMIN", "SUPER_ADMIN"].includes(user.role)
-  ) {
+async function requireMentorForUpload() {
+  const user = await getCurrentActiveSessionUser();
+  if (!user || !["TEACHER", "ADMIN", "SUPER_ADMIN"].includes(user.role)) {
     throw new Error("Only mentors can upload lesson resources.");
   }
   return { userId: user.id };
 }
 
 async function requireActiveUserForUpload() {
-  const { userId } = auth();
-  if (!userId) throw new Error("Unauthorized");
-  const user = await db.user.findUnique({ where: { clerkId: userId } });
-  if (!user || !user.isActive || user.isSuspended) {
-    throw new Error("Unauthorized");
-  }
+  const user = await getCurrentActiveSessionUser();
+  if (!user) throw new Error("Unauthorized");
   return { userId: user.id };
 }
 

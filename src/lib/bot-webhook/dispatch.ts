@@ -23,7 +23,7 @@ export type ProggaaBotEvent =
  * these protect different trust boundaries (bot calling website vs.
  * website calling bot) and must be able to rotate independently.
  * Signed with HMAC-SHA256 over the raw body (like Clerk's own webhook
- * in this repo, see /api/webhooks/clerk) rather than sent as a bearer
+ * in this repo — that endpoint was retired in Phase 5) rather than sent as a bearer
  * token, so the bot can verify the body wasn't tampered with in
  * transit, not just that *some* valid secret was presented.
  *

@@ -4,11 +4,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
-import { requireActiveUser } from "./require-user";
+import { requireCompletedProfile } from "@/lib/auth/require-auth";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 
+// PHASE 5.5: both actions below are reachable directly from the PUBLIC
+// (unauthenticated-browsable) /courses/[slug] page — see
+// src/app/(public)/courses/[slug]/page.tsx, which renders
+// EnrollButton/PurchasePanel without ever going through the (hero)
+// layout's profile gate. That's a real bypass of the mandatory
+// first-login profile requirement for a signed-in-but-incomplete
+// student, not a hypothetical one — requireCompletedProfile() (not the
+// weaker requireActiveUser()) is required here specifically because of
+// that reachability, not merely for consistency.
+
 export async function enrollInCourse(courseId: string) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
 
   if (!(await isFeatureEnabled("course_purchases", { userId: user.id, role: user.role }))) {
     throw new Error("New enrollments are temporarily paused. Please try again shortly.");
@@ -70,15 +80,17 @@ export async function enrollInCourse(courseId: string) {
         },
       });
 
-      await sendTemplatedEmail(
-        "enrollment-confirmed",
-        user.email,
-        { courseTitle: course.title },
-        {
-          subject: "You're enrolled!",
-          bodyHtml: "<p>You're in — {{courseTitle}} is now on your dashboard.</p>",
-        }
-      );
+      if (user.email) {
+        await sendTemplatedEmail(
+          "enrollment-confirmed",
+          user.email,
+          { courseTitle: course.title },
+          {
+            subject: "You're enrolled!",
+            bodyHtml: "<p>You're in — {{courseTitle}} is now on your dashboard.</p>",
+          }
+        );
+      }
     }
   }
 
@@ -87,7 +99,7 @@ export async function enrollInCourse(courseId: string) {
 }
 
 export async function toggleWishlist(courseId: string) {
-  const user = await requireActiveUser();
+  const user = await requireCompletedProfile();
 
   const existing = await db.wishlist.findUnique({
     where: { userId_courseId: { userId: user.id, courseId } },

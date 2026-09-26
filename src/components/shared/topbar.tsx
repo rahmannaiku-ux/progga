@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Search, Bell } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { AccountMenu } from "@/components/shared/account-menu";
 
 export function Topbar({
   title,
@@ -70,7 +70,7 @@ export function Topbar({
               </span>
             </span>
           )}
-          <UserButton afterSignOutUrl="/" />
+          <AccountMenu />
         </div>
       </header>
       {mobileHud}

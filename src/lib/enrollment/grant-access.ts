@@ -84,7 +84,7 @@ export async function grantCourseAccessCore({
 
       await sendTemplatedEmail(
         "enrollment-confirmed",
-        student.email,
+        normalizedEmail,
         { courseTitle: course.title },
         {
           subject: "You're enrolled!",
@@ -96,7 +96,7 @@ export async function grantCourseAccessCore({
 
   return {
     alreadyEnrolled: Boolean(existing),
-    studentEmail: student.email,
+    studentEmail: normalizedEmail,
     courseTitle: course.title,
   };
 }

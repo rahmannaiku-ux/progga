@@ -1,7 +1,6 @@
 import { cache } from "react";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db/client";
+import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
 
 const ROLE_RANK: Record<Role, number> = {
@@ -12,38 +11,42 @@ const ROLE_RANK: Record<Role, number> = {
 };
 
 /**
- * Verifies the signed-in Clerk user exists in our database and holds at
- * least `minimumRole`. Used at the top of every protected layout — never
- * trust the client, and never trust Clerk's session alone for role data.
- * Throws a redirect rather than returning a boolean so a forgotten check
- * fails safe (the page simply never renders).
+ * PHASE 5: migrated off Clerk. Verifies the current custom session
+ * belongs to a User holding at least `minimumRole` — never trusts the
+ * client, and role always comes from the database row the session
+ * resolves to, never from anything client-supplied. Used at the top of
+ * every protected layout. Throws a redirect rather than returning a
+ * boolean so a forgotten check fails safe (the page simply never
+ * renders).
  *
- * Wrapped in React's `cache()`: the (mentor) and (admin) layouts each
- * call this once to gate the route, and every page underneath calls it
- * again (with the same role argument) to get the user object back —
- * previously two separate `db.user.findUnique` round trips per request
- * for the same row. `cache()` memoizes by arguments for the life of one
- * render pass, so the second call reuses the first's result (including
- * replaying a thrown redirect, if the first call redirected) instead of
- * re-querying. Behavior is identical either way — this only removes the
- * redundant query.
+ * Wrapped in React's `cache()` for the same reason as before: the
+ * (mentor) and (admin) layouts each call this once to gate the route,
+ * and every page underneath calls it again to get the user object back
+ * — `cache()` memoizes by arguments for the life of one render pass, so
+ * the second call reuses the first's result instead of re-validating
+ * the session.
  */
 export const requireRole = cache(async (minimumRole: Role) => {
-  const { userId } = auth();
-  if (!userId) redirect("/sign-in");
+  const token = getSessionCookieToken();
+  if (!token) redirect("/login");
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId! },
-    select: { id: true, role: true, isActive: true, isSuspended: true },
-  });
+  const validated = await validateSessionToken(token);
+  if (!validated) redirect("/login");
 
-  if (!user || !user.isActive || user.isSuspended) {
-    redirect("/sign-in?error=account_inactive");
+  const { user } = validated;
+
+  if (!user.isActive || user.isSuspended) {
+    redirect("/login?error=account_inactive");
   }
 
-  if (ROLE_RANK[user!.role] < ROLE_RANK[minimumRole]) {
+  if (ROLE_RANK[user.role] < ROLE_RANK[minimumRole]) {
     redirect("/dashboard?error=insufficient_permissions");
   }
 
-  return user!;
+  // Narrowed to match the original Clerk-era `select` shape exactly —
+  // this return value has gone through dozens of (mentor)/(admin) call
+  // sites unaudited by this migration, so keep it exactly as
+  // least-privilege as it was before rather than widening it to the
+  // full row (which, as of Phase 1, now includes passwordHash).
+  return { id: user.id, role: user.role, isActive: user.isActive, isSuspended: user.isSuspended };
 });

@@ -119,7 +119,7 @@ export default async function EncounterPage({
           <div className="mt-4">
             <ExamRunner
               attemptId={latest.id}
-              studentName={`${user.firstName} ${user.lastName}`.trim() || user.email}
+              studentName={`${user.firstName} ${user.lastName}`.trim() || user.email || "Student"}
               examTitle={assessment.title}
               questions={orderedQuestions.map((q) => ({
                 id: q.id,
