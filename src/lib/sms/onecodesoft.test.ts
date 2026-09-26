@@ -22,7 +22,9 @@ describe("Onecodesoft provider (real implementation)", () => {
     vi.resetModules();
     process.env = { ...originalEnv };
     process.env.ONECODESOFT_API_KEY = "test-api-key";
-    delete process.env.ONECODESOFT_SENDER_ID;
+    // Required despite the vendor plugin's own (stale) README FAQ
+    // claiming it's optional — see the comment in onecodesoft.ts.
+    process.env.ONECODESOFT_SENDER_ID = "test-sender";
     delete process.env.ONECODESOFT_API_URL;
   });
 
@@ -60,7 +62,7 @@ describe("Onecodesoft provider (real implementation)", () => {
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       api_key: "test-api-key",
-      senderid: "",
+      senderid: "test-sender",
       MessageParameters: [{ Number: ONECODESOFT_PHONE, Text: "Your OTP is 123456" }],
     });
   });
@@ -75,7 +77,7 @@ describe("Onecodesoft provider (real implementation)", () => {
     expect(body.MessageParameters[0].Number.startsWith("+")).toBe(false);
   });
 
-  it("includes senderid when ONECODESOFT_SENDER_ID is set, empty string when it isn't", async () => {
+  it("includes the configured senderid in the request", async () => {
     process.env.ONECODESOFT_SENDER_ID = "PROGGAA";
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ message: "Success" }));
     global.fetch = fetchMock;
@@ -83,6 +85,14 @@ describe("Onecodesoft provider (real implementation)", () => {
     await getSmsProvider().sendSms(CANONICAL_PHONE, "msg");
     const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
     expect(body.senderid).toBe("PROGGAA");
+  });
+
+  it("throws SmsProviderNotConfiguredError when ONECODESOFT_SENDER_ID is unset — never sends with an empty senderid (the live API rejects it despite the vendor's README claiming it's optional)", async () => {
+    delete process.env.ONECODESOFT_SENDER_ID;
+    const { getSmsProvider, SmsProviderNotConfiguredError } = await loadProvider();
+    global.fetch = vi.fn(); // must not even be called
+    await expect(getSmsProvider().sendSms(CANONICAL_PHONE, "hello")).rejects.toBeInstanceOf(SmsProviderNotConfiguredError);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("treats a response whose message doesn't mention success as a failure (matches the plugin's own is_sms_success/is_success logic)", async () => {

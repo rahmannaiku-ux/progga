@@ -35,6 +35,19 @@ const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends of the sam
 const OTP_REQUEST_QUOTA_MAX = 3;
 const OTP_REQUEST_QUOTA_WINDOW_MS = 12 * 60 * 60 * 1000; // rolling 12 hours, not "per calendar day"
 
+/**
+ * Local-testing escape hatch for the 12h quota above ONLY — same
+ * double-gate pattern as OTP_DEV_LOG below (explicit opt-in AND
+ * non-production), so a stray env var can never disable this in
+ * production. Does not touch the short-term rate limiter, the 60s
+ * resend cooldown, or anything else — a bypassed request still creates
+ * a real Otp row and still counts toward the quota for anyone reading
+ * it without the bypass.
+ */
+function isOtpQuotaBypassed(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.OTP_DEV_BYPASS_QUOTA === "1";
+}
+
 // ---------------------------------------------------------------------
 // OTP code generation & hashing
 // ---------------------------------------------------------------------
@@ -160,7 +173,7 @@ async function reserveOtpSlot(phone: string, purpose: OtpPurpose, userId: string
       select: { createdAt: true },
     });
 
-    if (recentRequests.length >= OTP_REQUEST_QUOTA_MAX) {
+    if (recentRequests.length >= OTP_REQUEST_QUOTA_MAX && !isOtpQuotaBypassed()) {
       const oldest = recentRequests[0]!.createdAt;
       const retryAfterSeconds = Math.max(
         1,

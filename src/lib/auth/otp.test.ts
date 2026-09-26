@@ -470,6 +470,37 @@ describe("12-hour OTP request quota", () => {
     expect(otpFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ phone: OTHER_PHONE }) }));
   });
 
+  it("OTP_DEV_BYPASS_QUOTA=1 outside production lets a request through past an exhausted quota (local-testing escape hatch only)", async () => {
+    withRecentRequests(3);
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    process.env.OTP_DEV_BYPASS_QUOTA = "1";
+    try {
+      const result = await requestRegistrationOtp(PHONE);
+      expect(result).toEqual({ ok: true });
+      expect(sendSms).toHaveBeenCalledTimes(1);
+    } finally {
+      delete process.env.OTP_DEV_BYPASS_QUOTA;
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it("OTP_DEV_BYPASS_QUOTA=1 is ignored when NODE_ENV=production — the bypass can never reach production regardless of the flag", async () => {
+    withRecentRequests(3);
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.OTP_DEV_BYPASS_QUOTA = "1";
+    try {
+      const result = await requestRegistrationOtp(PHONE);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe("quota_exceeded");
+      expect(sendSms).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.OTP_DEV_BYPASS_QUOTA;
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
   it("equivalent Bangladesh phone formats share the same quota (normalized before the quota check)", async () => {
     withRecentRequests(3);
     const localFormat = await requestRegistrationOtp("01712345678");

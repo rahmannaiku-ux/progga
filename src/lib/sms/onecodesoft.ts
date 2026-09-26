@@ -95,7 +95,17 @@ class OnecodesoftProvider implements SmsProvider {
     if (!apiKey) throw new SmsProviderNotConfiguredError("ONECODESOFT_API_KEY");
 
     const baseUrl = process.env.ONECODESOFT_API_URL || ONECODESOFT_DEFAULT_BASE_URL;
-    const senderId = process.env.ONECODESOFT_SENDER_ID?.trim() || "";
+    // The vendor plugin's own README FAQ claims Sender ID is optional,
+    // but that's stale: the plugin's admin settings form marks it
+    // required (`<span class="jesp-required">*</span>`, `required`
+    // attribute), its own save/send handlers reject an empty value
+    // ("Sender ID is required."), and the live Onecodesoft API itself
+    // rejects an empty senderid the same way — confirmed by an actual
+    // failed send in this environment, not just reading the plugin
+    // source. Failing closed here turns that into an immediate,
+    // actionable error instead of a cryptic downstream API rejection.
+    const senderId = process.env.ONECODESOFT_SENDER_ID?.trim();
+    if (!senderId) throw new SmsProviderNotConfiguredError("ONECODESOFT_SENDER_ID");
 
     // Body shape confirmed by class-bulk-sms-api.php's send(): a single
     // top-level JSON object with api_key, senderid, and a
