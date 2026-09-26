@@ -126,15 +126,24 @@ const nextConfig = {
     esmExternals: "loose",
     // argon2 loads a prebuilt .node binary at runtime via node-gyp-build
     // (dynamic fs.readdirSync + require, not a static import), so
-    // webpack's bundler/tracer can't follow it — left un-excluded, the
-    // deployed Vercel function ends up missing (or shipping the wrong
-    // platform's) native binary and crashes with "No native build was
-    // found for platform=linux ... abi=...". Marking it external tells
-    // Next to leave `require("argon2")` alone and resolve it from the
-    // real node_modules/argon2 (prebuilds included) at runtime instead
-    // — the fix Next's own docs call out for native-addon packages like
-    // this one.
+    // webpack's bundler/tracer can't follow it. Two things are both
+    // required to fix this on Vercel (confirmed via vercel/next.js
+    // discussion #65978 — the external-packages flag alone was NOT
+    // enough and still crashed in production):
+    //   1. serverComponentsExternalPackages leaves `require("argon2")`
+    //      un-bundled so it resolves against the real node_modules/argon2
+    //      at runtime instead of a webpack chunk.
+    //   2. outputFileTracingIncludes force-includes the prebuilds/
+    //      directory in the deployed function, since @vercel/nft's
+    //      static analysis can't discover files argon2 only reaches via
+    //      a dynamic directory scan — without this the native binary
+    //      itself never gets uploaded, even with (1) alone, and it still
+    //      fails with "No native build was found for platform=linux
+    //      ... abi=...".
     serverComponentsExternalPackages: ["argon2"],
+    outputFileTracingIncludes: {
+      "/*": ["node_modules/argon2/prebuilds/**/*"],
+    },
   },
 };
 
