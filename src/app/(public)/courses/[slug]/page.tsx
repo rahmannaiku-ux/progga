@@ -113,7 +113,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
 
   return (
     <div className="container py-10 sm:py-14">
-      <StaggerContainer className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <StaggerContainer className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           {/* Hero */}
           <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-primary p-8">

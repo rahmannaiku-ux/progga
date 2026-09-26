@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="container grid gap-10 py-14 lg:grid-cols-[1fr_360px]">
+    <div className="container grid grid-cols-1 gap-10 py-14 lg:grid-cols-[1fr_360px]">
       <div>
         <div className="h-6 w-32 animate-pulse rounded-full bg-surface" />
         <div className="mt-4 h-9 w-3/4 animate-pulse rounded-lg bg-surface" />

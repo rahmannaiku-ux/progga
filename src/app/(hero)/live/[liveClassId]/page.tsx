@@ -75,7 +75,7 @@ export default async function LiveRoomPage({ params }: { params: { liveClassId: 
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
         <LiveRoomVideo
           state={state}
           youtubeVideoId={lesson.youtubeVideoId}
