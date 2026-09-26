@@ -124,6 +124,17 @@ const nextConfig = {
     // webpack auto-correct remaining ESM/CJS interop edges for the
     // same @pdfme packages that Next docs recommend it for.
     esmExternals: "loose",
+    // argon2 loads a prebuilt .node binary at runtime via node-gyp-build
+    // (dynamic fs.readdirSync + require, not a static import), so
+    // webpack's bundler/tracer can't follow it — left un-excluded, the
+    // deployed Vercel function ends up missing (or shipping the wrong
+    // platform's) native binary and crashes with "No native build was
+    // found for platform=linux ... abi=...". Marking it external tells
+    // Next to leave `require("argon2")` alone and resolve it from the
+    // real node_modules/argon2 (prebuilds included) at runtime instead
+    // — the fix Next's own docs call out for native-addon packages like
+    // this one.
+    serverComponentsExternalPackages: ["argon2"],
   },
 };
 
