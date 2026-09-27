@@ -4,6 +4,7 @@ import { AccountMenu } from "@/components/shared/account-menu";
 import { PublicMobileNav } from "@/components/marketing/public-mobile-nav";
 import { SiteLogo } from "@/components/marketing/site-logo";
 import { getCurrentUserRoleOptional } from "@/lib/auth/current-user";
+import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 
 const navLinks = [
@@ -26,6 +27,7 @@ function dashboardHrefForRole(role: string) {
 export async function SiteHeader() {
   const role = await getCurrentUserRoleOptional();
   const isSignedIn = role !== null;
+  const viewer = isSignedIn ? await getCurrentSessionUser() : null;
   const branding = await getSiteBranding();
   const hasSafeLogo = Boolean(branding.logoUrl && isSafeLogoUrl(branding.logoUrl));
 
@@ -60,7 +62,7 @@ export async function SiteHeader() {
               <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
                 <Link href={dashboardHrefForRole(role)}>Command Center</Link>
               </Button>
-              <AccountMenu />
+              <AccountMenu avatarUrl={viewer?.avatarUrl} name={viewer?.firstName} />
             </>
           ) : (
             <>

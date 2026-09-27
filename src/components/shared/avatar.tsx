@@ -32,6 +32,21 @@ interface AvatarProps {
  * in next.config.mjs and needs the actual source domain (e.g. Google's
  * avatar CDN) added for the request to be attempted at all.
  */
+/**
+ * True for avatars stored in Google Drive, which are saved as a
+ * same-origin proxy path (`/api/files/<uploadId>`, see
+ * lib/storage/index.ts) rather than a CDN URL. These must skip the
+ * next/image optimizer and be requested by the browser directly:
+ * the optimizer re-fetches the path server-side without the viewer's
+ * cookies and rejects anything Drive reports with a non-image
+ * Content-Type, so a perfectly good uploaded photo would silently fall
+ * back to the letter sticker. The proxy already sets Cache-Control for
+ * avatars, so there's nothing for the optimizer to add here.
+ */
+export function isProxiedUpload(src: string | null | undefined): boolean {
+  return Boolean(src && src.startsWith("/api/files/"));
+}
+
 export function Avatar({ src, name, size, className, fallbackClassName }: AvatarProps) {
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(src) && !failed;
@@ -43,6 +58,7 @@ export function Avatar({ src, name, size, className, fallbackClassName }: Avatar
         alt={name}
         width={size}
         height={size}
+        unoptimized={isProxiedUpload(src)}
         className={cn("rounded-full object-cover", className)}
         onError={() => setFailed(true)}
       />

@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import * as Avatar from "@radix-ui/react-avatar";
 import { User, LogOut } from "lucide-react";
+import { Avatar } from "@/components/shared/avatar";
 import { logoutAction } from "@/server/actions/auth-actions";
 
 /**
@@ -15,13 +15,22 @@ import { logoutAction } from "@/server/actions/auth-actions";
  * needs to offer "Profile" and "Sign out", which is everything
  * <UserButton> was actually used for here (no afterSignOutUrl-style
  * config beyond "go to /login", no org switcher, none of Clerk's other
- * account-management surface was in use). Renders a generic avatar
- * icon rather than fetching/displaying the real avatarUrl, specifically
- * to avoid adding a client-side user-info fetch (session tokens,
- * password hashes, etc. must never reach client state — see Phase 4's
- * toSafeUser pattern) just for this.
+ * account-management surface was in use).
+ *
+ * The viewer's photo is passed in as two plain strings resolved
+ * server-side by the caller (Topbar / SiteHeader) — never a client-side
+ * user-info fetch, so session tokens, password hashes, etc. can't reach
+ * client state (see Phase 4's toSafeUser pattern). With no photo (or one
+ * that fails to load) it falls back to the first-letter sticker, or the
+ * generic icon if no name was given either.
  */
-export function AccountMenu() {
+export function AccountMenu({
+  avatarUrl,
+  name,
+}: {
+  avatarUrl?: string | null;
+  name?: string | null;
+} = {}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -42,13 +51,18 @@ export function AccountMenu() {
           type="button"
           aria-label="Account menu"
           disabled={isPending}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border/15 bg-surface text-muted-foreground transition-transform hover:-translate-y-0.5 hover:text-foreground disabled:opacity-50"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border/15 bg-surface text-muted-foreground transition-transform hover:-translate-y-0.5 hover:text-foreground disabled:opacity-50"
         >
-          <Avatar.Root className="flex h-full w-full items-center justify-center overflow-hidden rounded-full">
-            <Avatar.Fallback delayMs={0}>
-              <User className="h-4 w-4" />
-            </Avatar.Fallback>
-          </Avatar.Root>
+          {avatarUrl || name ? (
+            <Avatar
+              src={avatarUrl}
+              name={name || "?"}
+              size={36}
+              className="h-full w-full text-sm"
+            />
+          ) : (
+            <User className="h-4 w-4" />
+          )}
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

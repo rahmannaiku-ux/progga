@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Search, Bell } from "lucide-react";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AccountMenu } from "@/components/shared/account-menu";
+import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 
-export function Topbar({
+export async function Topbar({
   title,
   rightSlot,
   showSearch = false,
@@ -26,6 +27,10 @@ export function Topbar({
    */
   mobileHud?: React.ReactNode;
 }) {
+  // Request-cached — the layouts rendering this have already resolved
+  // the session, so this doesn't add a second lookup.
+  const viewer = await getCurrentSessionUser();
+
   return (
     <div className="bg-background">
       <header className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
@@ -70,7 +75,7 @@ export function Topbar({
               </span>
             </span>
           )}
-          <AccountMenu />
+          <AccountMenu avatarUrl={viewer?.avatarUrl} name={viewer?.firstName} />
         </div>
       </header>
       {mobileHud}

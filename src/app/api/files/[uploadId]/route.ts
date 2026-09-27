@@ -41,9 +41,16 @@ export async function GET(req: NextRequest, { params }: { params: { uploadId: st
     // "stream") — NextResponse's body needs a Web ReadableStream, so
     // this converts explicitly rather than casting past the mismatch.
     const webStream = Readable.toWeb(stream as unknown as Readable) as ReadableStream;
+    // Drive sometimes reports a generic type (or none) for files it
+    // didn't sniff itself. Combined with the app-wide
+    // `X-Content-Type-Options: nosniff` header, that makes browsers refuse
+    // to render an uploaded avatar as an image — fall back to the type
+    // recorded at upload time instead.
+    const contentType =
+      mimeType && mimeType !== "application/octet-stream" ? mimeType : upload.fileType || mimeType;
     return new NextResponse(webStream, {
       headers: {
-        "Content-Type": mimeType,
+        "Content-Type": contentType,
         "Content-Disposition": `inline; filename="${name.replace(/"/g, "")}"`,
         // Avatars change rarely and are re-fetched on every profile/
         // leaderboard/community render across the app — caching keeps

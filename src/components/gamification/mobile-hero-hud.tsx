@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { Flame, Bell } from "lucide-react";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
+import { isProxiedUpload } from "@/components/shared/avatar";
 
 /**
  * Second HUD row rendered under the mobile topbar (lg:hidden, wired in
@@ -50,6 +51,7 @@ export function MobileHeroHud({
             alt=""
             width={36}
             height={36}
+            unoptimized={isProxiedUpload(avatarUrl)}
             className="h-9 w-9 shrink-0 rounded-full border-2 border-xp object-cover"
             onError={() => setAvatarFailed(true)}
           />
