@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateMissionPage } from "@/lib/mission-paths";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
+import { formatMoney } from "@/lib/payments/format";
 import { courseCouponSchema, applyCouponSchema } from "@/lib/validation/coupon";
 import {
   computeCouponPriceCents,
@@ -62,7 +63,7 @@ export async function createCoupon(courseId: string, formData: FormData) {
 
   if (data.discountType === "FIXED" && (data.amountOffCents ?? 0) > course.priceCents) {
     throw new Error(
-      `Discount amount can't exceed the mission's price (${(course.priceCents / 100).toFixed(2)}).`
+      `Discount amount can't exceed the mission's price (${formatMoney(course.priceCents)}).`
     );
   }
   if (data.discountType === "PERCENTAGE" && (data.percentOff ?? 0) > 100) {
@@ -127,7 +128,7 @@ export async function updateCoupon(courseId: string, couponId: string, formData:
 
   if (data.discountType === "FIXED" && (data.amountOffCents ?? 0) > course.priceCents) {
     throw new Error(
-      `Discount amount can't exceed the mission's price (${(course.priceCents / 100).toFixed(2)}).`
+      `Discount amount can't exceed the mission's price (${formatMoney(course.priceCents)}).`
     );
   }
   if (data.discountType === "PERCENTAGE" && (data.percentOff ?? 0) > 100) {

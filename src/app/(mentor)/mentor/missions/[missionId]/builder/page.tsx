@@ -164,7 +164,7 @@ export default async function MissionBuilderPage({
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-foreground">
-                Price (cents)
+                Price in poisha (৳1 = 100)
               </label>
               <input
                 type="number"

@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/payments/format";
 import { CourseStatusBadge } from "@/components/mentor-dashboard/course-status-badge";
 
 export default async function MentorMissionsPage() {
@@ -74,7 +75,7 @@ export default async function MentorMissionsPage() {
                   Team
                 </Link>
                 <span className="font-mono text-sm text-muted-foreground">
-                  {c.isFree ? "Free" : `$${(c.priceCents / 100).toFixed(2)}`}
+                  {c.isFree ? "Free" : formatMoney(c.priceCents)}
                 </span>
               </div>
             </div>

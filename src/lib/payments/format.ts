@@ -1,10 +1,15 @@
 import type { PaymentStatus, VerificationMethod } from "@prisma/client";
 import type { MfsProvider } from "@/lib/payments/sms/types";
 
-export function formatMoney(cents: number, currency: string) {
+/**
+ * Proggaa only sells in Bangladeshi taka, so every amount renders as ৳ —
+ * `currency` is kept in the signature for call-site compatibility (and in
+ * case a legacy row still says "USD") but no longer changes the symbol.
+ * Amounts are stored in poisha (1/100 taka) in the *Cents columns.
+ */
+export function formatMoney(cents: number, currency?: string) {
   const amount = cents / 100;
-  if (currency === "BDT") return `৳${amount.toLocaleString("en-BD", { maximumFractionDigits: 2 })}`;
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+  return `৳${amount.toLocaleString("en-BD", { maximumFractionDigits: 2 })}`;
 }
 
 export const PAYMENT_STATUS_META: Record<

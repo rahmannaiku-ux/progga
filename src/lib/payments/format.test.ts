@@ -8,8 +8,8 @@ describe("formatMoney", () => {
   it("renders BDT with up to 2 decimals when the amount isn't whole", () => {
     expect(formatMoney(50050, "BDT")).toBe("৳500.5");
   });
-  it("falls back to Intl currency formatting for non-BDT currencies", () => {
-    expect(formatMoney(1999, "USD")).toBe("$19.99");
+  it("always renders taka, even for a legacy USD row", () => {
+    expect(formatMoney(1999, "USD")).toBe("৳19.99");
   });
 });
 

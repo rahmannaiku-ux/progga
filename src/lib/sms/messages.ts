@@ -35,8 +35,10 @@ export function purchaseSuccessMessage({
   currency: string;
   reference: string;
 }): string {
+  // Always BDT (see formatMoney); `currency` is accepted but not shown.
+  void currency;
   const money = (cents: number) =>
-    `${currency} ${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+    `BDT ${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   const greeting = studentName.trim() ? `Congratulations ${studentName.trim()}!` : "Congratulations!";
   const price =
     originalCents != null && originalCents > amountCents

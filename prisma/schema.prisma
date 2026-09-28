@@ -714,7 +714,7 @@ model Course {
   language         String       @default("en")
   status           CourseStatus @default(DRAFT)
   priceCents       Int          @default(0)
-  currency         String       @default("USD")
+  currency         String       @default("BDT") // Proggaa sells in taka only
   isFree           Boolean      @default(false)
   durationMinutes  Int          @default(0) // denormalized total, recalculated on publish
   xpReward         Int          @default(0) // total XP for full completion

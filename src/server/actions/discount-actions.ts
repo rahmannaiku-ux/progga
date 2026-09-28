@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
+import { formatMoney } from "@/lib/payments/format";
 import { courseDiscountSchema } from "@/lib/validation/discount";
 import { requireAdminUser } from "./require-user";
 
@@ -53,7 +54,7 @@ export async function upsertCourseDiscount(courseId: string, formData: FormData)
   // instead of silently saving a discount that's larger than it looks.
   if (data.type === "FIXED" && (data.amountOffCents ?? 0) > course.priceCents) {
     throw new Error(
-      `Discount amount can't exceed the mission's price (${(course.priceCents / 100).toFixed(2)}).`
+      `Discount amount can't exceed the mission's price (${formatMoney(course.priceCents)}).`
     );
   }
   if (data.type === "PERCENTAGE" && (data.percentOff ?? 0) > 100) {

@@ -107,7 +107,7 @@ export default async function NewMissionPage() {
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">
-            Price (USD cents) — ignored if free
+            Price in poisha (৳1 = 100) — ignored if free
           </label>
           <input
             type="number"
