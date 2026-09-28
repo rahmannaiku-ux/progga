@@ -199,7 +199,7 @@ export function PurchasePanel({
           </>
         ) : (
           <>
-            <Zap className="mr-1.5 h-4 w-4" /> Unlock with bKash
+            <Zap className="mr-1.5 h-4 w-4" /> Enroll now
           </>
         )}
       </Button>
