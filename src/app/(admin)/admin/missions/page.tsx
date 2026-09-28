@@ -3,6 +3,7 @@ import { Pencil, Tag } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { AdminCourseStatusControl } from "@/components/admin-dashboard/admin-course-status-control";
+import { DeleteMissionButton } from "@/components/admin-dashboard/delete-mission-button";
 import { Pagination } from "@/components/admin-dashboard/pagination";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
@@ -78,7 +79,7 @@ export default async function AdminMissionsPage({
       take: PAGE_SIZE,
       include: {
         teacher: { select: { firstName: true, lastName: true } },
-        _count: { select: { enrollments: true } },
+        _count: { select: { enrollments: true, payments: true } },
         discount: {
           select: { isActive: true, type: true, percentOff: true, amountOffCents: true, startsAt: true, endsAt: true },
         },
@@ -122,7 +123,15 @@ export default async function AdminMissionsPage({
                       {c.teacher.firstName} {c.teacher.lastName} · {c._count.enrollments} enrolled
                     </p>
                   </div>
-                  <EditMissionLink courseId={c.id} />
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <EditMissionLink courseId={c.id} />
+                    <DeleteMissionButton
+                      courseId={c.id}
+                      title={c.title}
+                      enrollmentCount={c._count.enrollments}
+                      paymentCount={c._count.payments}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <MissionPrice course={c} />
@@ -159,8 +168,14 @@ export default async function AdminMissionsPage({
                   >
                     {c.title}
                   </Link>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-center gap-3">
                     <EditMissionLink courseId={c.id} />
+                    <DeleteMissionButton
+                      courseId={c.id}
+                      title={c.title}
+                      enrollmentCount={c._count.enrollments}
+                      paymentCount={c._count.payments}
+                    />
                   </div>
                 </td>
                 <td className="p-4 text-muted-foreground">

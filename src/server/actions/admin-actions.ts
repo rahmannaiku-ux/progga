@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation/admin";
 import type { Role } from "@prisma/client";
 import { requireAdminUser } from "./require-user";
+import { isCourseDeleteConfirmed } from "@/lib/validation/course-delete";
 
 /** Shared P2002 check — every model here follows the same
  * find-then-retry-on-race pattern already used elsewhere in the
@@ -351,6 +352,65 @@ export async function adminSetCourseStatus(
   });
   await logActivity(admin.id, status === "ARCHIVED" ? "UNPUBLISH" : "PUBLISH", "Course", courseId);
   revalidatePath("/admin/missions");
+}
+
+/**
+ * Permanently deletes a mission and everything that depends on it. Most
+ * child rows cascade from Course, but Enrollment, Certificate and Payment
+ * are onDelete: Restrict (deliberately — they're student/financial
+ * history), as are exam attempts, assignment submissions, and uses of
+ * this mission's question-bank questions in other missions' exams. Those
+ * are removed explicitly first, all in one transaction, so a failure
+ * leaves the mission fully intact. The typed confirmation phrase is
+ * re-checked here; the dialog is not the only guard.
+ */
+export async function adminDeleteCourse(courseId: string, confirmation: string) {
+  const admin = await requireAdminUser();
+
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, title: true, slug: true, teacherId: true },
+  });
+  if (!course) throw new Error("That mission no longer exists.");
+  if (!isCourseDeleteConfirmed(confirmation, course.title)) {
+    throw new Error("The confirmation text doesn't match.");
+  }
+
+  const removed = await db.$transaction(
+    async (tx) => {
+      const submissions = await tx.assignmentSubmission.deleteMany({ where: { assignment: { courseId } } });
+      // Answers/integrity events cascade from the attempt.
+      const attempts = await tx.assessmentAttempt.deleteMany({ where: { assessment: { courseId } } });
+      // This mission's bank questions may be reused by other missions' exams.
+      await tx.questionAnswer.deleteMany({ where: { question: { courseId } } });
+      await tx.assessmentQuestion.deleteMany({ where: { question: { courseId } } });
+      const certificates = await tx.certificate.deleteMany({ where: { courseId } });
+      // Coupon redemptions cascade; matched SMS transactions are unlinked (SetNull).
+      const payments = await tx.payment.deleteMany({ where: { courseId } });
+      const enrollments = await tx.enrollment.deleteMany({ where: { courseId } });
+      await tx.course.delete({ where: { id: courseId } });
+      return {
+        enrollments: enrollments.count,
+        payments: payments.count,
+        certificates: certificates.count,
+        attempts: attempts.count,
+        submissions: submissions.count,
+      };
+    },
+    { timeout: 30_000 }
+  );
+
+  await logActivity(admin.id, "DELETE", "Course", courseId, {
+    title: course.title,
+    slug: course.slug,
+    teacherId: course.teacherId,
+    removed,
+  });
+
+  revalidatePath("/admin/missions");
+  revalidatePath("/courses");
+  revalidatePath("/mentor/missions");
+  return removed;
 }
 
 // ---------------------------------------------------------------------
