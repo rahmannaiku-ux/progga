@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/payments/format";
 import { writeAudit } from "./payment-audit";
 import { enqueueWebhook } from "@/lib/payments/webhooks";
 import { getSmsProvider } from "@/lib/sms/onecodesoft";
-import { purchaseSuccessMessage } from "@/lib/sms/messages";
+import { invoiceUrlFor, purchaseSuccessMessage } from "@/lib/sms/messages";
 
 /**
  * Evidence from an approved Android device that this verification rests on.
@@ -188,6 +188,7 @@ async function sendPurchaseSuccessSms(paymentId: string) {
         originalCents: payment.couponDiscountCents ? payment.amountCents + payment.couponDiscountCents : null,
         currency: payment.currency,
         reference: payment.paymentReference,
+        invoiceUrl: invoiceUrlFor(paymentId),
       })
     );
   } catch (err) {

@@ -26,6 +26,7 @@ export function purchaseSuccessMessage({
   originalCents,
   currency,
   reference,
+  invoiceUrl,
 }: {
   studentName: string;
   courseTitle: string;
@@ -34,6 +35,8 @@ export function purchaseSuccessMessage({
   originalCents?: number | null;
   currency: string;
   reference: string;
+  /** Absolute link to the printable invoice (see invoiceUrlFor). */
+  invoiceUrl?: string | null;
 }): string {
   // Always BDT (see formatMoney); `currency` is accepted but not shown.
   void currency;
@@ -44,5 +47,20 @@ export function purchaseSuccessMessage({
     originalCents != null && originalCents > amountCents
       ? `Paid: ${money(amountCents)} (was ${money(originalCents)})`
       : `Paid: ${money(amountCents)}`;
-  return `${greeting} Your purchase of "${courseTitle}" on Proggaa is confirmed. ${price}. Ref: ${reference}. The course is now unlocked on your dashboard.`;
+  const invoice = invoiceUrl ? ` Invoice: ${invoiceUrl}` : "";
+  return `${greeting} Your purchase of "${courseTitle}" on Proggaa is confirmed. ${price}. Ref: ${reference}. The course is now unlocked on your dashboard.${invoice}`;
+}
+
+/** Public site origin for links sent outside the app (SMS). Never localhost. */
+const DEFAULT_PUBLIC_SITE_URL = "https://progga-zeta.vercel.app";
+
+export function publicSiteUrl(envUrl: string | undefined = process.env.NEXT_PUBLIC_APP_URL): string {
+  const url = envUrl?.trim();
+  // A dev/local value (the .env.example default) would give students a dead link.
+  if (!url || /localhost|127\.0\.0\.1/.test(url)) return DEFAULT_PUBLIC_SITE_URL;
+  return url.replace(/\/+$/, "");
+}
+
+export function invoiceUrlFor(paymentId: string, baseUrl: string = publicSiteUrl()): string {
+  return `${baseUrl}/payments/${encodeURIComponent(paymentId)}/invoice`;
 }

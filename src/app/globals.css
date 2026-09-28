@@ -696,3 +696,61 @@
     content: "This content is not available for printing.";
   }
 }
+
+/* ------------------------------------------------------------------
+ * Invoice (/payments/[id]/invoice) — screen label style + print/PDF.
+ * The app shell (sidebar, topbar, bottom nav) is print:hidden in its own
+ * components; these rules make the sheet itself paper-safe. Browsers
+ * drop backgrounds when printing by default, so in dark mode the
+ * theme's light text would print white-on-white — force ink colors.
+ * ------------------------------------------------------------------ */
+.invoice-label {
+  @apply text-xs font-bold uppercase tracking-wide text-muted-foreground;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .invoice-page {
+    max-width: none;
+    margin: 0;
+  }
+  .page-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .invoice-sheet {
+    background: #fff !important;
+    color: #111 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .invoice-sheet * {
+    color: #111 !important;
+    border-color: #d4d4d4 !important;
+  }
+  .invoice-sheet .text-muted-foreground,
+  .invoice-sheet .invoice-label {
+    color: #555 !important;
+  }
+  .invoice-sheet .invoice-paid,
+  .invoice-sheet .invoice-paid * {
+    color: #047857 !important;
+    border-color: #047857 !important;
+  }
+  .invoice-sheet table,
+  .invoice-sheet tr {
+    break-inside: avoid;
+  }
+  .invoice-sheet .overflow-x-auto {
+    overflow: visible !important;
+  }
+}

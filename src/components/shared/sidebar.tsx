@@ -38,7 +38,7 @@ export function Sidebar({
   const progress = heroStats ? xpProgressWithinLevel(heroStats.xp) : null;
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-hidden bg-sidebar lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-hidden bg-sidebar lg:flex print:!hidden">
       {/* Subtle dot texture — reads as "game HUD," not a flat SaaS rail */}
       <div className="pointer-events-none absolute inset-0 bg-sidebar-texture bg-[length:22px_22px] opacity-40" />
       <div

@@ -97,6 +97,9 @@ failures downgrading acknowledged rows, batch result collisions, missing permiss
 - `/payments/[paymentId]/invoice`: the previously hardcoded "bKash" label now reads the order's actual provider.
   No second receipt/PDF system was created — this HTML/print invoice, already tied to the one `Payment` row, is
   the receipt. `formatMoney` already renders ৳ directly (no PDF font pipeline involved).
+  Totals are derived in `lib/payments/invoice.ts` (pre-coupon subtotal, coupon discount line, 100%-coupon orders
+  shown as "Coupon" with no TXID). Printing hides the app shell and forces ink colors, so "Save as PDF" is clean
+  even from dark mode, and the PDF file name defaults to the invoice number.
 
 ## 11. Admin UI
 

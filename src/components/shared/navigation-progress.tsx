@@ -56,7 +56,7 @@ function ProgressInner() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px] bg-transparent"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px] bg-transparent print:hidden"
     >
       <div className="nav-progress-bar h-full w-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
     </div>
