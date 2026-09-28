@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Tag } from "lucide-react";
+import { Pencil, Tag } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { AdminCourseStatusControl } from "@/components/admin-dashboard/admin-course-status-control";
@@ -10,6 +10,18 @@ import { formatMoney } from "@/lib/payments/format";
 import { computeDiscountedPriceCents, getDiscountStatus } from "@/lib/payments/discount";
 
 const PAGE_SIZE = 25;
+
+/** Opens the full mission builder — admins may edit any mentor's mission (see assertOwnsCourse). */
+function EditMissionLink({ courseId }: { courseId: string }) {
+  return (
+    <Link
+      href={`/mentor/missions/${courseId}/builder`}
+      className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80"
+    >
+      <Pencil className="h-3 w-3" /> Edit
+    </Link>
+  );
+}
 
 function MissionPrice({
   course,
@@ -110,6 +122,7 @@ export default async function AdminMissionsPage({
                       {c.teacher.firstName} {c.teacher.lastName} · {c._count.enrollments} enrolled
                     </p>
                   </div>
+                  <EditMissionLink courseId={c.id} />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <MissionPrice course={c} />
@@ -146,6 +159,9 @@ export default async function AdminMissionsPage({
                   >
                     {c.title}
                   </Link>
+                  <div className="mt-1">
+                    <EditMissionLink courseId={c.id} />
+                  </div>
                 </td>
                 <td className="p-4 text-muted-foreground">
                   {c.teacher.firstName} {c.teacher.lastName}

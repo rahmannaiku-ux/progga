@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { formatDhakaDate } from "@/lib/timezone";
 import { UserRowControls } from "@/components/admin-dashboard/user-row-controls";
@@ -31,6 +32,10 @@ export async function UserManagementTable({
             { firstName: { contains: search, mode: "insensitive" } },
             { lastName: { contains: search, mode: "insensitive" } },
             { email: { contains: search, mode: "insensitive" } },
+            // Phone-registered students often have no email or first/last
+            // name yet — their identity lives in phone + StudentProfile.name.
+            { phone: { contains: search.replace(/[\s-]/g, "") } },
+            { studentProfile: { name: { contains: search, mode: "insensitive" } } },
           ],
         }
       : {}),
@@ -47,6 +52,8 @@ export async function UserManagementTable({
         firstName: true,
         lastName: true,
         email: true,
+        phone: true,
+        studentProfile: { select: { name: true } },
         role: true,
         isSuspended: true,
         createdAt: true,
@@ -57,6 +64,9 @@ export async function UserManagementTable({
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const displayName = (u: (typeof users)[number]) =>
+    `${u.firstName} ${u.lastName}`.trim() || u.studentProfile?.name?.trim() || u.phone || "Unnamed user";
+  const contact = (u: (typeof users)[number]) => [u.phone, u.email].filter(Boolean).join(" · ") || "—";
   const canManageRoles = currentAdminRole === "SUPER_ADMIN";
 
   return (
@@ -66,7 +76,7 @@ export async function UserManagementTable({
           type="text"
           name="q"
           defaultValue={search}
-          placeholder="Search by name or email..."
+          placeholder="Search by name, phone or email..."
           className="h-10 w-full max-w-sm rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
         />
       </form>
@@ -85,12 +95,14 @@ export async function UserManagementTable({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-foreground">
-                      {u.firstName} {u.lastName}
+                      <Link href={`/admin/users/${u.id}`} className="hover:text-primary hover:underline">
+                        {displayName(u)}
+                      </Link>
                       {u.id === currentAdminId && (
                         <span className="ml-1.5 text-xs font-normal text-accent">(you)</span>
                       )}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                    <p className="truncate text-xs text-muted-foreground">{contact(u)}</p>
                   </div>
                   {u.id === currentAdminId && (
                     <span className="sticker-badge shrink-0 bg-muted px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">
@@ -134,7 +146,7 @@ export async function UserManagementTable({
           <thead>
             <tr className="border-b border-border/60 text-left text-xs text-muted-foreground">
               <th className="p-4 font-medium">Name</th>
-              <th className="p-4 font-medium">Email</th>
+              <th className="p-4 font-medium">Phone / Email</th>
               <th className="p-4 font-medium">Joined</th>
               <th className="p-4 font-medium">Activity</th>
               <th className="p-4 font-medium">Role / Status</th>
@@ -144,12 +156,14 @@ export async function UserManagementTable({
             {users.map((u) => (
               <tr key={u.id} className="border-b border-border/40 last:border-0">
                 <td className="p-4 text-foreground">
-                  {u.firstName} {u.lastName}
+                  <Link href={`/admin/users/${u.id}`} className="hover:text-primary hover:underline">
+                    {displayName(u)}
+                  </Link>
                   {u.id === currentAdminId && (
                     <span className="ml-1.5 text-xs text-accent">(you)</span>
                   )}
                 </td>
-                <td className="p-4 text-muted-foreground">{u.email}</td>
+                <td className="p-4 text-muted-foreground">{contact(u)}</td>
                 <td className="p-4 text-muted-foreground">
                   {formatDhakaDate(u.createdAt)}
                 </td>

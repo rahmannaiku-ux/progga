@@ -394,6 +394,7 @@ enum VerificationMethod {
   MANUAL_ADMIN
   AUTOMATIC_API // reserved for a genuine provider/merchant API confirmation — never used for SMS evidence
   AUTOMATIC_SMS // verified by the server from a transaction observed by an approved Android payment device
+  FULL_DISCOUNT_COUPON // a coupon brought the price to 0 — nothing to verify, enrolled at checkout
 }
 
 // Mobile financial service providers the SMS pipeline understands.

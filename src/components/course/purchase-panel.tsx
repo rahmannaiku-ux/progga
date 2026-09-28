@@ -193,6 +193,10 @@ export function PurchasePanel({
           <>
             <Zap className="mr-1.5 h-4 w-4" /> Start this mission — free!
           </>
+        ) : applied && display.finalCents <= 0 ? (
+          <>
+            <Zap className="mr-1.5 h-4 w-4" /> Unlock free with coupon
+          </>
         ) : (
           <>
             <Zap className="mr-1.5 h-4 w-4" /> Unlock with bKash

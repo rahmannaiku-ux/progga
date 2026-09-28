@@ -52,6 +52,7 @@ export const PAYMENT_STATUS_META: Record<
 export function verificationMethodLabel(method: VerificationMethod | null) {
   if (method === "MANUAL_ADMIN") return "🧑‍💼 Verified by Proggaa team";
   if (method === "AUTOMATIC_API") return "🤖 Automatic verification";
+  if (method === "FULL_DISCOUNT_COUPON") return "🎟️ Unlocked free with a coupon";
   return null;
 }
 

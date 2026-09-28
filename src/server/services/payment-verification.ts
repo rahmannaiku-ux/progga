@@ -5,6 +5,8 @@ import { sendPaymentVerifiedAlert } from "@/lib/payments/telegram";
 import { formatMoney } from "@/lib/payments/format";
 import { writeAudit } from "./payment-audit";
 import { enqueueWebhook } from "@/lib/payments/webhooks";
+import { getSmsProvider } from "@/lib/sms/onecodesoft";
+import { purchaseSuccessMessage } from "@/lib/sms/messages";
 
 /**
  * Evidence from an approved Android device that this verification rests on.
@@ -32,7 +34,7 @@ export interface VerificationEvidence {
  */
 export async function markPaidAndEnroll(
   paymentId: string,
-  method: "MANUAL_ADMIN" | "AUTOMATIC_API" | "AUTOMATIC_SMS",
+  method: "MANUAL_ADMIN" | "AUTOMATIC_API" | "AUTOMATIC_SMS" | "FULL_DISCOUNT_COUPON",
   verifiedById: string | null,
   evidence?: VerificationEvidence
 ) {
@@ -147,9 +149,50 @@ export async function markPaidAndEnroll(
       courseId: result.courseId,
       verifiedAt: result.verifiedAt,
     });
+    // Same after-commit placement, same reason: an SMS gateway failure must never undo a verified payment.
+    await sendPurchaseSuccessSms(paymentId);
   }
 
   return result;
+}
+
+/**
+ * Best-effort "your purchase succeeded" SMS through the same Onecodesoft
+ * bulk-SMS provider the OTP flow uses. Called exactly once per payment —
+ * only by the markPaidAndEnroll call that actually flipped it to PAID —
+ * so every verification path (admin, bridge, SMS device, 100% coupon)
+ * sends it and none of them can send it twice. Never throws.
+ */
+async function sendPurchaseSuccessSms(paymentId: string) {
+  try {
+    const payment = await db.payment.findUnique({
+      where: { id: paymentId },
+      select: {
+        amountCents: true,
+        couponDiscountCents: true,
+        currency: true,
+        paymentReference: true,
+        user: { select: { phone: true, firstName: true, lastName: true, studentProfile: { select: { name: true } } } },
+        course: { select: { title: true } },
+      },
+    });
+    if (!payment?.user.phone) return;
+    const studentName =
+      payment.user.studentProfile?.name?.trim() || `${payment.user.firstName} ${payment.user.lastName}`.trim();
+    await getSmsProvider().sendSms(
+      payment.user.phone,
+      purchaseSuccessMessage({
+        studentName,
+        courseTitle: payment.course.title,
+        amountCents: payment.amountCents,
+        originalCents: payment.couponDiscountCents ? payment.amountCents + payment.couponDiscountCents : null,
+        currency: payment.currency,
+        reference: payment.paymentReference,
+      })
+    );
+  } catch (err) {
+    console.error(JSON.stringify({ scope: "payment", event: "purchase_sms.failed", paymentId, reason: err instanceof Error ? err.name : "unknown" }));
+  }
 }
 
 /**

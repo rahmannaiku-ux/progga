@@ -117,6 +117,16 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
   });
   if (existing) redirect(`/payments/${existing.id}`);
 
+  // A 100%-off coupon leaves nothing to pay, so there's no TXID for the
+  // student to submit and nothing for an admin or device to verify —
+  // the order is created already awaiting verification and immediately
+  // marked PAID below through the same markPaidAndEnroll path every
+  // other verification uses (enrollment, coupon redemption, audit, SMS).
+  // Only a coupon can get here: computeDiscountedPriceCents never reaches 0
+  // for a paid course without one, and the price is always server-derived.
+  const fullyDiscounted = redeemedCoupon !== null && chargeCents <= 0;
+  if (fullyDiscounted) chargeCents = 0;
+
   const receivingNumber = await getReceivingNumber("BKASH");
 
   let reference = generatePaymentReference();
@@ -137,8 +147,8 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
           mfsProvider: "BKASH",
           receivingNumber,
           paymentReference: reference,
-          status: "PENDING",
-          source: "web",
+          status: fullyDiscounted ? "AWAITING_VERIFICATION" : "PENDING",
+          source: fullyDiscounted ? "coupon" : "web",
           ...(redeemedCoupon
             ? {
                 couponId: redeemedCoupon.id,
@@ -157,6 +167,19 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
         courseId: payment.courseId,
         provider: payment.mfsProvider,
       });
+      if (fullyDiscounted) {
+        await markPaidAndEnroll(payment.id, "FULL_DISCOUNT_COUPON", null);
+        await db.notification.create({
+          data: {
+            userId: user.id,
+            type: "PAYMENT_VERIFIED",
+            title: "Mission unlocked! 🎉",
+            body: `Your coupon ${redeemedCoupon!.code} covered the full price of "${course.title}". The mission is unlocked!`,
+          },
+        });
+        revalidatePath("/my-courses");
+        revalidatePath("/dashboard");
+      }
       redirect(`/payments/${payment.id}`);
     } catch (err) {
       if (
