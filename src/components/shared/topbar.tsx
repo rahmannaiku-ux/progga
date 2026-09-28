@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { Search, Bell } from "lucide-react";
+import { Search } from "lucide-react";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AccountMenu } from "@/components/shared/account-menu";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
+import { NotificationBell } from "@/components/shared/notification-bell";
+import { getNotificationFeed } from "@/server/services/notification-feed";
 
 export async function Topbar({
   title,
@@ -30,6 +32,7 @@ export async function Topbar({
   // Request-cached — the layouts rendering this have already resolved
   // the session, so this doesn't add a second lookup.
   const viewer = await getCurrentSessionUser();
+  const feed = viewer ? await getNotificationFeed(viewer.id) : null;
 
   return (
     <div className="bg-background">
@@ -55,14 +58,13 @@ export async function Topbar({
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {rightSlot}
-          {showSearch && (
-            <Link
-              href="/notifications"
-              aria-label="Notifications"
-              className="sticker hidden h-10 w-10 items-center justify-center bg-surface text-foreground transition-transform hover:-translate-y-0.5 lg:flex"
-            >
-              <Bell className="h-4 w-4" />
-            </Link>
+          {feed && (
+            // With a mobile HUD (hero layout) the HUD carries its own bell below lg.
+            <NotificationBell
+              items={feed.items}
+              unreadCount={feed.unreadCount}
+              className={mobileHud ? "hidden lg:flex" : undefined}
+            />
           )}
           <ThemeToggle />
           {greeting && (

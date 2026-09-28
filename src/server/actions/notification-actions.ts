@@ -16,6 +16,8 @@ export async function markNotificationRead(notificationId: string) {
   });
 
   revalidatePath("/notifications");
+  // The top-bar bell lives in every layout.
+  revalidatePath("/", "layout");
 }
 
 export async function markAllNotificationsRead() {
@@ -27,4 +29,6 @@ export async function markAllNotificationsRead() {
   });
 
   revalidatePath("/notifications");
+  // The top-bar bell lives in every layout.
+  revalidatePath("/", "layout");
 }

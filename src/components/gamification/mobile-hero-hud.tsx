@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { Flame, Bell } from "lucide-react";
+import { Flame } from "lucide-react";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { isProxiedUpload } from "@/components/shared/avatar";
 
@@ -23,7 +22,7 @@ export function MobileHeroHud({
   xpForNextLevel,
   percent,
   streak,
-  unreadNotifications,
+  notificationBell,
   coinBalance,
 }: {
   avatarUrl?: string | null;
@@ -32,7 +31,8 @@ export function MobileHeroHud({
   xpForNextLevel: number;
   percent: number;
   streak: number;
-  unreadNotifications?: number;
+  /** <NotificationBell variant="compact" />, rendered by the (server) layout with its data. */
+  notificationBell?: React.ReactNode;
   coinBalance?: number;
 }) {
   // Guards against avatarUrl pointing at a host next/image won't fetch
@@ -91,16 +91,7 @@ export function MobileHeroHud({
               {streak}
             </span>
           )}
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            className="relative flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Bell className="h-4 w-4" />
-            {!!unreadNotifications && unreadNotifications > 0 && (
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent" />
-            )}
-          </Link>
+          {notificationBell}
         </div>
       </div>
     </div>

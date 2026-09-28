@@ -1,40 +1,12 @@
 import Link from "next/link";
-import {
-  Bell,
-  Trophy,
-  ClipboardCheck,
-  MessageSquare,
-  Flame,
-  Rocket,
-  Wallet,
-  Megaphone,
-  Award,
-  Video,
-  type LucideIcon,
-} from "lucide-react";
-import type { NotificationType } from "@prisma/client";
+import { Bell } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { MarkAllReadButton } from "@/components/gamification/mark-all-read-button";
 import { NotificationRow } from "@/components/gamification/notification-row";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
-import { formatDhakaDate } from "@/lib/timezone";
+import { NOTIFICATION_TYPE_META, notificationTimeAgo } from "@/lib/notifications/meta";
 
-const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> = {
-  ANNOUNCEMENT: { icon: Megaphone, color: "text-accent" },
-  GRADE_POSTED: { icon: MessageSquare, color: "text-primary" },
-  ENROLLMENT: { icon: Rocket, color: "text-primary" },
-  CERTIFICATE_ISSUED: { icon: Award, color: "text-xp" },
-  EXAM_REMINDER: { icon: ClipboardCheck, color: "text-danger" },
-  ASSIGNMENT_DUE: { icon: ClipboardCheck, color: "text-accent" },
-  STREAK_RISK: { icon: Flame, color: "text-danger" },
-  ACHIEVEMENT_UNLOCKED: { icon: Trophy, color: "text-xp" },
-  SYSTEM: { icon: Bell, color: "text-muted-foreground" },
-  PAYMENT_AWAITING_VERIFICATION: { icon: Wallet, color: "text-xp" },
-  PAYMENT_VERIFIED: { icon: Wallet, color: "text-accent" },
-  PAYMENT_REJECTED: { icon: Wallet, color: "text-danger" },
-  LIVE_CLASS_REMINDER: { icon: Video, color: "text-danger" },
-};
 
 const TABS = [
   { key: "all", label: "All" },
@@ -42,17 +14,6 @@ const TABS = [
   { key: "system", label: "System" },
 ] as const;
 
-function timeAgo(date: Date) {
-  const diffMs = Date.now() - date.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return formatDhakaDate(date);
-}
 
 export default async function NotificationsPage({
   searchParams,
@@ -117,7 +78,7 @@ export default async function NotificationsPage({
       ) : (
         <StaggerContainer className="mt-6 space-y-2.5">
           {all.map((n) => {
-            const meta = TYPE_META[n.type];
+            const meta = NOTIFICATION_TYPE_META[n.type];
             return (
               <StaggerItem key={n.id}>
                 <NotificationRow id={n.id} isRead={n.isRead} linkUrl={n.linkUrl}>
@@ -131,7 +92,7 @@ export default async function NotificationsPage({
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">{n.body}</span>
                     <span className="mt-1 block text-[10px] font-medium text-muted-foreground">
-                      {timeAgo(n.createdAt)}
+                      {notificationTimeAgo(n.createdAt)}
                     </span>
                   </span>
                 </NotificationRow>

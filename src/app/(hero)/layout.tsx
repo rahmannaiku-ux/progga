@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
-import { db } from "@/lib/db/client";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
 import { MobileNavDrawer } from "@/components/shared/mobile-nav-drawer";
@@ -9,6 +8,8 @@ import { MobileBottomNav } from "@/components/shared/mobile-bottom-nav";
 import { PageTransition } from "@/components/shared/page-transition";
 import { HeroStatsBadge } from "@/components/gamification/hero-stats-badge";
 import { MobileHeroHud } from "@/components/gamification/mobile-hero-hud";
+import { NotificationBell } from "@/components/shared/notification-bell";
+import { getNotificationFeed } from "@/server/services/notification-feed";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import { isMaintenanceBlocking } from "@/lib/maintenance";
 import { MaintenancePage } from "@/components/shared/maintenance-page";
@@ -42,9 +43,9 @@ export default async function HeroLayout({
     redirect("/complete-profile");
   }
 
-  const [stats, unreadNotifications, devtoolsGuard] = await Promise.all([
+  const [stats, notificationFeed, devtoolsGuard] = await Promise.all([
     getOrCreateHeroStats(user.id),
-    db.notification.count({ where: { userId: user.id, isRead: false } }),
+    getNotificationFeed(user.id),
     isAntiDevToolsEnabledFor(user),
   ]);
 
@@ -108,7 +109,13 @@ export default async function HeroLayout({
               xpForNextLevel={xpForNextLevel}
               percent={percent}
               streak={stats.currentStreak}
-              unreadNotifications={unreadNotifications}
+              notificationBell={
+                <NotificationBell
+                  variant="compact"
+                  items={notificationFeed.items}
+                  unreadCount={notificationFeed.unreadCount}
+                />
+              }
               coinBalance={stats.coinBalance}
             />
           }
