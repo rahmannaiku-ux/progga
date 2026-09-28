@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Library, Tag } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { searchQuestionBank, getQuestionBankTopics } from "@/server/services/question-bank";
 import { deleteBankQuestion } from "@/server/actions/assessment-actions";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
@@ -37,6 +38,7 @@ export default async function QuestionBankPage({
     docsConnected?: string;
   };
 }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({
@@ -76,7 +78,7 @@ export default async function QuestionBankPage({
         </div>
       </div>
 
-      <form className="mt-5 flex flex-wrap gap-2" action={`/mentor/missions/${course.id}/question-bank`}>
+      <form className="mt-5 flex flex-wrap gap-2" action={`${missionsBase}/${course.id}/question-bank`}>
         <input
           name="q"
           defaultValue={searchParams.q ?? ""}
@@ -129,7 +131,7 @@ export default async function QuestionBankPage({
         </button>
         {(searchParams.q || searchParams.type || searchParams.difficulty || searchParams.topic) && (
           <Link
-            href={`/mentor/missions/${course.id}/question-bank`}
+            href={`${missionsBase}/${course.id}/question-bank`}
             className="flex h-9 items-center px-2 text-sm text-muted-foreground hover:text-foreground"
           >
             Clear

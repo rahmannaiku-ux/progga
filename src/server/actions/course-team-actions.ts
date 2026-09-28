@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateMissionPage } from "@/lib/mission-paths";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
 import { requireActiveUser } from "./require-user";
@@ -51,7 +52,7 @@ export async function addCourseTeacher(courseId: string, formData: FormData) {
     data: { userId: user.id, action: "CREATE", entityType: "CourseTeacher", entityId: courseId },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/team`);
+  revalidateMissionPage(`/${courseId}/team`);
   revalidatePath(`/courses/${course.slug}`);
 }
 
@@ -74,6 +75,6 @@ export async function removeCourseTeacher(courseId: string, courseTeacherId: str
     data: { userId: user.id, action: "DELETE", entityType: "CourseTeacher", entityId: courseId },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/team`);
+  revalidateMissionPage(`/${courseId}/team`);
   revalidatePath(`/courses/${course.slug}`);
 }

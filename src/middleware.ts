@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/session-cookie-name";
 
+// Kept in sync with PATHNAME_HEADER in src/lib/mission-paths.ts (not
+// imported: that module pulls in next/headers, which Edge middleware
+// doesn't need).
+const PATHNAME_HEADER = "x-proggaa-pathname";
+
 /**
  * Route-group based RBAC.
  *
@@ -154,7 +159,12 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  // Always overwritten, never trusted from the client: lets server
+  // components/actions know which console (admin vs mentor) a shared
+  // page is being rendered in. Navigation only, not an auth signal.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set(PATHNAME_HEADER, pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

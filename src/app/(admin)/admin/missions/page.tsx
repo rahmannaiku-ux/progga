@@ -15,7 +15,7 @@ const PAGE_SIZE = 25;
 function EditMissionLink({ courseId }: { courseId: string }) {
   return (
     <Link
-      href={`/mentor/missions/${courseId}/builder`}
+      href={`/admin/missions/${courseId}/builder`}
       className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80"
     >
       <Pencil className="h-3 w-3" /> Edit

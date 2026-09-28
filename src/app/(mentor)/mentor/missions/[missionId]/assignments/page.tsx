@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { createAssignment, deleteAssignment } from "@/server/actions/assignment-actions";
 import { formatDhakaDate } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
@@ -12,6 +13,7 @@ export default async function AssignmentsListPage({
 }: {
   params: { missionId: string };
 }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({
@@ -57,7 +59,7 @@ export default async function AssignmentsListPage({
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href={`/mentor/missions/${course.id}/builder`}
+        href={`${missionsBase}/${course.id}/builder`}
         className="text-xs text-muted-foreground hover:text-foreground"
       >
         ← Back to builder

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { createAssessment } from "@/server/actions/assessment-actions";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,6 +11,7 @@ export default async function AssessmentsListPage({
 }: {
   params: { missionId: string };
 }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({
@@ -59,14 +61,14 @@ export default async function AssessmentsListPage({
       {!course.examsEnabled && (
         <div className="comic-panel mb-4 bg-xp/10 p-4 text-sm font-medium text-foreground">
           Exams aren't enabled for this mission yet.{" "}
-          <Link href={`/mentor/missions/${course.id}/builder`} className="font-bold text-primary hover:text-primary/80">
+          <Link href={`${missionsBase}/${course.id}/builder`} className="font-bold text-primary hover:text-primary/80">
             Turn them on in mission settings
           </Link>{" "}
           before publishing anything here — you can still draft encounters below in the meantime.
         </div>
       )}
       <Link
-        href={`/mentor/missions/${course.id}/builder`}
+        href={`${missionsBase}/${course.id}/builder`}
         className="text-xs text-muted-foreground hover:text-foreground"
       >
         ← Back to builder
@@ -75,7 +77,7 @@ export default async function AssessmentsListPage({
         Encounters — {course.title}
       </h1>
       <Link
-        href={`/mentor/missions/${course.id}/question-bank`}
+        href={`${missionsBase}/${course.id}/question-bank`}
         className="mt-1 inline-block text-sm font-medium text-accent hover:text-accent/80"
       >
         Browse question bank →
@@ -85,7 +87,7 @@ export default async function AssessmentsListPage({
         {course.assessments.map((a) => (
           <Link
             key={a.id}
-            href={`/mentor/missions/${course.id}/assessments/${a.id}`}
+            href={`${missionsBase}/${course.id}/assessments/${a.id}`}
             className="glass-panel flex items-center justify-between p-5"
           >
             <div>

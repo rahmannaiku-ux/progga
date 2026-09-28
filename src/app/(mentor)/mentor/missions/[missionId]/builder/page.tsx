@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { CourseStatusBadge } from "@/components/mentor-dashboard/course-status-badge";
 import { PublishToggle } from "@/components/mentor-dashboard/publish-toggle";
 import { ExamsToggle } from "@/components/mentor-dashboard/exams-toggle";
@@ -14,6 +15,7 @@ export default async function MissionBuilderPage({
 }: {
   params: { missionId: string };
 }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({
@@ -92,13 +94,13 @@ export default async function MissionBuilderPage({
       </div>
 
       <Link
-        href={`/mentor/missions/${course.id}/assessments`}
+        href={`${missionsBase}/${course.id}/assessments`}
         className="mt-3 inline-block text-sm font-medium text-accent hover:text-accent/80"
       >
         Manage encounters (quizzes & exams) →
       </Link>
       <Link
-        href={`/mentor/missions/${course.id}/assignments`}
+        href={`${missionsBase}/${course.id}/assignments`}
         className="mt-3 ml-4 inline-block text-sm font-medium text-accent hover:text-accent/80"
       >
         Manage challenges (assignments) →

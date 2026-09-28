@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getMissionsBase, revalidateMissionPage } from "@/lib/mission-paths";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import {
@@ -177,7 +178,7 @@ export async function createAssessment(formData: FormData) {
     },
   });
 
-  redirect(`/mentor/missions/${data.courseId}/assessments/${assessment.id}`);
+  redirect(`${getMissionsBase()}/${data.courseId}/assessments/${assessment.id}`);
 }
 
 export async function updateAssessment(assessmentId: string, formData: FormData) {
@@ -251,7 +252,7 @@ export async function updateAssessment(assessmentId: string, formData: FormData)
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
 }
 
 export async function setAssessmentPublishState(assessmentId: string, publish: boolean) {
@@ -269,7 +270,7 @@ export async function setAssessmentPublishState(assessmentId: string, publish: b
     data: { publishedAt: publish ? new Date() : null },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
 }
 
 export async function deleteAssessment(assessmentId: string) {
@@ -288,8 +289,8 @@ export async function deleteAssessment(assessmentId: string) {
   // an exam only removes its AssessmentQuestion links (cascades
   // automatically), never the reusable questions themselves.
   await db.assessment.delete({ where: { id: assessmentId } });
-  revalidatePath(`/mentor/missions/${courseId}/assessments`);
-  redirect(`/mentor/missions/${courseId}/assessments`);
+  revalidateMissionPage(`/${courseId}/assessments`);
+  redirect(`${getMissionsBase()}/${courseId}/assessments`);
 }
 
 /**
@@ -304,7 +305,7 @@ export async function archiveAssessment(assessmentId: string) {
   const user = await requireMentorUser("Only mentors can author encounters.");
   const courseId = await assertOwnsAssessment(assessmentId, user.id, user.role);
   await db.assessment.update({ where: { id: assessmentId }, data: { archivedAt: new Date() } });
-  revalidatePath(`/mentor/missions/${courseId}/assessments`);
+  revalidateMissionPage(`/${courseId}/assessments`);
   revalidatePath("/mentor/live-exams");
 }
 
@@ -312,7 +313,7 @@ export async function unarchiveAssessment(assessmentId: string) {
   const user = await requireMentorUser("Only mentors can author encounters.");
   const courseId = await assertOwnsAssessment(assessmentId, user.id, user.role);
   await db.assessment.update({ where: { id: assessmentId }, data: { archivedAt: null } });
-  revalidatePath(`/mentor/missions/${courseId}/assessments`);
+  revalidateMissionPage(`/${courseId}/assessments`);
   revalidatePath("/mentor/live-exams");
 }
 
@@ -382,9 +383,9 @@ export async function duplicateAssessment(assessmentId: string) {
     return created;
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/assessments`);
+  revalidateMissionPage(`/${courseId}/assessments`);
   revalidatePath("/mentor/exam-history");
-  redirect(`/mentor/missions/${courseId}/assessments/${duplicate.id}`);
+  redirect(`${getMissionsBase()}/${courseId}/assessments/${duplicate.id}`);
 }
 
 // ---------------------------------------------------------------------
@@ -460,7 +461,7 @@ export async function createQuestion(formData: FormData) {
     });
   }
 
-  revalidatePath(`/mentor/missions/${courseId}/assessments/${data.assessmentId}`);
+  revalidateMissionPage(`/${courseId}/assessments/${data.assessmentId}`);
 }
 
 /**
@@ -489,7 +490,7 @@ export async function addExistingQuestionToAssessment(assessmentId: string, ques
     update: {}, // already attached — no-op rather than an error, so a double-click is harmless
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
 }
 
 /**
@@ -516,7 +517,7 @@ export async function deleteQuestion(assessmentId: string, questionId: string) {
   await db.assessmentQuestion.delete({
     where: { assessmentId_questionId: { assessmentId, questionId } },
   });
-  revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
 }
 
 /**
@@ -541,7 +542,7 @@ export async function deleteBankQuestion(questionId: string) {
   }
 
   await db.question.delete({ where: { id: questionId } });
-  revalidatePath(`/mentor/missions/${question.courseId}/question-bank`);
+  revalidateMissionPage(`/${question.courseId}/question-bank`);
 }
 
 /**
@@ -581,7 +582,7 @@ export async function moveQuestionInAssessment(
     db.assessmentQuestion.update({ where: { id: a.id }, data: { order: b.order } }),
   ]);
 
-  revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
 }
 
 // ---------------------------------------------------------------------

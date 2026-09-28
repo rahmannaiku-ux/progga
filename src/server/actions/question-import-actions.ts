@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateMissionPage } from "@/lib/mission-paths";
 import { db } from "@/lib/db/client";
 import { parsePastedQuestions } from "@/lib/question-import/paste-parser";
 import { parseCsvQuestions, type CsvParseResult } from "@/lib/question-import/csv-parser";
@@ -319,9 +320,9 @@ export async function importParsedQuestions(
   );
 
   if (assessmentId) {
-    revalidatePath(`/mentor/missions/${courseId}/assessments/${assessmentId}`);
+    revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
   }
-  revalidatePath(`/mentor/missions/${courseId}/question-bank`);
+  revalidateMissionPage(`/${courseId}/question-bank`);
 
   return { imported: toCreate.length, failed };
 }

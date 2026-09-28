@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Trash2, Library, ChevronUp, ChevronDown, UploadCloud } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { Badge } from "@/components/ui/badge";
 import { QuestionForm } from "@/components/mentor-dashboard/question-form";
 import { AssessmentPublishToggle } from "@/components/mentor-dashboard/assessment-publish-toggle";
@@ -41,6 +42,7 @@ export default async function AssessmentEditorPage({
   params: { missionId: string; assessmentId: string };
   searchParams: { docsError?: string; docsConnected?: string };
 }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const assessment = await db.assessment.findUnique({
@@ -101,7 +103,7 @@ export default async function AssessmentEditorPage({
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href={`/mentor/missions/${params.missionId}/assessments`}
+        href={`${missionsBase}/${params.missionId}/assessments`}
         className="text-xs text-muted-foreground hover:text-foreground"
       >
         ← All encounters
@@ -128,7 +130,7 @@ export default async function AssessmentEditorPage({
           rather than cramming everything into this one settings screen. */}
       <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold">
         <Link
-          href={`/mentor/missions/${params.missionId}/assessments/${assessment.id}/results`}
+          href={`${missionsBase}/${params.missionId}/assessments/${assessment.id}/results`}
           className="text-accent hover:text-accent/80"
         >
           View results →
@@ -515,7 +517,7 @@ export default async function AssessmentEditorPage({
                 <Library className="h-4 w-4" /> Add from question bank
               </h3>
               <Link
-                href={`/mentor/missions/${courseId}/question-bank`}
+                href={`${missionsBase}/${courseId}/question-bank`}
                 className="text-xs font-medium text-accent hover:text-accent/80"
               >
                 Browse full bank →

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getMissionsBase, revalidateMissionPage } from "@/lib/mission-paths";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { assignmentCreateSchema } from "@/lib/validation/assignment";
@@ -90,8 +91,8 @@ export async function createAssignment(formData: FormData) {
     },
   });
 
-  revalidatePath(`/mentor/missions/${data.courseId}/assignments`);
-  redirect(`/mentor/missions/${data.courseId}/assignments`);
+  revalidateMissionPage(`/${data.courseId}/assignments`);
+  redirect(`${getMissionsBase()}/${data.courseId}/assignments`);
 }
 
 export async function deleteAssignment(courseId: string, assignmentId: string) {
@@ -107,7 +108,7 @@ export async function deleteAssignment(courseId: string, assignmentId: string) {
   }
 
   await db.assignment.delete({ where: { id: assignmentId } });
-  revalidatePath(`/mentor/missions/${courseId}/assignments`);
+  revalidateMissionPage(`/${courseId}/assignments`);
 }
 
 // ---------------------------------------------------------------------

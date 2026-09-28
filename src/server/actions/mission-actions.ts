@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateMissionPage } from "@/lib/mission-paths";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { slugify } from "@/lib/slugify";
@@ -110,6 +111,12 @@ async function assertResourceBelongsToCourse(resourceId: string, courseId: strin
   return resource.lessonId;
 }
 
+/** The builder is served in both consoles (see src/lib/mission-paths.ts) — refresh both. */
+function revalidateBuilder(courseId: string) {
+  revalidateMissionPage(`/${courseId}/builder`);
+  revalidatePath(`/admin/missions/${courseId}/builder`);
+}
+
 // ---------------------------------------------------------------------
 // COURSE
 // ---------------------------------------------------------------------
@@ -217,7 +224,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function setCoursePublishState(courseId: string, publish: boolean) {
@@ -248,7 +255,7 @@ export async function setCoursePublishState(courseId: string, publish: boolean) 
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
   revalidatePath("/mentor/missions");
 }
 
@@ -263,8 +270,8 @@ export async function setCourseExamsEnabled(courseId: string, enabled: boolean) 
   await assertOwnsCourse(courseId, user.id, user.role);
 
   await db.course.update({ where: { id: courseId }, data: { examsEnabled: enabled } });
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
-  revalidatePath(`/mentor/missions/${courseId}/assessments`);
+  revalidateMissionPage(`/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/assessments`);
 }
 
 // ---------------------------------------------------------------------
@@ -298,7 +305,7 @@ export async function createModule(formData: FormData) {
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteModule(courseId: string, moduleId: string) {
@@ -306,7 +313,7 @@ export async function deleteModule(courseId: string, moduleId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertModuleBelongsToCourse(moduleId, courseId);
   await db.module.delete({ where: { id: moduleId } });
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function reorderModule(
@@ -336,7 +343,7 @@ export async function reorderModule(
     }),
   ]);
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 // ---------------------------------------------------------------------
@@ -366,7 +373,7 @@ export async function createChapter(courseId: string, formData: FormData) {
     data: { moduleId, title, order: (maxOrder._max.order ?? -1) + 1 },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteChapter(courseId: string, chapterId: string) {
@@ -374,7 +381,7 @@ export async function deleteChapter(courseId: string, chapterId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertChapterBelongsToCourse(chapterId, courseId);
   await db.chapter.delete({ where: { id: chapterId } });
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 // ---------------------------------------------------------------------
@@ -405,7 +412,7 @@ export async function createLessonGroup(courseId: string, formData: FormData) {
     data: { chapterId, title, order: (maxOrder._max.order ?? -1) + 1 },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteLessonGroup(courseId: string, groupId: string) {
@@ -413,7 +420,7 @@ export async function deleteLessonGroup(courseId: string, groupId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertGroupBelongsToCourse(groupId, courseId);
   await db.lessonGroup.delete({ where: { id: groupId } });
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function reorderLessonGroup(
@@ -445,7 +452,7 @@ export async function reorderLessonGroup(
     }),
   ]);
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 // ---------------------------------------------------------------------
@@ -530,7 +537,7 @@ export async function createLesson(courseId: string, formData: FormData) {
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function updateLesson(courseId: string, formData: FormData) {
@@ -573,7 +580,7 @@ export async function updateLesson(courseId: string, formData: FormData) {
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteLesson(courseId: string, lessonId: string) {
@@ -581,7 +588,7 @@ export async function deleteLesson(courseId: string, lessonId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertLessonBelongsToCourse(lessonId, courseId);
   await db.lesson.delete({ where: { id: lessonId } });
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 // ---------------------------------------------------------------------
@@ -645,7 +652,7 @@ export async function attachLessonResource(
     },
   });
 
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteLessonResource(courseId: string, resourceId: string) {
@@ -653,5 +660,5 @@ export async function deleteLessonResource(courseId: string, resourceId: string)
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertResourceBelongsToCourse(resourceId, courseId);
   await db.lessonResource.delete({ where: { id: resourceId } });
-  revalidatePath(`/mentor/missions/${courseId}/builder`);
+  revalidateMissionPage(`/${courseId}/builder`);
 }

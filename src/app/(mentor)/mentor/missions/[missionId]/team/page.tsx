@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { assertOwnsCourse } from "@/server/actions/mission-actions";
 import { TeamManager } from "@/components/mentor-dashboard/team-manager";
 import { AvatarCropper } from "@/components/shared/avatar-cropper";
 
 export default async function MentorTeamPage({ params }: { params: { missionId: string } }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({
@@ -43,7 +45,7 @@ export default async function MentorTeamPage({ params }: { params: { missionId: 
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href="/mentor/missions"
+        href={missionsBase}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> My missions

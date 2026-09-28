@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateMissionPage } from "@/lib/mission-paths";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
 import { courseCouponSchema, applyCouponSchema } from "@/lib/validation/coupon";
@@ -16,7 +17,7 @@ import { requireCompletedProfile } from "@/lib/auth/require-auth";
 import { assertOwnsCourse } from "./mission-actions";
 
 function revalidateCouponPaths(courseId: string, slug: string) {
-  revalidatePath(`/mentor/missions/${courseId}/coupons`);
+  revalidateMissionPage(`/${courseId}/coupons`);
   revalidatePath(`/courses/${slug}`);
 }
 

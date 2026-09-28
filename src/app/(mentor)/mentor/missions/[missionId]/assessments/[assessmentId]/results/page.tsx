@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { getMissionsBase } from "@/lib/mission-paths";
 import { RISK_LEVEL_LABEL } from "@/lib/exam-integrity";
 
 /**
@@ -16,6 +17,7 @@ export default async function AssessmentResultsPage({
 }: {
   params: { missionId: string; assessmentId: string };
 }) {
+  const missionsBase = getMissionsBase();
   const user = await requireRole("TEACHER");
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
@@ -56,7 +58,7 @@ export default async function AssessmentResultsPage({
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href={`/mentor/missions/${params.missionId}/assessments/${assessment.id}`}
+        href={`${missionsBase}/${params.missionId}/assessments/${assessment.id}`}
         className="text-xs text-muted-foreground hover:text-foreground"
       >
         ← Back to exam
