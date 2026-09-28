@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Pencil, Tag } from "lucide-react";
+import { Pencil, Tag, Ticket } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { AdminCourseStatusControl } from "@/components/admin-dashboard/admin-course-status-control";
@@ -59,6 +59,12 @@ function MissionPrice({
             {status}
           </Badge>
         )}
+      </Link>
+      <Link
+        href={`/admin/missions/${course.id}/coupons`}
+        className="inline-flex w-fit items-center gap-1 text-xs text-accent hover:text-accent/80"
+      >
+        <Ticket className="h-3 w-3" /> Coupons
       </Link>
     </div>
   );

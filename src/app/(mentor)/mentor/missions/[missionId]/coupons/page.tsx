@@ -44,7 +44,8 @@ export default async function MentorCouponsPage({ params }: { params: { missionI
         href={missionsBase}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> My missions
+        <ArrowLeft className="h-4 w-4" />{" "}
+        {missionsBase === "/admin/missions" ? "All missions" : "My missions"}
       </Link>
       <h1 className="mt-3 font-display text-2xl font-semibold text-foreground">
         Coupons — {course.title}
