@@ -348,7 +348,7 @@ Cron schedules in `vercel.json` are always **UTC** — see `DEPLOYMENT.md`.
   an always-visible exit button.
 
 ## Folder Structure
-See `docs/folder-structure.txt` for the full generated tree. Route groups:
+Route groups under `src/app`:
 - `(public)` — marketing/catalog, no auth required
 - `(auth)` — Clerk sign-in/up
 - `(hero)` — student area, any authenticated role

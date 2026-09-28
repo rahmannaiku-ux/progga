@@ -67,6 +67,14 @@
 - Kill-switches: `ANTI_DEVTOOLS`, `ANTI_DEVTOOLS_ROLES`, feature flag `devtools_protection`. Off in `next dev`.
 - Player controls are now a clear overlay (soft fade, auto-hide while playing) instead of a solid bar; iframe pinned edge-to-edge,
   and `viewport-fit=cover` removed (it shifted the page/video sideways on iPhone landscape).
+- Faster detection: 500 ms tick (was 1 s), `debugger` + console probes every tick (were every 5th / 2nd), an immediate probe on
+  load / focus / tab-visible / resize, and a shorter window-gap streak. Persistent console signal ~6 s → ≤ ~1.5 s; first
+  `debugger` probe 5 s → immediate. Debugger pause threshold 250 → 120 ms.
+- Hardening: `debugger` probe gets a random `sourceURL` per call (defeats "never pause here"/ignore-list); the object probe now
+  also uses `console.log` (Info level) since `console.debug` (Verbose) is hidden by DevTools' default filter; blocks Firefox
+  Network (Ctrl/Cmd+Shift/Option+E) and responsive-design (…+M) shortcuts.
+- Fix: the key guard no longer calls `stopPropagation()`, so the exam runner's own `document` keydown listener again logs
+  DevTools shortcuts to the attempt's integrity record (they were being swallowed at the window capture phase).
 
 ### Automatic lesson completion
 - Removed the "Mark as complete" button: students can no longer choose to complete a lesson.
