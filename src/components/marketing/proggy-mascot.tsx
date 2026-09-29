@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,127 @@ const LABEL_FOR_STATE: Record<MascotState, string> = {
   welcoming: "welcoming you",
 };
 
+type Fidget = "hop" | "lean" | "wiggle" | "nod" | "boing";
+
+// Full literal class names (never `proggy-fidget-${x}`): these live in
+// globals.css's @layer components, which Tailwind prunes to classes it
+// can find verbatim in source.
+const FIDGET_CLASS: Record<Fidget, string> = {
+  hop: "proggy-fidget-hop",
+  lean: "proggy-fidget-lean",
+  wiggle: "proggy-fidget-wiggle",
+  nod: "proggy-fidget-nod",
+  boing: "proggy-fidget-boing",
+};
+
+const SHADOW_CLASS: Record<Motion, string> = {
+  wave: "proggy-shadow-wave",
+  gentle: "proggy-shadow-gentle",
+  restrained: "proggy-shadow-restrained",
+  energetic: "proggy-shadow-energetic",
+};
+
+const IDLE_FIDGETS: Fidget[] = ["hop", "lean", "wiggle", "nod"];
+const FIDGET_MS = 900;
+/** Max head-tilt toward the pointer, in degrees. */
+const MAX_TILT = 7;
+
+/**
+ * Rotates between random idle fidgets every 7–14s while the mascot is
+ * on screen, and exposes `trigger` for tap/hover reactions. Real
+ * rigged motion (blinks, limbs) would need Rive/Lottie art; these
+ * layered whole-body moves are what flat PNG poses can support.
+ */
+function useFidgets(enabled: boolean, rootRef: React.RefObject<HTMLElement>) {
+  const [fidget, setFidget] = useState<Fidget | null>(null);
+  const [visible, setVisible] = useState(true);
+  const clearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const trigger = useCallback((f: Fidget) => {
+    if (clearRef.current) clearTimeout(clearRef.current);
+    setFidget(null);
+    // next frame so re-triggering the same fidget restarts its animation
+    requestAnimationFrame(() => setFidget(f));
+    clearRef.current = setTimeout(() => setFidget(null), FIDGET_MS);
+  }, []);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!enabled || !el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => setVisible(entry?.isIntersecting ?? true));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [enabled, rootRef]);
+
+  useEffect(() => {
+    if (!enabled || !visible) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      timer = setTimeout(() => {
+        trigger(IDLE_FIDGETS[Math.floor(Math.random() * IDLE_FIDGETS.length)]!);
+        schedule();
+      }, 7000 + Math.random() * 7000);
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  }, [enabled, visible, trigger]);
+
+  useEffect(() => () => {
+    if (clearRef.current) clearTimeout(clearRef.current);
+  }, []);
+
+  return { fidget, visible, trigger };
+}
+
+/**
+ * Tilts the mascot's upper body toward a fine pointer (mouse/trackpad)
+ * via CSS variables; the CSS transition does the easing. Touch devices
+ * get no tilt — there's no hovering pointer to look at.
+ */
+function usePointerTilt(enabled: boolean, rootRef: React.RefObject<HTMLElement>, tiltRef: React.RefObject<HTMLElement>) {
+  useEffect(() => {
+    const root = rootRef.current;
+    const tilt = tiltRef.current;
+    if (!enabled || !root || !tilt || !window.matchMedia("(pointer: fine)").matches) return;
+    let frame = 0;
+    let last: PointerEvent | null = null;
+    const apply = () => {
+      frame = 0;
+      if (!last) return;
+      const r = root.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) return;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height * 0.35; // roughly head height
+      const dx = Math.max(-1, Math.min(1, (last.clientX - cx) / (window.innerWidth / 2)));
+      const dy = Math.max(-1, Math.min(1, (last.clientY - cy) / (window.innerHeight / 2)));
+      tilt.style.setProperty("--proggy-tilt", `${(dx * MAX_TILT).toFixed(2)}deg`);
+      tilt.style.setProperty("--proggy-shift", `${(dx * 3).toFixed(2)}%`);
+      tilt.style.setProperty("--proggy-lift", `${(Math.min(0, dy) * 2).toFixed(2)}%`);
+    };
+    const onMove = (e: PointerEvent) => {
+      last = e;
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [enabled, rootRef, tiltRef]);
+}
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+  return reduced;
+}
+
 export function ProggyMascot({
   state = "idle",
   className,
@@ -130,28 +252,58 @@ export function ProggyMascot({
 }) {
   const pose = POSE_FOR_STATE[state];
   const asset = POSE_ASSET[pose];
-  const motionClass = animated ? MOTION_CLASS[MOTION_FOR_STATE[state]] : undefined;
+  const motion = MOTION_FOR_STATE[state];
+  const reducedMotion = usePrefersReducedMotion();
+  const live = animated && !reducedMotion;
+
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const tiltRef = useRef<HTMLSpanElement>(null);
+  const { fidget, visible, trigger } = useFidgets(live, rootRef);
+  usePointerTilt(live, rootRef, tiltRef);
 
   return (
     <span
-      className={cn("relative block select-none", className)}
+      ref={rootRef}
+      className={cn("proggy relative block select-none", !visible && "proggy-paused", className)}
       style={{ aspectRatio: `${asset.w} / ${asset.h}` }}
+      onPointerEnter={live ? (e) => e.pointerType === "mouse" && trigger("boing") : undefined}
+      onPointerDown={live ? () => trigger("boing") : undefined}
     >
       {groundShadow && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-[12%] bottom-[2%] h-[8%] rounded-[50%] bg-border/25 blur-[6px]"
+          className={cn(
+            "pointer-events-none absolute inset-x-[12%] bottom-[2%] h-[8%] rounded-[50%] bg-border/25 blur-[6px]",
+            live && cn("proggy-shadow", SHADOW_CLASS[motion])
+          )}
         />
       )}
-      <span className={cn("relative block h-full w-full", motionClass)}>
-        <Image
-          src={asset.src}
-          alt={`Proggy the Proggaa mascot, ${LABEL_FOR_STATE[state]}`}
-          fill
-          priority={priority}
-          sizes="(max-width: 640px) 40vw, 320px"
-          className="object-contain object-bottom drop-shadow-[3px_6px_0_hsl(var(--border)/0.12)]"
-        />
+      {/* Layers, outermost first: pointer tilt → one-off fidget → looping
+          idle motion → the art (re-keyed per pose so a pose change pops in). */}
+      <span ref={tiltRef} className={cn("relative block h-full w-full", live && "proggy-tilt")}>
+        <span className={cn("relative block h-full w-full", fidget && FIDGET_CLASS[fidget])}>
+          <span className={cn("relative block h-full w-full", live && MOTION_CLASS[motion])}>
+            <span key={pose} className={cn("relative block h-full w-full", live && "proggy-enter")}>
+              <Image
+                src={asset.src}
+                alt={`Proggy the Proggaa mascot, ${LABEL_FOR_STATE[state]}`}
+                fill
+                priority={priority}
+                sizes="(max-width: 640px) 40vw, 320px"
+                className="object-contain object-bottom drop-shadow-[3px_6px_0_hsl(var(--border)/0.12)]"
+              />
+              {live && (
+                // Soft light sweep clipped to Proggy's silhouette (the pose PNG
+                // doubles as the mask), for a glossier, less flat-sticker look.
+                <span
+                  aria-hidden="true"
+                  className="proggy-sheen pointer-events-none absolute inset-0"
+                  style={{ WebkitMaskImage: `url(${asset.src})`, maskImage: `url(${asset.src})` } as React.CSSProperties}
+                />
+              )}
+            </span>
+          </span>
+        </span>
       </span>
     </span>
   );

@@ -300,77 +300,187 @@
   0%, 100% { opacity: 0.55; transform: scale(0.9); }
   50% { opacity: 1; transform: scale(1.08); }
 }
-/* Proggy's idle "breathing" — a very small, slow scale pulse, not a
-   bounce. Meant to read as "alive" at a glance without being
-   distracting if you're staring at the page for a while (e.g. sitting
-   next to a lesson video). */
+/* ---------------------------------------------------------------------
+   Proggy's motion system (see components/marketing/proggy-mascot.tsx).
+   The art is flat PNG poses, so "alive" comes from layered whole-body
+   motion using classic animation principles — squash & stretch,
+   anticipation, follow-through — rather than rigged limbs:
+     tilt layer    → leans toward a mouse pointer (CSS vars + easing)
+     fidget layer  → occasional one-off hop/lean/wiggle/nod, "boing" on tap
+     loop layer    → the per-pose idle loop below
+     art layer     → pop-in on pose change + a light sheen sweep
+   Every loop scales from the feet (transform-origin bottom) so he stays
+   planted, and the ground shadow breathes in sync with the loop.
+   --------------------------------------------------------------------- */
+
+/* Idle breathing with squash & stretch: inhaling stretches him a hair
+   taller and narrower, exhaling settles back. Slow enough to sit beside
+   a lesson video without pulling focus. */
 @keyframes proggy-breathe {
-  0%, 100% {
-    transform: scale(1) translateY(0);
-  }
-  50% {
-    transform: scale(1.015) translateY(-2px);
-  }
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  45% { transform: translateY(-2px) scale(0.99, 1.025); }
+  60% { transform: translateY(-2px) scale(0.99, 1.025); }
 }
 .animate-proggy-breathe {
-  animation: proggy-breathe 4.5s ease-in-out infinite;
+  animation: proggy-breathe 3.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   transform-origin: center bottom;
 }
 
-/* The rest of Proggy's per-pose motion vocabulary. Each pairs with a
-   specific reference pose so the movement reads as "in character"
-   rather than a generic bob applied to every image:
-   - energetic: excited/jumping pose (celebrating, proud) — a real bounce
-   - restrained: thinking/sad poses — barely-there, unhurried sway
-   - wave: the waving pose (idle) — a small periodic hand-wave tilt
-   All three, like proggy-breathe, are disabled outright under
-   prefers-reduced-motion below rather than just shortened. */
+/* Celebrating: anticipation crouch → stretched jump → squash on landing. */
 @keyframes proggy-bounce-energetic {
-  0%, 100% {
-    transform: translateY(0) rotate(-1.5deg) scale(1);
-  }
-  50% {
-    transform: translateY(-14px) rotate(1.5deg) scale(1.03);
-  }
+  0%, 100% { transform: translateY(0) scale(1, 1) rotate(0deg); }
+  12% { transform: translateY(0) scale(1.06, 0.92) rotate(0deg); }
+  30% { transform: translateY(-16%) scale(0.95, 1.07) rotate(-2deg); }
+  48% { transform: translateY(-19%) scale(1, 1) rotate(2deg); }
+  66% { transform: translateY(0) scale(1.08, 0.9) rotate(0deg); }
+  78% { transform: translateY(-2%) scale(0.98, 1.02); }
 }
 .animate-proggy-energetic {
-  animation: proggy-bounce-energetic 1.7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation: proggy-bounce-energetic 1.6s cubic-bezier(0.33, 0, 0.3, 1) infinite;
   transform-origin: center bottom;
 }
 
+/* Thinking/sad/working: slow, heavy sway with a slight breath. */
 @keyframes proggy-sway-restrained {
-  0%, 100% {
-    transform: translateY(0) rotate(-0.75deg);
-  }
-  50% {
-    transform: translateY(-3px) rotate(0.75deg);
-  }
+  0%, 100% { transform: translateY(0) rotate(-1deg) scale(1, 1); }
+  50% { transform: translateY(-3px) rotate(1deg) scale(0.995, 1.012); }
 }
 .animate-proggy-restrained {
-  animation: proggy-sway-restrained 6s ease-in-out infinite;
+  animation: proggy-sway-restrained 5.2s ease-in-out infinite;
   transform-origin: center bottom;
 }
 
+/* Waving pose: a burst of rocking (matching the raised hand), then rest
+   with breathing so he never freezes completely. */
 @keyframes proggy-wave-idle {
-  0%, 100% {
-    transform: rotate(0deg) translateY(0);
-  }
-  20% {
-    transform: rotate(-4deg) translateY(-2px);
-  }
-  32% {
-    transform: rotate(3deg) translateY(-2px);
-  }
-  44% {
-    transform: rotate(-3deg) translateY(-1px);
-  }
-  56%, 100% {
-    transform: rotate(0deg) translateY(0);
-  }
+  0%, 100% { transform: rotate(0deg) translateY(0) scale(1, 1); }
+  8% { transform: rotate(-4deg) translateY(-2px) scale(0.99, 1.02); }
+  16% { transform: rotate(3.5deg) translateY(-2px); }
+  24% { transform: rotate(-3deg) translateY(-1px); }
+  32% { transform: rotate(2deg) translateY(-1px); }
+  40% { transform: rotate(0deg) translateY(0) scale(1, 1); }
+  70% { transform: translateY(-2px) scale(0.99, 1.02); }
 }
 .animate-proggy-wave {
-  animation: proggy-wave-idle 4.2s ease-in-out infinite;
+  animation: proggy-wave-idle 4.4s ease-in-out infinite;
   transform-origin: center bottom;
+}
+
+/* Ground shadow: shrinks and fades as he rises, grows as he lands. */
+@keyframes proggy-shadow-breathe {
+  0%, 100% { transform: scaleX(1); opacity: 1; }
+  50% { transform: scaleX(0.94); opacity: 0.85; }
+}
+@keyframes proggy-shadow-jump {
+  0%, 100% { transform: scaleX(1); opacity: 1; }
+  12% { transform: scaleX(1.08); opacity: 1; }
+  30%, 48% { transform: scaleX(0.6); opacity: 0.45; }
+  66% { transform: scaleX(1.1); opacity: 1; }
+}
+.proggy-shadow { transform-origin: center; }
+.proggy-shadow-gentle,
+.proggy-shadow-wave { animation: proggy-shadow-breathe 3.6s ease-in-out infinite; }
+.proggy-shadow-restrained { animation: proggy-shadow-breathe 5.2s ease-in-out infinite; }
+.proggy-shadow-energetic { animation: proggy-shadow-jump 1.6s cubic-bezier(0.33, 0, 0.3, 1) infinite; }
+
+/* Pointer tilt — the JS only sets the variables; this eases toward them. */
+.proggy-tilt {
+  transform: translate(var(--proggy-shift, 0), var(--proggy-lift, 0)) rotate(var(--proggy-tilt, 0deg));
+  transform-origin: center bottom;
+  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* One-off fidgets (900ms, matching FIDGET_MS). */
+@keyframes proggy-fidget-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  15% { transform: translateY(0) scale(1.05, 0.93); }
+  40% { transform: translateY(-10%) scale(0.96, 1.05); }
+  70% { transform: translateY(0) scale(1.04, 0.95); }
+  85% { transform: translateY(-1%) scale(0.99, 1.01); }
+}
+@keyframes proggy-fidget-lean {
+  0%, 100% { transform: rotate(0deg); }
+  35%, 60% { transform: rotate(-5deg) translateX(-2%); }
+  80% { transform: rotate(1deg); }
+}
+@keyframes proggy-fidget-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-4deg); }
+  30% { transform: rotate(4deg); }
+  45% { transform: rotate(-3deg); }
+  60% { transform: rotate(2deg); }
+  75% { transform: rotate(-1deg); }
+}
+@keyframes proggy-fidget-nod {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  25% { transform: translateY(1.5%) scale(1.01, 0.97); }
+  50% { transform: translateY(0) scale(1, 1); }
+  70% { transform: translateY(1%) scale(1.01, 0.98); }
+}
+@keyframes proggy-fidget-boing {
+  0%, 100% { transform: scale(1, 1); }
+  20% { transform: scale(1.1, 0.88); }
+  45% { transform: scale(0.94, 1.08); }
+  65% { transform: scale(1.03, 0.97); }
+  82% { transform: scale(0.99, 1.01); }
+}
+.proggy-fidget-hop,
+.proggy-fidget-lean,
+.proggy-fidget-wiggle,
+.proggy-fidget-nod,
+.proggy-fidget-boing {
+  transform-origin: center bottom;
+  animation-duration: 900ms;
+  animation-timing-function: cubic-bezier(0.33, 0, 0.3, 1);
+  animation-fill-mode: both;
+}
+.proggy-fidget-hop { animation-name: proggy-fidget-hop; }
+.proggy-fidget-lean { animation-name: proggy-fidget-lean; }
+.proggy-fidget-wiggle { animation-name: proggy-fidget-wiggle; }
+.proggy-fidget-nod { animation-name: proggy-fidget-nod; }
+.proggy-fidget-boing { animation-name: proggy-fidget-boing; }
+
+/* Pose change / first paint: a springy pop from the feet. */
+@keyframes proggy-enter {
+  0% { opacity: 0; transform: translateY(6%) scale(0.85, 0.9); }
+  60% { opacity: 1; transform: translateY(-2%) scale(1.03, 1.04); }
+  100% { opacity: 1; transform: translateY(0) scale(1, 1); }
+}
+.proggy-enter {
+  animation: proggy-enter 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: center bottom;
+}
+
+/* A soft diagonal light band crossing the silhouette every few seconds.
+   Masked by the pose PNG itself (set inline), so it only lights Proggy. */
+@keyframes proggy-sheen {
+  0%, 70% { background-position: 160% 0; }
+  100% { background-position: -60% 0; }
+}
+.proggy-sheen {
+  background-image: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.28) 47%,
+    rgb(255 255 255 / 0.05) 55%,
+    transparent 62%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  mix-blend-mode: soft-light;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center bottom;
+  mask-position: center bottom;
+  animation: proggy-sheen 6.5s ease-in-out infinite;
+}
+
+/* Off-screen mascots stop animating (set by an IntersectionObserver). */
+.proggy-paused,
+.proggy-paused * {
+  animation-play-state: paused !important;
 }
 
 @keyframes streak-pulse {
@@ -416,6 +526,15 @@
   .animate-proggy-energetic,
   .animate-proggy-restrained,
   .animate-proggy-wave,
+  .proggy-shadow,
+  .proggy-tilt,
+  .proggy-enter,
+  .proggy-sheen,
+  .proggy-fidget-hop,
+  .proggy-fidget-lean,
+  .proggy-fidget-wiggle,
+  .proggy-fidget-nod,
+  .proggy-fidget-boing,
   .animate-streak-pulse {
     animation: none;
     transform: none;
