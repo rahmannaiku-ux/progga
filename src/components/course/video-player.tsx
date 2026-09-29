@@ -361,6 +361,21 @@ export function VideoPlayer({
 
   const displayTime = isSeeking ? seekPreview : currentTime;
 
+  // Phones: the inline player is only ~200px tall, so full-size (44px)
+  // controls wrapped onto two rows and covered the whole picture. Inline
+  // below `sm` uses a compact single-row bar; fullscreen (and sm+) keep
+  // the full 44px touch targets.
+  const compact = !isFullscreen;
+  const btnSize = compact ? "h-9 w-9 sm:h-11 sm:w-11" : "h-11 w-11";
+  const iconBtn = cn(
+    "flex shrink-0 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
+    btnSize
+  );
+  const pillBtn = cn(
+    "flex shrink-0 items-center gap-1 rounded-full text-xs font-bold text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
+    compact ? "h-9 min-w-9 px-2 sm:h-11 sm:min-w-11 sm:px-3" : "h-11 min-w-11 px-3"
+  );
+
   return (
     <div
       ref={containerRef}
@@ -391,7 +406,7 @@ export function VideoPlayer({
       <div
         className={cn(
           "relative overflow-hidden bg-black",
-          isFullscreen ? "flex-1" : "aspect-video rounded-t-2xl"
+          isFullscreen ? "flex-1" : "video-frame rounded-t-2xl"
         )}
       >
         {/* The actual YouTube surface. pointer-events-none guarantees it
@@ -460,8 +475,13 @@ export function VideoPlayer({
             className="absolute inset-0 flex items-center justify-center bg-transparent"
           >
             {!isPlaying && (
-              <span className="sticker flex h-16 w-16 items-center justify-center bg-primary/90 text-primary-foreground motion-reduce:transition-none">
-                <Play className="h-7 w-7 translate-x-0.5 fill-current" />
+              <span
+                className={cn(
+                  "sticker flex items-center justify-center bg-primary/90 text-primary-foreground motion-reduce:transition-none",
+                  compact ? "h-12 w-12 sm:h-16 sm:w-16" : "h-16 w-16"
+                )}
+              >
+                <Play className={cn("translate-x-0.5 fill-current", compact ? "h-5 w-5 sm:h-7 sm:w-7" : "h-7 w-7")} />
               </span>
             )}
           </button>
@@ -513,7 +533,8 @@ export function VideoPlayer({
             // the very bottom so the white controls stay readable over any
             // video frame. It sits ON the video (not under it, as the old
             // white card did) and fades away while playing.
-            "absolute inset-x-0 bottom-0 z-20 flex flex-col gap-1 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-3 pt-10 text-white transition-opacity duration-300",
+            "absolute inset-x-0 bottom-0 z-20 flex flex-col bg-gradient-to-t from-black/75 via-black/30 to-transparent text-white transition-opacity duration-300",
+            compact ? "gap-0 px-2 pb-1.5 pt-6 sm:gap-1 sm:p-3 sm:pt-10" : "gap-1 p-3 pt-10",
             isFullscreen &&
               "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
             controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
@@ -526,7 +547,7 @@ export function VideoPlayer({
               (pointer up / change), not on every pixel of drag,
               matching the "efficient update strategy" ask. */}
           <div className="flex items-center gap-2">
-            <span className="w-12 shrink-0 font-mono text-[11px] tabular-nums text-white/85">
+            <span className="w-10 shrink-0 font-mono text-[10px] tabular-nums text-white/85 sm:w-12 sm:text-[11px]">
               {formatTime(displayTime)}
             </span>
             <input
@@ -541,33 +562,36 @@ export function VideoPlayer({
                 setSeekPreview(Number((e.target as HTMLInputElement).value));
               }}
               onChange={(e) => commitSeek(Number(e.target.value))}
-              className="player-range flex-1 touch-none"
+              className={cn("player-range min-w-0 flex-1 touch-none", compact && "player-range-compact")}
               style={{ "--fill": `${duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0}%` } as React.CSSProperties}
             />
-            <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-white/85">
+            <span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-white/85 sm:w-12 sm:text-[11px]">
               {formatTime(duration)}
             </span>
           </div>
 
           {/* Main control row — wraps on very narrow screens rather
               than overflowing horizontally. */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between gap-1 sm:gap-2">
+            <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
               <button
                 type="button"
                 aria-label="Rewind 10 seconds"
                 title="-10s"
                 onClick={() => seekBy(-SEEK_STEP_SECONDS)}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className={iconBtn}
               >
-                <RotateCcw className="h-5 w-5" />
+                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
               <button
                 type="button"
                 aria-label={isPlaying ? "Pause" : "Play"}
                 title={isPlaying ? "Pause" : "Play"}
                 onClick={togglePlay}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-xp text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className={cn(
+                  "flex shrink-0 items-center justify-center rounded-full bg-xp text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
+                  btnSize
+                )}
               >
                 {isPlaying ? (
                   <Pause className="h-5 w-5 fill-current" />
@@ -580,9 +604,9 @@ export function VideoPlayer({
                 aria-label="Forward 10 seconds"
                 title="+10s"
                 onClick={() => seekBy(SEEK_STEP_SECONDS)}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className={iconBtn}
               >
-                <RotateCw className="h-5 w-5" />
+                <RotateCw className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
 
               {/* Volume — hidden below sm to keep the row from
@@ -595,7 +619,7 @@ export function VideoPlayer({
                   aria-label={isMuted ? "Unmute" : "Mute"}
                   title={isMuted ? "Unmute" : "Mute"}
                   onClick={toggleMute}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                  className={iconBtn}
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeX className="h-4.5 w-4.5" />
@@ -617,7 +641,7 @@ export function VideoPlayer({
               </div>
             </div>
 
-            <div ref={menusRef} className="flex items-center gap-1.5">
+            <div ref={menusRef} className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
               {/* Playback speed */}
               <div className="relative">
                 <button
@@ -630,14 +654,18 @@ export function VideoPlayer({
                     setShowSpeedMenu((v) => !v);
                     setShowQualityMenu(false);
                   }}
-                  className="flex h-11 min-w-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                  className={pillBtn}
                 >
-                  <Gauge className="h-4 w-4" /> {playbackRate}×
+                  <Gauge className="hidden h-4 w-4 sm:block" /> {playbackRate}×
                 </button>
                 {showSpeedMenu && (
                   <div
                     role="menu"
-                    className="absolute bottom-full right-0 z-10 mb-2 w-28 rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl"
+                    className={cn(
+                      "absolute bottom-full right-0 z-10 mb-2 w-28 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl",
+                      // The inline player clips overflow, so the menu must fit inside it.
+                      compact ? "max-h-32 sm:max-h-64" : "max-h-[min(20rem,70vh)]"
+                    )}
                   >
                     {PLAYBACK_RATES.map((rate) => (
                       <button
@@ -647,7 +675,8 @@ export function VideoPlayer({
                         aria-checked={rate === playbackRate}
                         onClick={() => handleSpeedChange(rate)}
                         className={cn(
-                          "flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold",
+                          "flex w-full items-center justify-center rounded-lg text-sm font-semibold",
+                          compact ? "min-h-9 sm:min-h-11" : "min-h-11",
                           rate === playbackRate
                             ? "bg-xp text-xp-foreground"
                             : "text-white hover:bg-white/15"
@@ -676,15 +705,20 @@ export function VideoPlayer({
                     setShowQualityMenu((v) => !v);
                     setShowSpeedMenu(false);
                   }}
-                  className="flex h-11 min-w-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-white hover:bg-white/15 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                  className={cn(pillBtn, "disabled:opacity-50")}
                 >
                   <Settings className="h-4 w-4" />
-                  {QUALITY_LABELS[currentQuality] ?? "Auto"}
+                  {/* Icon-only inline on phones; the open menu still shows the labels. */}
+                  <span className={cn(compact && "hidden sm:inline")}>{QUALITY_LABELS[currentQuality] ?? "Auto"}</span>
                 </button>
                 {showQualityMenu && availableQualities.length > 0 && (
                   <div
                     role="menu"
-                    className="absolute bottom-full right-0 z-10 mb-2 w-28 rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl"
+                    className={cn(
+                      "absolute bottom-full right-0 z-10 mb-2 w-28 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl",
+                      // The inline player clips overflow, so the menu must fit inside it.
+                      compact ? "max-h-32 sm:max-h-64" : "max-h-[min(20rem,70vh)]"
+                    )}
                   >
                     {["auto", ...availableQualities.filter((q) => q !== "auto")].map((q) => (
                       <button
@@ -694,7 +728,8 @@ export function VideoPlayer({
                         aria-checked={q === currentQuality}
                         onClick={() => handleQualityChange(q)}
                         className={cn(
-                          "flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold",
+                          "flex w-full items-center justify-center rounded-lg text-sm font-semibold",
+                          compact ? "min-h-9 sm:min-h-11" : "min-h-11",
                           q === currentQuality
                             ? "bg-xp text-xp-foreground"
                             : "text-white hover:bg-white/15"
@@ -712,7 +747,7 @@ export function VideoPlayer({
                 aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 onClick={toggleFullscreen}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className={iconBtn}
               >
                 {isFullscreen ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
               </button>

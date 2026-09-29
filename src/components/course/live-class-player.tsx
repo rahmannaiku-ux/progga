@@ -126,7 +126,7 @@ export function LiveClassPlayer({
       <div
         className={cn(
           "relative overflow-hidden bg-black",
-          isFullscreen ? "flex-1" : "aspect-video rounded-t-2xl"
+          isFullscreen ? "flex-1" : "video-frame rounded-t-2xl"
         )}
       >
         {/* Locked-down, pointer-events-none YouTube surface — same
@@ -220,7 +220,9 @@ export function LiveClassPlayer({
         <div
           className={cn(
             // Clear overlay on the video (soft fade only), like the lesson player.
-            "absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-3 pt-10 text-white",
+            "absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-gradient-to-t from-black/75 via-black/30 to-transparent text-white",
+            // Compact inline on phones (the player is only ~200px tall there).
+            isFullscreen ? "p-3 pt-10" : "px-2 pb-1.5 pt-6 sm:p-3 sm:pt-10",
             isFullscreen &&
               "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
           )}
@@ -231,7 +233,7 @@ export function LiveClassPlayer({
               aria-label={isPlaying ? "Pause" : "Play"}
               title={isPlaying ? "Pause" : "Play"}
               onClick={togglePlay}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-xp text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-xp sm:h-11 sm:w-11 text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               {isPlaying ? (
                 <Pause className="h-5 w-5 fill-current" />
@@ -244,7 +246,7 @@ export function LiveClassPlayer({
               aria-label={isMuted ? "Unmute" : "Mute"}
               title={isMuted ? "Unmute" : "Mute"}
               onClick={toggleMute}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-white/15 sm:h-11 sm:w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               {isMuted ? <VolumeX className="h-4.5 w-4.5" /> : <Volume2 className="h-4.5 w-4.5" />}
             </button>
@@ -256,7 +258,7 @@ export function LiveClassPlayer({
             aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             onClick={toggleFullscreen}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-white/15 sm:h-11 sm:w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
             {isFullscreen ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
           </button>

@@ -652,6 +652,34 @@
   border: 3px solid hsl(var(--xp));
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
 }
+/* Inline player on phones: a shorter hit area so the seek row doesn't eat
+   the ~200px-tall video (the thumb stays 16px+ — still easy to grab). */
+@media (max-width: 639px) {
+  .player-range-compact {
+    height: 28px;
+  }
+  .player-range-compact::-webkit-slider-runnable-track {
+    height: 4px;
+  }
+  .player-range-compact::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+  }
+}
+
+/* 16:9 player frame. aspect-ratio needs iOS Safari 15+ — older iPhones
+   fall back to the padding-top trick (children are absolutely placed). */
+.video-frame {
+  aspect-ratio: 16 / 9;
+}
+@supports not (aspect-ratio: 1 / 1) {
+  .video-frame {
+    height: 0;
+    padding-top: 56.25%;
+  }
+}
+
 .player-range:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
