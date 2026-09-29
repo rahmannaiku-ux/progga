@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Search } from "lucide-react";
+import { SearchCommand } from "@/components/shared/search-command";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AccountMenu } from "@/components/shared/account-menu";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
@@ -40,16 +39,7 @@ export async function Topbar({
         <div className="flex min-w-0 flex-1 items-center gap-3">
           {mobileNav}
           {showSearch ? (
-            <Link
-              href="/search"
-              className="group flex h-11 w-full max-w-md items-center gap-2.5 rounded-xl border border-border/15 bg-surface px-4 text-sm text-muted-foreground shadow-card transition-shadow hover:shadow-card-hover"
-            >
-              <Search className="h-4 w-4 shrink-0" />
-              <span className="truncate">Search courses, lessons, missions...</span>
-              <kbd className="ml-auto hidden shrink-0 items-center gap-0.5 rounded-md border border-border/15 bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground sm:flex">
-                Ctrl K
-              </kbd>
-            </Link>
+            <SearchCommand />
           ) : (
             <h1 className="truncate font-display text-base font-semibold text-foreground sm:text-lg">
               {title}
