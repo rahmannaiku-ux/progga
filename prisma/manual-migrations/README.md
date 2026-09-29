@@ -1,3 +1,7 @@
+> **Historical.** This was written before `prisma/migrations/` existed. The
+> repo now has a real migration history and this change is already part of
+> the schema, so there is nothing to run here. Kept for reference only.
+
 # Manual migration: Question Bank reusability
 
 This repo snapshot doesn't include a `prisma/migrations/` history, so

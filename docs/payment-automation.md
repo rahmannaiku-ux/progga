@@ -15,7 +15,7 @@
 | Legacy bridge `POST /api/payment-bridge/bkash` (bearer token) | `api/payment-bridge/bkash` | Untouched (only its import path changed) |
 | `PaymentBridgeDevice` (hashed token, revocable) | schema | Extended with app-registration columns |
 | Upstash rate limiter with in-memory fallback | `lib/rate-limit.ts` | Two buckets added (`device`, `lookup`) |
-| Clerk auth, `requireAdminUser`, `ActivityLog` | — | Reused |
+| Session auth, `requireAdminUser`, `ActivityLog` | — | Reused |
 
 ## 2. Spec model → implementation mapping
 
@@ -69,7 +69,7 @@ The server sees only what the authenticated device reports. A compromised/rooted
 
 ## 9. Android app (apps/payment-android)
 
-Kotlin/Compose/Room/WorkManager/Retrofit companion using ONLY the device routes above. Written but **not yet
+**Not in this repository** (lives separately). Kotlin/Compose/Room/WorkManager/Retrofit companion using ONLY the device routes above. Written but **not yet
 compiled or run** (no Android SDK/Gradle/network where it was authored) — see `apps/payment-android/README.md`.
 Cross-checks that *were* run: the Kotlin rule engine's expected outputs are generated from the TypeScript reference
 engine; the configuration hash algorithm reproduces the backend's hashes (separate implementation).

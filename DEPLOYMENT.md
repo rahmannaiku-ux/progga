@@ -1,166 +1,122 @@
 # Deployment Guide
 
-Two supported paths: **Vercel** (fastest, recommended for most teams) and
-**Docker on a VPS** (full control, self-hosted Postgres).
+Two supported paths: **Vercel** (what production uses today) and **Docker on a VPS** (full control, self-hosted Postgres).
 
 ---
 
 ## 1. Prerequisites (both paths)
 
-- A [Supabase](https://supabase.com) project (Postgres 16). From the
-  dashboard: Project Settings > Database > Connection string gives you
-  both the pooled connection (Transaction pooler, port 6543 — for
-  `DATABASE_URL`) and the unpooled one (port 5432 — for `DIRECT_URL`).
-  Supabase's runtime connections go through its pgbouncer pooler, which
-  doesn't support the prepared statements Prisma's schema commands
-  issue, so both URLs are required (see `.env.example` for the exact
-  format and a Free-tier IPv6 gotcha).
-- A [Clerk](https://clerk.com) application (get publishable + secret keys,
-  and configure a webhook — see step 3)
-- An [Uploadthing](https://uploadthing.com) app (secret + app ID)
-- A [Resend](https://resend.com) account for transactional email (optional
-  at launch — the app runs without it, emails just won't send)
-- Optional: [Upstash Redis](https://upstash.com) for rate limiting — the
-  app degrades gracefully without it (rate limiting is simply disabled)
+- **Postgres 16.** Usually a [Supabase](https://supabase.com) project. From Project Settings → Database → Connection string you need both:
+  - `DATABASE_URL`: the **Transaction pooler** (port 6543, `?pgbouncer=true`), used at runtime.
+  - `DIRECT_URL`: the **Session pooler / direct** connection (port 5432), used by Prisma for migrations (pgbouncer can't run them).
+  - On the Supabase Free plan the plain `db.<ref>.supabase.co` host is IPv6-only. If you get `P1001`, use the IPv4 `aws-0-<region>.pooler.supabase.com:5432` host for `DIRECT_URL`.
+- **Onecodesoft SMS** account with an API key **and a registered Sender ID**. Registration and password reset send OTPs by SMS, so production can't sign anyone up without it.
+- `OTP_HMAC_SECRET` and `CRON_SECRET`: generate each with `openssl rand -hex 32`.
+- **Optional integrations.** Each one is a no-op when unset:
+  - Google OAuth client: Drive storage for student uploads, Docs question import
+  - Uploadthing: mentor resources
+  - Resend: email
+  - Upstash Redis: shared rate limiting. Without it the limiter is in-memory, per instance.
+  - Stream: Live Room chat
+  - Gemini: AI question generation
+  - Telegram: admin alerts and the bot integration
 
-Copy `.env.example` to `.env` and fill in every value before your first
-deploy. `DATABASE_URL`, `DIRECT_URL`, the two Clerk keys, and
-`UPLOADTHING_SECRET` / `UPLOADTHING_APP_ID` are the only hard
-requirements to boot the app.
+Every variable is documented in `.env.example`. The README has a summary table.
 
 ---
 
-## 2. Database migration
+## 2. Database migrations
 
-Run this once against your production database before the app's first
-request (from your local machine, with `DATABASE_URL` and `DIRECT_URL`
-pointed at prod):
+The schema is managed with **versioned Prisma migrations** in `prisma/migrations/`.
 
-```bash
-npm install
-npx prisma db push
-npm run db:seed   # optional — populates categories, a demo course, blog posts
-```
+- **Vercel:** `npm run build` runs `prisma migrate deploy` before `next build`, so every deploy applies pending migrations automatically, using `DIRECT_URL`.
+- **Docker:** `docker-entrypoint.sh` runs `prisma migrate deploy` at container start.
+- **By hand:** `npm run db:migrate:deploy` with `DATABASE_URL`/`DIRECT_URL` pointed at the target DB.
 
-The repo ships no `prisma/migrations/` history — schema is managed via
-`prisma db push`, not versioned migrations — so there's no `migrate
-deploy` step. The one exception is `prisma/manual-migrations/`, which
-holds a data-preserving change; **read
-`prisma/manual-migrations/README.md` before running `db push` against
-a database that already holds real data**, since `db push` can drop
-data on destructive schema changes that a hand-written migration would
-otherwise handle safely.
+Optional demo data: `npm run db:seed`. It creates demo mentor and student accounts with known passwords, so **don't seed production** unless you delete or re-password those accounts afterwards.
+
+Don't run `prisma db push` against production: it keeps no history and can drop data. `prisma/manual-migrations/` holds older hand-written SQL from before the migration history existed. It's for reference only and already reflected in the schema.
+
+**Adding a migration:** change `schema.prisma`, run `npm run db:migrate -- --name short_description` locally, and commit the new folder. If existing rows need data moved, generate with `--create-only`, hand-edit the SQL, then apply.
 
 ---
 
-## 3. Clerk webhook
+## 3. Path A — Vercel
 
-The app syncs user identity → `User` table via `/api/webhooks/clerk`. In
-the Clerk dashboard:
+1. Import the repo in Vercel (framework is auto-detected).
+2. Add every variable from `.env` under Project → Settings → Environment Variables (Production and Preview). Set `NEXT_PUBLIC_APP_URL` to the real domain.
+3. Deploy. The build migrates the DB (see §2).
+4. **Google OAuth:** add `https://<domain>/api/admin/storage/google/callback` and `https://<domain>/api/mentor/google-docs/callback` as redirect URIs, and set `GOOGLE_REDIRECT_URI` / `GOOGLE_DOCS_REDIRECT_URI` to match. Then connect the Drive account from Admin → Storage.
+5. **argon2** is a native module. `next.config.mjs` already force-includes its prebuilt binaries in the Vercel trace, so don't remove that block.
 
-1. Add an endpoint pointing at `https://<your-domain>/api/webhooks/clerk`
-2. Subscribe to `user.created`, `user.updated`, `user.deleted`
-3. Copy the signing secret into `CLERK_WEBHOOK_SECRET`
+### Cron jobs
 
-Without this, new sign-ups won't get a `User` row until they first hit a
-protected page (the `getCurrentUser()` lazy-create fallback covers that
-gap, but the webhook is the primary, reliable path).
+There is **no `vercel.json` in the repo**, so schedule these in Vercel (add a `vercel.json`) or with any external scheduler. Each is a `GET` that must send `Authorization: Bearer $CRON_SECRET`. In production they refuse to run if `CRON_SECRET` is unset. **Schedules are UTC** (BST = UTC+6, so `0 20 * * *` = 02:00 Dhaka).
 
----
+| Route | Does | Suggested schedule |
+|---|---|---|
+| `/api/cron/expire-payments` | `PENDING` payments past expiry → `EXPIRED` | daily/hourly, e.g. `0 20 * * *` |
+| `/api/cron/live-class-reminders` | Notify enrolled students ~20 min before a live class | every 5 min |
+| `/api/cron/live-class-sweep` | Sync `LiveClass` states with their schedule (start/end stragglers) | every 15–30 min |
+| `/api/cron/deliver-webhooks` | Deliver the outgoing payment-webhook outbox (only if `PAYMENT_WEBHOOK_URLS` is set) | every few minutes |
+| `/api/cron/prune-device-nonces` | Delete old payment-device replay-ledger rows | daily |
 
-## 4. Path A — Vercel
-
-1. Push this repo to GitHub/GitLab/Bitbucket
-2. Import the project in the Vercel dashboard
-3. Add every variable from `.env` to the Vercel project's Environment
-   Variables (Production + Preview)
-4. Vercel auto-detects Next.js — no build command changes needed
-   (`prisma generate` already runs via `postinstall`)
-5. Deploy. First deploy will be slower due to `prisma generate`; subsequent
-   ones are cached
-6. Point your domain's DNS at Vercel, then update `NEXT_PUBLIC_APP_URL`
-   and the Clerk webhook URL to match
-
-**Cron jobs** (schedules are **UTC**; Bangladesh is UTC+6, so 20:00 UTC =
-02:00 BST). Example `vercel.json` — note Vercel's Hobby plan only allows
-daily crons, so the 5-minute reminder job needs Pro (or an external pinger):
+Example `vercel.json`. The Hobby plan allows only daily crons, so the 5-minute jobs need Pro or an external pinger such as cron-job.org:
 
 ```json
 {
   "crons": [
     { "path": "/api/cron/expire-payments", "schedule": "0 20 * * *" },
-    { "path": "/api/cron/live-class-reminders", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/live-class-reminders", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/live-class-sweep", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/deliver-webhooks", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/prune-device-nonces", "schedule": "30 20 * * *" }
   ]
 }
 ```
 
-The `/api/cron/*`, `/api/health`, `/api/contact`, `/api/uploadthing` and
-`/api/payment-bridge/*` routes are open to the middleware on purpose (they
-authenticate themselves); before this they were redirected to `/sign-in`.
-Add a `vercel.json` with `crons` entries pointing at
-`/api/cron/expire-payments` (expires stale pending bKash payments, run once
-or twice a day) and `/api/cron/live-class-reminders` (notifies enrolled
-students when a live class is starting within the next 20 minutes — run
-every 5-10 minutes), and check `CRON_SECRET` in each route handler before
-Vercel's scheduler is trusted to call it. Streak-risk notifications were
-planned but have no route yet — add one under `src/app/api/cron/` and a
-matching `crons` entry here if that gets built.
+Leaderboard resets (daily/weekly/monthly) are computed when the board is read, so they need no cron.
 
 ---
 
-## 5. Path B — Docker on a VPS
+## 4. Path B — Docker on a VPS
 
-1. Provision a VPS (2 vCPU / 4GB RAM is comfortable for moderate traffic)
-   with Docker + Docker Compose installed
-2. Clone the repo onto the server
-3. Copy `.env.example` to `.env` and fill it in — for a fully self-hosted
-   setup, point `DATABASE_URL` at the `db` service in `docker-compose.yml`
-   (`postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>`) —
-   `docker compose` refuses to start unless those three variables are set.
-   There is no Redis container: rate limiting uses Upstash or an in-process
-   fallback. The containers run with `TZ=Asia/Dhaka` (logs only — the app's
-   dates are pinned to Bangladesh time in code either way)
-4. Build and start:
+1. A VPS with Docker + Docker Compose (2 vCPU / 4 GB RAM is comfortable).
+2. Clone the repo. Copy `.env.example` to `.env` and fill it in, adding `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`. Compose builds `DATABASE_URL` for the `db` service from these and refuses to start without them. Postgres is not exposed to the host, and there is no Redis container.
+3. Build and start. Migrations run automatically on container start:
 
-```bash
-docker compose up -d --build
-docker compose exec app npx prisma db push
-docker compose exec app npm run db:seed   # optional
-```
+   ```bash
+   docker compose up -d --build
+   docker compose exec app npm run db:seed   # optional, see §2
+   ```
 
-5. Put a reverse proxy (Caddy, nginx, or Traefik) in front of the `app`
-   container on port 3000, handling TLS termination. Caddy is the
-   lowest-friction option — a two-line Caddyfile gets you automatic HTTPS:
+4. Put a TLS reverse proxy in front of port 3000. For example, a Caddyfile:
 
-```
-yourdomain.com {
-    reverse_proxy localhost:3000
-}
-```
+   ```
+   yourdomain.com {
+       reverse_proxy localhost:3000
+   }
+   ```
 
-6. For upgrades: `git pull && docker compose up -d --build`, then re-run
-   `prisma db push` if the schema changed
+5. Upgrades: `git pull && docker compose up -d --build`.
+6. Crons: call the routes in §3 from the host's crontab with `curl -H "Authorization: Bearer $CRON_SECRET"`.
 
-**Backups**: see the in-app Backup & Restore page (Admin) for the
-reasoning, but the short version — schedule `pg_dump` against your
-Postgres container/volume to off-box storage. The in-app JSON export is
-for reporting, not disaster recovery.
+**Backups:** schedule `pg_dump` to off-box storage. The in-app Admin → Backup export is for reporting, not disaster recovery.
 
 ---
 
-## 6. Post-deploy checklist
+## 5. Post-deploy checklist
 
-- [ ] Sign up with your real account, then promote yourself to `ADMIN` —
-      run this once directly against the database (there's no bootstrap
-      UI, deliberately, since granting admin from the app itself would be
-      a privilege-escalation hole):
+- [ ] `GET /api/health` returns 200.
+- [ ] Register your own account at `/register` (tests the SMS OTP end to end).
+- [ ] Promote yourself once, directly in the DB. There's no in-app bootstrap, on purpose:
       ```sql
-      UPDATE "User" SET role = 'SUPER_ADMIN' WHERE email = 'you@example.com';
+      UPDATE "User" SET role = 'SUPER_ADMIN' WHERE phone = '+8801XXXXXXXXX';
       ```
-- [ ] From Admin → Roles & Permissions, promote your mentor test account
-- [ ] Verify the Clerk webhook fired (check Admin → Activity Logs after
-      a fresh sign-up)
-- [ ] Publish a test mission end-to-end: create → add a module/lesson →
-      publish → enroll → complete → confirm a certificate PDF generates
-- [ ] Run Lighthouse against the production URL and confirm no
-      regressions vs. the numbers noted in `PERFORMANCE.md`
+- [ ] Admin → Roles & Permissions: promote a mentor test account.
+- [ ] Admin → Settings → Payments: set the bKash number / receiving numbers.
+- [ ] Admin → Storage: connect the Google Drive account (if using Drive).
+- [ ] Admin → Control Center → Feature flags: confirm what should be on (`live_room` and `ai_question_generator` default **off**).
+- [ ] End to end: create a mission, add a lesson, publish, buy it as a student (or use a 100% coupon), verify the payment, complete the mission, and confirm a certificate is issued.
+- [ ] Hit each cron route once with the bearer token and check for a 200.
+- [ ] Run Lighthouse against production (see `PERFORMANCE.md`).

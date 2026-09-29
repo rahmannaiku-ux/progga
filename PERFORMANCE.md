@@ -22,7 +22,7 @@ substitute for one.
   lists (curriculum sidebar, search, community, calendar).
 - **No redirect ping-pong**: unauthenticated `/api/*` calls get a JSON 401
   instead of a redirect to `/sign-in`; self-authenticating API routes skip the
-  Clerk redirect entirely; redirect-only Server Actions were replaced by client
+  login redirect entirely; redirect-only Server Actions were replaced by client
   navigation; `router.push` is no longer followed by `router.refresh()`.
 - **Fewer round trips per page**: the hero layout runs its lookups in parallel,
   `SiteSettings` is read once per request (`getSiteSettingsRow`), and
@@ -34,7 +34,7 @@ substitute for one.
   (forms with local state, the exam runner, upload buttons).
 - **`next/image`** used for every avatar/thumbnail with real dimensions,
   with `remotePatterns` scoped to only the hosts actually used
-  (Uploadthing, Clerk, YouTube thumbnails) in `next.config.mjs`.
+  (Uploadthing, YouTube thumbnails, Google avatars) in `next.config.mjs`.
 - **Route-level code splitting** is automatic via the App Router — the
   mentor builder's client-heavy components never ship to a student's
   bundle and vice versa.

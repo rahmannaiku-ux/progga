@@ -1,316 +1,179 @@
 # Proggaa
 
-A production-grade, gamified e-learning website with an original,
-non-copyrighted superhero-inspired aesthetic — built to compete with
-Udemy/Coursera/Skillshare, not a mobile app.
+A gamified e-learning platform for Bangladeshi students, with a comic /
+superhero-inspired look (all visuals and terminology are original, not
+based on any existing franchise). It is a web app, not a mobile app.
+Students ("Heroes") buy and take courses ("Missions"). Teachers
+("Mentors") build and grade them. Admins run the platform.
 
-> **IP note:** All visual and thematic elements (color system, iconography,
-> illustrations, "Hero/Mentor/Mission" terminology) are original creations.
-> Nothing here references, copies, or is derived from any existing
-> copyrighted character, franchise, logo, or brand.
+- **Stack:** Next.js 14 (App Router) · React 18 · TypeScript · Tailwind + Radix/shadcn-style UI ·
+  PostgreSQL (Supabase) · Prisma 5 · Vitest · Docker / Vercel
+- **Auth:** custom phone number + SMS OTP + password (Argon2id), DB-backed sessions. *(Clerk was removed, so ignore any Clerk references in older docs.)*
+- **Money:** Bangladeshi taka only. Payments are made through bKash/MFS: students submit a transaction ID, which an admin verifies manually or which is matched automatically against SMS from an Android device.
+- **Time:** everything shown to users is **Bangladesh time (UTC+6)**.
 
-## Tech Stack
-Next.js 14 (App Router) · React 18 · TypeScript · Tailwind CSS · shadcn/ui
-(Radix primitives) · CSS animations (no animation library) · PostgreSQL · Prisma · Clerk ·
-YouTube embedded player · Docker
+---
 
-## Terminology Mapping (UI only — schema uses plain LMS nouns)
-| Standard LMS term | Product-facing term |
-|---|---|
-| Course | Mission |
-| Module | Operation |
-| Lesson | Patrol |
-| Quiz / Exam | Encounter |
-| Assignment | Challenge |
-| Certificate | Medal |
-| Student | Hero |
-| Teacher | Mentor |
+## Quick start (local)
 
-Keeping the database/API layer in plain English and applying the theme
-only at the presentation layer (`src/lib/terminology.ts`, phase 3) means
-the theme can be restyled or A/B tested without touching the schema.
+Requirements: **Node ≥ 20**, a Postgres database (a Supabase project, or the `db` service in `docker-compose.yml`).
 
-## Project Status — Phased Build
-
-This is a large system; it's being built in reviewable phases rather than
-as one monolithic drop, so each phase is real, runnable code rather than
-placeholders.
-
-- [x] **Phase 1 — Foundation** *(this delivery)*
-  - Full Next.js App Router folder structure for all roles/features
-  - Complete Prisma schema (users/roles, catalog, enrollment, quizzes/exams,
-    assignments, certificates, gamification, notifications, discussions, audit)
-  - `next.config.mjs`, `tailwind.config.ts` + original design tokens, `globals.css`
-  - Clerk auth middleware + server-side RBAC guard (`requireRole`)
-  - Prisma client singleton
-  - Dockerfile (multi-stage, standalone output) + docker-compose (app + Postgres)
-  - `.env.example` with every required variable documented
-- [x] **Phase 2 — Auth & Core Layout** *(this delivery)*
-  - Root layout with font system (Baloo 2 display / Inter body /
-    the system monospace stack for stats readouts), `ClerkProvider`, `next-themes`
-    provider (dark mode default)
-  - Clerk webhook (`/api/webhooks/clerk`, svix-verified) syncing
-    `user.created` / `.updated` / `.deleted` into Prisma — Clerk owns
-    identity, our DB owns role/authorization
-  - `getCurrentUser()` helper with a race-safe lazy-create fallback
-  - Sign-in / sign-up pages using Clerk's components, themed to match
-  - Three role-scoped app shells — `(hero)`, `(mentor)` (`requireRole("TEACHER")`),
-    `(admin)` (`requireRole("ADMIN")`) — each with its own sidebar nav
-    (`src/lib/nav-config.ts`), topbar, and theme toggle
-  - `HeroStatsBadge` (XP / level / streak) in the student topbar — the
-    first piece of the gamification signature element
-  - Placeholder dashboard/landing pages so every route resolves and the
-    role gates are verifiably enforced ahead of Phase 3+
-- [x] **Phase 3 — Public Website** *(this delivery)*
-  - Real header/footer, `container` layout, and UI primitives (`Button`,
-    `Badge`, `Accordion`) shared by every public page
-  - Original signature graphic (`MissionPathGraphic`) — an abstract
-    skyline + glowing checkpoint arc, no character or third-party IP
-  - Landing page: hero thesis section, live stats readout, featured
-    missions rail, a genuinely-sequential 4-step "how it works," category
-    grid, closing CTA
-  - Course catalog with server-rendered (no-JS-required) search/filter
-    by query, category, level, and price
-  - Course detail page: trailer embed, curriculum accordion, mentor card,
-    sticky enroll panel
-  - Categories, Pricing, FAQ, About, Contact (form UI, wiring lands with
-    the notification system), Testimonials, Blog (list + detail, new
-    `BlogPost` Prisma model), Instructor profile, Privacy, Terms, 404
-  - All public data-fetching pages degrade gracefully to an empty state
-    since there's no seed data yet at this point in the build (seeding
-    arrives in Phase 10 — run `npm run db:seed` after following this
-    project through to the end)
-- [x] **Phase 4 — Course Authoring (Mentor)** *(this delivery)*
-  - Server actions (`src/server/actions/mission-actions.ts`) for every
-    mutation — course, module, chapter, lesson, resources, publish state
-  - **Ownership enforced server-side on every action**: each mutation
-    re-resolves the caller from the Clerk session and verifies they own
-    the course (or are an admin) before touching the DB — a spoofed
-    courseId from the client can't reach another mentor's content
-  - `extractYoutubeId()` parses watch/youtu.be/embed/shorts URLs so
-    mentors just paste a link; invalid links are rejected with a clear error
-  - Uploadthing file router (`api/uploadthing`) gated by the same
-    TEACHER+ check, for PDF/resource uploads and avatars
-  - Mission list → "New mission" form → builder flow, all under
-    `(mentor)/mentor/missions`
-  - The builder itself: add/reorder/delete operations (modules), chapters,
-    and patrols (lessons); inline no-JS-required edit forms via
-    `<details>`; publish/unpublish with a real guard (can't publish with
-    zero operations) surfaced as an inline error, not a crash
-  - New `BlogPost`-style addition to the schema wasn't needed here, but
-    note: publishing requires ≥1 module — enforced in `setCoursePublishState`,
-    not just in the UI
-- [x] **Phase 5 — Student Learning Experience** *(this delivery)*
-  - Enrollment (`enrollment-actions.ts`) — free and paid missions both
-    enroll directly for now (checkout isn't built; that's a payments
-    concern outside the original 10-phase plan and can be slotted in
-    before launch), with wishlist toggle alongside it
-  - Lesson player (`react-youtube`) that autosaves watch progress every
-    15s, resumes from last position, and marks a patrol complete on
-    video end or a manual button — never trusts a client-supplied
-    percentage, always recalculates from real `LessonProgress` rows
-    (`lib/progress.ts`)
-  - Completing a lesson awards XP and updates the daily streak
-    (`lib/gamification/award-xp.ts`) — a light version of what Phase 8
-    builds out fully, so the Phase 2 XP badge stays honest in the meantime
-  - When every lesson in a mission is complete, a `PENDING` certificate
-    row is created automatically — actual PDF generation is Phase 7, but
-    the record exists the moment it's earned
-  - Notes (create/edit/delete, optimistic UI), bookmarks, and a two-level
-    discussion thread (post/reply/delete, moderatable by mentors/admins)
-    per lesson
-  - Next/previous patrol navigation via a flattened curriculum tree
-    (`lib/course-tree.ts`), plus a shared `CurriculumSidebar` with
-    completion checkmarks used on both the mission overview and player
-  - Real "Continue learning" dashboard (replacing the Phase 2 placeholder):
-    active missions with progress bars, bookmarked patrols, completed
-    missions
-- [x] **Phase 6 — Assessments** *(this delivery)*
-  - Schema gained a real `Assessment ↔ Course` relation (was scalar-only)
-    and `AssessmentAttempt.selectedQuestionIds`, which persists the exact
-    question set + order shown for an attempt so a refresh never reshuffles
-    a randomized or question-bank exam mid-attempt
-  - All six question types (MCQ, multiple select, true/false,
-    fill-in-blank, short answer, essay) — the last two are flagged
-    `requiresTeacherReview` automatically the moment one is added
-  - Mentor authoring: encounter settings (timer, randomize, question bank
-    size, negative marking, fullscreen, tab-switch detection, max
-    attempts, pass %), a type-aware question form, publish gated on
-    having ≥1 question
-  - Student flow: start screen → `ExamRunner` (countdown + auto-submit,
-    fullscreen enforcement, tab-switch detection with an auto-submit
-    disqualification threshold, autosaved answers per question) → results
-    (score, pass/fail, optional per-question breakdown honoring
-    `showResultsInstantly`)
-  - Grading is always server-computed from `QuestionAnswer` rows — never
-    a client-supplied score — with negative marking applied only to
-    questions actually attempted, and the total floored at zero
-  - Mentor grading queue for essay/short-answer questions, with a
-    per-attempt page to award points + feedback; the attempt only
-    finalizes to `GRADED` once every written question has been graded
-  - Encounters attached to a lesson now surface directly on the lesson
-    player page
-- [x] **Phase 7 — Assignments & Certificates** *(this delivery)*
-  - Assignment authoring (mentor): title, instructions, due date, max
-    points, allow-late toggle, and a dynamic rubric builder
-    (criterion + points rows)
-  - Student submission: multi-file upload via a dedicated
-    `assignmentSubmissionUploader` route (open to any active signed-in
-    user, unlike the mentor-only uploaders), plus a comment. Resubmitting
-    before grading overwrites the previous submission; resubmitting after
-    grading is blocked to protect the mentor's grade
-  - Mentor grading: rubric-based scoring (or a manual point override when
-    there's no rubric) with written feedback, notifies the student on
-    save
-  - **Certificates now actually generate as PDFs**: `renderCertificatePdf`
-    (`@pdfme/generator`) produces the document, `issueCertificate`
-    uploads it via Uploadthing's server API and flips the `PENDING` row
-    from Phase 5 to `ISSUED` with a real download URL — wired directly
-    into `recalcEnrollmentProgress`, so finishing a mission's last lesson
-    triggers PDF generation in the same request, not a background job
-    that might not run
-  - If PDF generation or upload fails, the certificate row stays
-    `PENDING` and the student gets a manual retry button (Medals page)
-    rather than the completion flow silently erroring
-  - Encounters and challenges attached to a lesson both now surface
-    directly on the lesson player page
-  - Fixed a couple of real bugs while integrating: a mismatched Prisma
-    compound-unique-key name in the submission upsert, and missing
-    `@pdfme/common`/`@pdfme/schemas` sub-package dependencies
-- [x] **Phase 8 — Gamification** *(this delivery)*
-  - Real tunable XP level curve (`xp-curve.ts`) replacing the Phase 5
-    placeholder sqrt formula — explicit per-level thresholds plus
-    progress-within-level math for the profile/dashboard bars
-  - Achievement catalog (`achievements-catalog.ts`) + awarder
-    (`check-achievements.ts`) — idempotent, upserts the `Achievement` row
-    on first use instead of requiring a separate seed step. Wired into
-    every place XP already flows: lesson completion, mission completion,
-    encounter pass/perfect score, assignment grading, and streak
-    milestones
-  - Level-ups and unlocked achievements generate real notifications, not
-    just a DB row nobody sees
-  - Global XP leaderboard (top 50, with the signed-in user's own rank
-    shown even when they're outside it)
-  - Achievements page (full catalog, locked/unlocked state) and a real
-    hero profile page: avatar upload, editable headline/bio, XP/level
-    progress bar, streak, mission history
-  - "Today's goals" widget (daily patrol, weekly patrol count, streak
-    reminder) computed live from existing `LessonProgress`/`HeroStats`
-    rows rather than persisted as new mission records — one less schema
-    surface to keep in sync
-  - `AnimatedProgressBar` (using the `xp-fill` keyframe that's been
-    sitting unused in the design system since Phase 1) now drives every
-    progress bar in the app
-- [x] **Phase 9 — Admin Panel** *(this delivery)*
-  - Dashboard with platform-wide metrics + recent activity feed
-  - User management: one reusable table (`UserManagementTable`) powers
-    Users, Mentors, and Heroes with a role filter; role changes are
-    logged to `RoleChangeLog` and only a `SUPER_ADMIN` can grant Admin
-    access (enforced server-side in `setUserRole`, not just hidden in
-    the UI)
-  - Roles & Permissions: hierarchy explainer, promote-by-email, recent
-    change log
-  - Mission moderation (status override across every mentor's courses),
-    Categories CRUD, Batches CRUD
-  - Reports (completion/pass/grading rates) and Analytics (per-course
-    breakdown table) — both reachable from the nav
-  - Medals admin: view every issued certificate, revoke with a reason
-    trail in `ActivityLog`
-  - Site branding settings, email template editor (subject + HTML body
-    per template key), global announcements that fan out as
-    notifications to every active user
-  - Activity log viewer (last 100 audited actions)
-  - Backup & Restore: a real, safe **export** (JSON snapshot via
-    `/api/admin/reports`) — deliberately does **not** offer an in-app
-    "restore from upload" button, since accepting arbitrary uploaded
-    data and writing it into the live database is a real risk vector;
-    the page instead documents the actual disaster-recovery path
-    (provider snapshots / `pg_dump`) so nobody assumes the export is a
-    full backup
-  - Every mutating admin action re-derives the caller from the Clerk
-    session and requires `ADMIN`+ server-side, consistent with every
-    other phase's authorization pattern
-- [x] **Phase 10 — Hardening & Deploy** *(this delivery — final phase)*
-  - Rate limiting (`lib/rate-limit.ts`, Upstash-backed, degrades to a
-    no-op if Redis isn't configured): IP-based on every API route via
-    middleware, tighter per-user limits on spam-prone writes (notes,
-    discussion posts) and sensitive actions (starting an exam attempt)
-  - **Seed script** (`prisma/seed.ts`, wired to `npm run db:seed` and
-    `prisma migrate reset`): site settings, email templates, 8 categories,
-    a demo mentor + student, a full course (modules → chapters → lessons,
-    a quiz, an assignment with a rubric), enrollment with real progress,
-    two blog posts. Demo users use placeholder Clerk IDs and can't sign
-    in directly — the deployment checklist covers promoting a real
-    account instead, since a seed script can't safely fabricate working
-    auth
-  - SEO: dynamic `sitemap.ts` (every published course + blog post),
-    `robots.ts` disallowing authenticated app areas
-  - `loading.tsx` skeletons on the catalog, course detail, and dashboard
-    routes; a root `global-error.tsx` boundary so an unhandled error
-    shows an on-brand recovery screen instead of a blank crash
-  - `DEPLOYMENT.md` (Vercel and Docker VPS paths, Clerk webhook setup,
-    post-deploy checklist) and `PERFORMANCE.md` (what's already optimized
-    vs. what to actually verify with Lighthouse post-deploy — written
-    honestly rather than claiming scores that were never measured, since
-    this environment can't run a real Lighthouse pass against a live
-    deployment)
-
-## Local Development
 ```bash
-cp .env.example .env        # fill in Clerk/Resend/Uploadthing/Upstash keys
-docker compose up -d db          # Postgres only — rate limiting uses Upstash (REST) or an in-process fallback; there is no Redis container
-npm install
-npm run db:push             # or db:migrate once schema stabilizes
-npm run db:seed
-npm run dev
+cp .env.example .env          # then fill in at least the "required" vars below
+npm install                   # also runs `prisma generate`
+npx prisma migrate deploy     # apply migrations to your DB
+npm run db:seed               # optional: demo data (categories, a course, demo users)
+npm run dev                   # http://localhost:3000
 ```
 
-## DevTools protection (deterrent, not security)
+**Demo logins** (created by `db:seed`, dev only):
 
-Students who open the browser's Developer Tools are sent to `/security/devtools`
-("Developer Tools Detected" → **Return to Proggaa**) after the video is paused
-and covered. **This cannot stop a determined user** (disabled JavaScript,
-extensions, another browser, proxies, automation) — real protection is
-server-side: authentication, enrollment and access checks on every request.
+| Role | Phone | Password |
+|---|---|---|
+| Mentor | `+8801700000001` | `DemoMentor#2026` |
+| Student | `+8801700000002` | `DemoStudent#2026` |
 
-| Piece | Where |
+**Make yourself an admin:** register at `/register`, then run this once against the DB. There is no in-app bootstrap, on purpose:
+
+```sql
+UPDATE "User" SET role = 'SUPER_ADMIN' WHERE phone = '+8801XXXXXXXXX';
+```
+
+**Testing OTP locally without SMS:** set `OTP_DEV_LOG=1` (prints codes to the server console) and optionally `OTP_DEV_BYPASS_QUOTA=1`. Both are ignored when `NODE_ENV=production`.
+
+### Environment variables
+
+`.env.example` documents every variable in detail. At a glance:
+
+| Needed for | Variables |
 |---|---|
-| Detection, key/right-click guards, redirect + loop protection | `src/lib/security/anti-devtools.ts` |
-| Mounted once, in the authenticated layouts | `AntiDevToolsProvider` in `src/app/(hero)/layout.tsx` and `(mentor)/layout.tsx` |
-| Server decision (env, role, feature flag) | `src/lib/security/anti-devtools-config.ts` |
-| Warning page (public, no detector of its own) | `src/app/security/devtools/page.tsx` |
-| Video pause/cover + identity watermark | `useDevToolsShield`, `VideoWatermark` in both players |
-| Advisory server log (ActivityLog, entity `SecurityEvent`) | `src/app/api/security/devtools/route.ts` |
+| **Required to boot** | `DATABASE_URL` (pooled, :6543), `DIRECT_URL` (direct, :5432), `NEXT_PUBLIC_APP_URL`, `OTP_HMAC_SECRET` |
+| Sending OTP / purchase SMS | `ONECODESOFT_API_KEY`, `ONECODESOFT_SENDER_ID` |
+| Crons (`/api/cron/*`) | `CRON_SECRET` (required in production; routes refuse to run without it) |
+| Student uploads → Google Drive | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY` |
+| Mentor file uploads | `UPLOADTHING_SECRET`, `UPLOADTHING_APP_ID` |
+| Email | `RESEND_API_KEY`, `EMAIL_FROM` |
+| Rate limiting | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (falls back to in-memory if unset) |
+| Question import / AI | `GOOGLE_DOCS_REDIRECT_URI`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| Live Room chat | `NEXT_PUBLIC_STREAM_API_KEY`, `STREAM_API_KEY`, `STREAM_API_SECRET` (`LIVE_CHAT_PROVIDER=fake` for local dev) |
+| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID` (admin alerts), `PROGGAA_API_KEY`, `PROGGAA_BOT_WEBHOOK_URL`, `PROGGAA_BOT_WEBHOOK_SECRET` (bot integration) |
+| Payment webhooks out | `PAYMENT_WEBHOOK_URLS`, `PAYMENT_WEBHOOK_SECRET` |
+| DevTools deterrent | `ANTI_DEVTOOLS`, `ANTI_DEVTOOLS_ROLES` |
 
-Signals (weighted; ≥ 3 combined within 8s triggers): a real `debugger` pause (4),
-DevTools reading a logged object (2, +1 if persistent), a docked-window size jump
-that survives zoom/resizes (2), slow `console.table` (1), a stalled timer while the
-tab is visible (1), repeated tampering with the monitor (3). A window-size change
-alone never triggers. The monitor ticks every 500 ms (`TICK_MS`) and also probes
-immediately on load, window focus, tab-visible and resize, so a console signal is caught
-in about 0.5–1.5 s and a `debugger` pause the moment the user resumes; the `debugger`
-probe uses a fresh random `sourceURL` each time and backs off after a detection.
-Blocked shortcuts: F12, Ctrl+Shift+I/J/C/K/E/M, Cmd+Option+I/J/C/K/E/M,
-Cmd+Shift+C, Ctrl+U / Cmd+Option+U; right-click is blocked outside text fields on
-non-touch devices.
+Every optional integration **degrades to a no-op** when its variables are unset. The app still runs, and only that feature is missing.
 
-Switches: `ANTI_DEVTOOLS=on|off` (default off in `next dev`), `ANTI_DEVTOOLS_ROLES`
-(default `STUDENT`), and the admin feature flag **DevTools protection**
-(Control Center → Feature flags) as an instant kill-switch.
+---
 
-## Linting
+## Commands
 
-`npm run lint` (ESLint 8 + `next/core-web-vitals`, config in `.eslintrc.json`)
-and `npm run lint:fix`. Build-breaking problems (`rules-of-hooks`, `no-var`,
-`no-debugger`, …) are errors; `exhaustive-deps`, `prefer-const`, `eqeqeq`,
-`no-console` and `<img>` usage are warnings. `next build` skips lint on purpose
-(`eslint.ignoreDuringBuilds`) — run `npm run lint` and `npm run typecheck`
-in CI instead.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | `prisma generate` → **`prisma migrate deploy`** → `next build` (so a deploy migrates the DB) |
+| `npm test` / `npm run test:watch` | Vitest (`src/**/*.test.ts`, pure logic, no DB needed) |
+| `npm run test:tz` | Re-runs the timezone tests under several process timezones |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` / `lint:fix` | ESLint (`next build` does **not** lint, so run this yourself) |
+| `npm run check:contrast` | WCAG contrast check of every colour pair in both themes |
+| `npm run db:migrate` | Create + apply a new migration in dev (`prisma migrate dev`) |
+| `npm run db:migrate:deploy` | Apply pending migrations (prod/CI) |
+| `npm run db:seed` | Seed demo data |
+| `npm run db:studio` | Prisma Studio |
 
-## Bangladesh Standard Time (BST, UTC+6)
+Before pushing, run: `npm run typecheck && npm run lint && npm test`.
 
-Every date and time in the app is **Bangladesh time**, independent of where
-the server or the visitor is. All of it goes through `src/lib/timezone.ts`:
+One-off scripts in `scripts/` (run with `npx tsx scripts/<name>.ts`):
+
+| Script | Purpose |
+|---|---|
+| `stream-setup-channel-type.ts` / `setup-stream.ts` | One-time setup of the Stream "liveclass" channel type |
+| `stream-acceptance.ts` | Acceptance tests against a **test** Stream app before enabling `live_room` |
+| `backfill-live-classes.ts` | Create `LiveClass` rows for old scheduled lessons (`--dry-run` supported) |
+| `dev-payment-setup.ts` | **Dev DB only**: register a test payment device / synthetic SMS rules |
+| `check-contrast.mjs`, `find-unused-deps.mjs`, `test-tz-matrix.mjs` | Tooling (see Commands) |
+
+---
+
+## Project map
+
+```
+prisma/
+  schema.prisma          # ~68 models. DB uses plain LMS nouns (Course, Lesson, …)
+  migrations/            # versioned migrations: the source of truth for the DB
+  manual-migrations/     # historical hand-written SQL (see its README)
+  seed.ts
+src/
+  middleware.ts          # Edge: public-route list, session-cookie presence check, per-IP API rate limit
+  app/
+    (public)/            # marketing site + course catalog, no login
+    (proggaa-auth)/      # /login, /register, /forgot-password
+    (auth)/              # legacy /sign-in, /sign-up → redirect to /login
+    complete-profile/    # mandatory profile step after registration
+    (hero)/              # student area (any signed-in user)
+    (mentor)/            # teacher area (TEACHER+)
+    (admin)/             # admin console (ADMIN+)
+    api/                 # route handlers: cron, bot, payment device, files, live, uploads, …
+  server/
+    actions/             # Server Actions: ALL mutations go through here
+    services/            # business logic shared by actions/routes (payments, auth, search, …)
+    live/                # Live Room (Stream chat, access rules)
+  lib/                   # pure helpers + integrations (auth, payments, sms, storage, timezone, …)
+  components/            # UI, grouped by area (admin-dashboard, course, exam, live, ui, …)
+  hooks/
+docs/                    # deeper design docs + archived build history
+```
+
+### Where to find things
+
+| Feature | Start here |
+|---|---|
+| Login / OTP / sessions / roles | `src/lib/auth/*` (`session.ts`, `otp.ts`, `require-auth.ts`, `require-role.ts`), `src/server/services/auth-service.ts`, `src/server/actions/auth-actions.ts` |
+| Course authoring (builder) | `src/server/actions/mission-actions.ts`, `app/(mentor)/mentor/missions/[missionId]/builder` |
+| Lesson player & auto-completion | `src/lib/lesson-progress.ts`, `src/lib/progress.ts`, `server/actions/learning-actions.ts` |
+| Exams / grading | `src/lib/grading.ts`, `server/actions/attempt-actions.ts`, `assessment-actions.ts`, `server/services/question-bank.ts` |
+| Question import (Docs/PDF/AI) | `src/lib/question-import/*`, `src/lib/ai/*`, `server/actions/question-import-actions.ts` |
+| Checkout, coupons, discounts | `server/actions/payment-actions.ts`, `coupon-actions.ts`, `src/lib/payments/*` |
+| Payment verification (manual + SMS) | `server/services/payment-verification.ts` (`markPaidAndEnroll`), `src/lib/payments/sms/*`. Full design: [docs/payment-automation.md](docs/payment-automation.md) |
+| Certificates | `src/lib/certificate/*`, `server/actions/certificate-actions.ts` |
+| XP, levels, coins, achievements, leaderboard | `src/lib/gamification/*`, `server/actions/leaderboard-actions.ts`, `store-actions.ts` |
+| Live classes / Live Room | `src/lib/live-classes.ts`, `src/server/live/*`, `app/(hero)/live`, `app/(mentor)/live/manage` |
+| File storage (Google Drive / Uploadthing) | `src/lib/storage/*`, `app/api/files/[uploadId]`, `app/api/uploadthing` |
+| SMS (Onecodesoft) | `src/lib/sms/*` |
+| Telegram bot API | `app/api/bot/*`, `app/api/telegram/*`, `src/lib/bot-api`, `src/lib/bot-webhook` |
+| Feature flags & platform settings | `src/lib/config/*` (Admin → Control Center) |
+| Sidebar navigation per role | `src/lib/nav-config.ts` |
+| Emails | `src/lib/email/*` (templates are editable in Admin → Settings) |
+| Bug reports | Student form on `/support` (`components/support/bug-report-form.tsx`), admin triage at `/admin/bug-reports`, `server/actions/bug-report-actions.ts`. Screenshots go to the Drive folder `PROGGAA/bug-reports` |
+
+---
+
+## Conventions (read before changing code)
+
+- **Terminology is UI-only.** The database and code use plain LMS nouns, and only the UI uses the themed names:
+
+  | Code / DB | UI |
+  |---|---|
+  | Course | Mission |
+  | Module | Operation |
+  | Chapter / LessonGroup | Chapter / Group |
+  | Lesson | Patrol |
+  | Assessment (quiz/exam) | Encounter |
+  | Assignment | Challenge |
+  | Certificate | Medal |
+  | Student / Teacher | Hero / Mentor |
+
+- **Authorization is server-side.** Middleware only checks that a session cookie *exists* (Edge can't reach Prisma). Real checks happen in layouts, route handlers and every Server Action: `requireRole(...)`, `requireActiveUser()`, `requireMentorUser()`, `requireAdminUser()`, plus course-ownership checks. Never trust IDs, prices or scores from the client.
+- **Role order:** `STUDENT < TEACHER < ADMIN < SUPER_ADMIN`. Only a `SUPER_ADMIN` can grant admin.
+- **Money** is stored as integers in poisha (`*Cents` columns = 1/100 taka). Display with `formatMoney()` from `src/lib/payments/format.ts`. Prices are always recomputed on the server.
+- **Dates:** use only the helpers in `src/lib/timezone.ts` (see below). Never use `getHours()` / `toLocaleString()` on a date a person will read.
+- **Schema changes:** edit `prisma/schema.prisma`, then run `npm run db:migrate -- --name <what_changed>` and commit the generated folder under `prisma/migrations/`. Don't use `db push` against a shared or production DB. When existing rows need data moved, hand-edit the generated SQL (use `--create-only` first).
+- **New public route?** Add it to `PUBLIC_ROUTE_PATTERNS` in `src/middleware.ts`, or signed-out visitors get redirected to `/login`.
+- **New feature switch?** Add it to `src/lib/config/feature-flag-definitions.ts` and check it with `isFeatureEnabled(key)`. Current flags: `registration`, `course_purchases`, `exams`, `devtools_protection`, `community`, `live_room` (default off), `ai_question_generator` (default off).
+- **Tests** sit next to the code as `*.test.ts` and cover pure logic only. Put business rules in a pure function in `lib/` so they can be tested.
+
+### Bangladesh Standard Time (BST, UTC+6)
+
+Every date and time in the app is **Bangladesh time**, wherever the server or the visitor is. All of it goes through `src/lib/timezone.ts`:
 
 | Need | Use |
 |---|---|
@@ -320,193 +183,49 @@ the server or the visitor is. All of it goes through `src/lib/timezone.ts`:
 | "Today", this week, this month, the hour | `dhakaStartOfDay`, `dhakaStartOfWeek`, `dhakaStartOfMonth`, `dhakaHour`, `dhakaGreeting`, `dhakaYear` |
 | Calendar day key / date arithmetic | `dhakaDateKey`, `addDhakaDays`, `addDhakaMonths` |
 
-Rules: never call `getHours()/getDay()/setHours()/toLocale*String()` (or
-`new Date("2026-09-08T14:30")`) on a date a person will read as a calendar
-day — those follow the *runtime's* zone (UTC on Vercel). Stored instants stay
-UTC in Postgres; only wall-clock reading/writing is pinned to `+06:00`.
-`src/lib/timezone.test.ts` checks this under any process timezone.
-Cron schedules in `vercel.json` are always **UTC** — see `DEPLOYMENT.md`.
+Stored instants stay UTC in Postgres; only reading and writing wall-clock times is pinned to `+06:00`. Cron schedules are always **UTC** (see `DEPLOYMENT.md`).
 
-## UI, colours and page transitions
+### UI, colours and page transitions
 
-- **Colour tokens** live in `src/app/globals.css` (`:root, .theme-cartoon` for
-  light, `.dark, .dark .theme-cartoon` for dark) and are declared on `:root`
-  so portalled UI (dialogs, menus, selects) gets the same palette. Every
-  text/background pair is >= 4.5:1. Brand colours have separate *fill* and
-  *ink* roles: `bg-xp` is yellow but `text-xp` is amber-brown (`--xp-ink`);
-  `bg-danger` holds white text while `text-danger` uses `--danger-ink`
-  (see `textColor`/`borderColor` in `tailwind.config.ts`). `text-accent` is a
-  real, readable violet — not the old near-white lavender.
-- **Page transitions**: `PageTransition` is a single CSS enter animation
-  (`.page-enter`), `NavigationProgress` shows a top bar the instant a link is
-  clicked, and every route group has a `loading.tsx` skeleton. Keep the
-  animation `backwards`-filled: a leftover `transform` would trap the
-  `position: fixed` fullscreen video player inside the page.
-- **Fullscreen video** (`src/hooks/use-fullscreen.ts`): native fullscreen where
-  it exists, `webkit`-prefixed on iPad, and a CSS fallback on iPhone (which
-  only allows fullscreen on `<video>`) with scroll-lock, safe-area padding and
-  an always-visible exit button.
+- **Colour tokens** live in `src/app/globals.css` (`:root, .theme-cartoon` for light, `.dark, .dark .theme-cartoon` for dark), so portalled UI (dialogs, menus) gets the same palette. Every text/background pair is ≥ 4.5:1 (`npm run check:contrast`). Brand colours have separate *fill* and *ink* roles: `bg-xp` is yellow but `text-xp` is amber-brown. `bg-danger` holds white text while `text-danger` uses `--danger-ink` (see `tailwind.config.ts`).
+- **No animation library.** Transitions are CSS (`PageTransition`, `.page-enter`, `hooks/use-mount-transition.ts`). Keep page animations `backwards`-filled, because a leftover `transform` traps the `position: fixed` fullscreen video player.
+- **Fullscreen video** (`src/hooks/use-fullscreen.ts`): native fullscreen, the `webkit`-prefixed API on iPad, and a CSS fallback on iPhone.
+- Every route group has a `loading.tsx` skeleton. Mobile first: touch targets ≥ 44px, inputs ≥ 16px text.
 
-## Folder Structure
-Route groups under `src/app`:
-- `(public)` — marketing/catalog, no auth required
-- `(auth)` — Clerk sign-in/up
-- `(hero)` — student area, any authenticated role
-- `(mentor)` — teacher area, requires `TEACHER` role or higher
-- `(admin)` — admin console, requires `ADMIN`/`SUPER_ADMIN`
+### DevTools protection (deterrent, not security)
 
-## Project Status: All 10 Phases Complete
+Students who open browser DevTools get redirected to `/security/devtools` after the video pauses. **This cannot stop a determined user.** Real protection is the server-side auth, enrollment and access checks.
 
-Every deliverable from the original brief is implemented: full role-based
-platform (student/mentor/admin), course authoring with YouTube embeds,
-the complete learning experience (progress, notes, bookmarks,
-discussions), a real proctored assessment engine, assignments with
-rubric grading, auto-generated PDF certificates, a full gamification
-layer, a 17-feature admin console, and production deployment tooling.
+| Piece | Where |
+|---|---|
+| Detection, key/right-click guards, redirect + loop protection | `src/lib/security/anti-devtools.ts` |
+| Mounted once in authenticated layouts | `AntiDevToolsProvider` in `(hero)/layout.tsx`, `(mentor)/layout.tsx` |
+| Server decision (env, role, flag) | `src/lib/security/anti-devtools-config.ts` |
+| Warning page | `src/app/security/devtools/page.tsx` |
+| Advisory server log | `src/app/api/security/devtools/route.ts` (ActivityLog, entity `SecurityEvent`) |
 
-### Post-completion fix pass
+Switches: `ANTI_DEVTOOLS=on|off` (off by default in `next dev`), `ANTI_DEVTOOLS_ROLES` (default `STUDENT`), and the feature flag **DevTools protection** as an instant kill switch.
 
-After the initial 10 phases, a self-review turned up a handful of real
-gaps — things that looked done but weren't, plus a few scale/security
-issues. All of the following are now fixed:
+### Linting
 
-- **Email actually sends now.** `lib/email/send-email.ts` renders the
-  admin-editable `EmailTemplate` rows via Resend and is wired into
-  welcome (on first sign-up), certificate-issued, grade-posted, and
-  enrollment-confirmed. Previously these were notification rows only —
-  the templates existed in the admin UI but nothing ever sent them.
-- **The contact form is real.** `/api/contact` validates with Zod, rate
-  limits by IP, and sends via Resend to the admin-configured support
-  address — it used to just flip a local `submitted` flag with a
-  `// TODO` comment and discard the message.
-- **Paid courses can no longer be enrolled in for free.** `enrollInCourse`
-  now throws a clear "checkout isn't available yet" error for paid
-  missions instead of silently enrolling anyone who clicks the button —
-  this was a real bug, not just a missing feature.
-- **Blog HTML is sanitized** (`isomorphic-dompurify`) before rendering,
-  closing a latent stored-XSS risk that only "worked" because content
-  authorship was admin-only.
-- **Admin category/batch creation now uses Zod validation**
-  (`lib/validation/admin.ts`), matching the rigor used everywhere else
-  instead of reading raw `FormData` strings.
-- **Scale fixes**: `HeroStats.xp` is now indexed (the leaderboard's
-  `ORDER BY xp DESC` was doing a full table scan); the admin
-  Users/Mentors/Heroes and Missions tables now paginate (25/page) with
-  search on the user tables, instead of hardcoding `take: 200` and
-  silently truncating past that.
-- **ISR enabled** on the landing page and course detail page. The course
-  detail page required decoupling its wishlist-status check into a
-  client-side fetch (`/api/courses/[id]/wishlist-status`) first, since a
-  page reading the signed-in user's data server-side can't be cached —
-  it's now a clean split between cacheable public content and one small
-  personalized island. The course *catalog* page is documented as **not**
-  cacheable the same way — its `searchParams`-driven filtering forces
-  dynamic rendering regardless of a `revalidate` export, and a faked fix
-  there would've been worse than being upfront about it.
-- **A real automated test suite** (Vitest): the grading logic that used
-  to live inline inside the `submitAttempt` server action is now
-  extracted into pure functions in `lib/grading.ts` (also reused by the
-  manual-grading recompute path, which fixes a real inconsistency — it
-  wasn't flooring negative-marking totals at zero the same way the
-  auto-grade path did) and covered by `grading.test.ts`. `xp-curve.ts`
-  has its own test file covering monotonicity and the level-boundary
-  math. Run with `npm test`.
+ESLint 8 + `next/core-web-vitals` (`.eslintrc.json`). Build-breaking problems (`rules-of-hooks`, `no-var`, `no-debugger`) are errors. `exhaustive-deps`, `prefer-const`, `eqeqeq`, `no-console` and `<img>` are warnings. `next build` skips lint on purpose, so run it in CI.
 
-### Phase 11 — Manual bKash Payments + Full Comic Redesign (complete)
+---
 
-- **Schema**: `Payment` (status/provider/verification-method lifecycle,
-  unique `paymentReference` + unique `transactionId` for duplicate-TXID
-  protection, links forward to the `Enrollment` it unlocked) and
-  `PaymentBridgeDevice` (hashed bearer tokens for the Android bridge).
-  `SiteSettings` gained `bkashNumber`, `bkashInstructions`, and the
-  `autoVerifyPayments` kill switch. `DiscussionPost` gained an optional
-  `courseId` (and `lessonId` became optional) so a post can be
-  mission-level, not just lesson-scoped.
-- **Student flow**: paid missions route "Enroll" into
-  `startBkashPayment()` → `/payments/[id]` (comic-styled: reference +
-  bKash number with copy buttons, step-by-step instructions, TXID form).
-  `submitBkashTxid()` moves the payment to `AWAITING_VERIFICATION`. A
-  `PAID` payment gets a real printable invoice at `/payments/[id]/invoice`.
-- **Two independent verification paths**, both funneling through one
-  atomic `markPaidAndEnroll()` transaction so a `PAID` payment and its
-  `Enrollment` are always created together, idempotently:
-  - **Manual** — `/admin/payments` (filterable, paginated) with
-    Verify/Reject actions, always available regardless of the
-    automatic setting.
-  - **Automatic** — `POST /api/payment-bridge/bkash`, authenticated by a
-    hashed device token (provisioned from `/admin/settings/payments`),
-    validates the event, dedupes by `eventId`, guards duplicate TXIDs,
-    re-derives the expected amount from the `Payment` row's own
-    server-set `amountCents` (never from the request), and only
-    auto-verifies when `SiteSettings.autoVerifyPayments` is on **and**
-    the amount matches — otherwise the evidence is stored and the
-    payment stays `AWAITING_VERIFICATION`.
-  - Telegram admin notifications (`src/lib/payments/telegram.ts`) fire
-    on every transition — strictly a notification layer, never required
-    for verification; no-ops if the bot token/chat ID aren't set.
-  - `/api/cron/expire-payments` sweeps stale `PENDING` → `EXPIRED`
-    (`CRON_SECRET`-protected).
-- **Pages built from nothing this phase** (previously dead nav links or
-  missing entirely): Notifications, Community (feed + composer + top
-  contributors), Search (Missions/Lessons), Support, Invoice,
-  `/mentor/students`, `/mentor/announcements`, plus a `/missions` →
-  `/courses` redirect and an honest "coming soon" `/calendar`. The
-  Mentor Dashboard was a literal placeholder stub claiming features
-  "arrive in Phase 4/7" despite the rest of the app being complete — it's
-  now a real dashboard (stats, recent submissions queue).
-- **Root-cause CSS fix**: `.theme-cartoon .comic-panel`, `.glass-panel`,
-  `.sticker`, `.comic-btn`, and `.sticker-badge` were two-class compound
-  selectors that baked in `bg-surface`/`border-border`, silently beating
-  any single-utility color override on the same element (e.g.
-  `sticker bg-xp` never actually rendered gold) — a real bug already
-  present throughout the pre-existing app, not something introduced
-  this phase. Fixed at the source with `:where()` to zero out the
-  conflicting specificity, which retroactively fixes every affected
-  badge/panel/button app-wide rather than requiring per-file edits.
-- **Also fixed**: `not-found.tsx` and `global-error.tsx` were never
-  comic-styled, and `global-error.tsx` renders outside the root layout's
-  `.theme-cartoon` wrapper entirely, so its comic CSS variables were
-  silently out of scope — fixed by re-declaring the class on its own
-  wrapper. `maintenanceMode` is now actually enforced (checked at the
-  layout level, not middleware — Prisma isn't safe to call from Edge
-  middleware — see `src/lib/maintenance.ts`) with an always-on admin
-  bypass so there's always a way back in. Auth pages (`/sign-in`,
-  `/sign-up`) got page-specific comic headers instead of one generic
-  shared banner. Heading weights and button styling were swept for
-  consistency across every Admin/Mentor page.
-- **Not yet done**: real `tsc`/ESLint/Prisma validate/build/Vitest runs
-  (no npm network access in the environment this was built in — these
-  need to be run for real before merging), and the CSS specificity fix
-  above is based on rigorous analysis rather than a visual screenshot,
-  so it's worth a quick smoke-test.
+## More docs
 
-### Still-open scope notes (not bugs — genuinely out of scope)
+| Doc | For |
+|---|---|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Deploying (Vercel / Docker), crons, post-deploy checklist |
+| [docs/payment-automation.md](docs/payment-automation.md) | SMS-based payment verification design, device protocol, rollout modes |
+| [PERFORMANCE.md](PERFORMANCE.md) | What's optimized and what to verify after deploying |
+| [CHANGELOG.md](CHANGELOG.md) | Notable changes |
+| [CLAUDE.md](CLAUDE.md) | Short working guide for AI coding assistants |
+| [docs/HISTORY.md](docs/HISTORY.md) | Archived phase-by-phase build log (partly outdated) |
 
-- **No card/international payment integration.** bKash (manual + a
-  bridge-ready automatic path) is fully built; Stripe/SSLCOMMERZ would
-  be the natural next provider, and `Payment.provider` already has room
-  for them.
-- **E2E test coverage** (Playwright) doesn't exist — the Vitest suite
-  covers pure business logic (grading, XP curve) but not full user flows.
-- **Exam proctoring is inherently client-side-limited** — fullscreen
-  enforcement and tab-switch detection can be defeated by a determined
-  student (second monitor, browser devtools). No browser-based
-  proctoring system fully closes this; it's a deterrent, not a guarantee,
-  and that's stated plainly here rather than oversold in the UI.
-- **Search is Missions + Lessons only** — a Tasks/Users tabs pair from
-  the original comic mockups was deliberately left out rather than
-  built hollow, since "tasks" and permission-scoped user search don't
-  have an unambiguous scope in the current data model.
+## Known limits
 
-### If you want to keep going
-
-Reasonable next phases, in rough priority order: **Card payments**
-(Stripe/SSLCOMMERZ alongside bKash — `Payment.provider` already has
-room), **E2E testing** (Playwright — Vitest now covers the pure
-grading/XP logic, but nothing exercises a full signup → enroll →
-complete → certificate flow), **Real-time features** (live
-notifications via websockets/SSE instead of polling), **Internationalization**
-(the `locale` field already exists on `User`, but no translation
-infrastructure), or **Mobile app** (the spec was explicit this is
-web-only, but the API/data layer would support one). Name any of these,
-or a specific refinement to an existing phase, and I'll pick up from here.
+- Payments are bKash/MFS only (no card gateway). `Payment.provider` has room for one.
+- No end-to-end (Playwright) tests. Vitest covers only pure logic.
+- Exam proctoring and DevTools detection run in the browser, so they deter cheating but can't guarantee it.
+- The Android SMS-bridge app referenced in `docs/payment-automation.md` is **not in this repo**.

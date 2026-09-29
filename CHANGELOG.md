@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-09-29 — Bug reports
+- Students can report a bug from **Support** (`/support#report-bug`): title, description, where it happened, and up to 5
+  screenshots (images ≤ 10 MB). Screenshots are stored in Google Drive under `PROGGAA/bug-reports` (new `BUG_REPORT`
+  upload context, UploadThing fallback as usual). Students see their recent reports, the status, and the admin's reply.
+- New **Admin → Bug Reports** (`/admin/bug-reports`): filter by status, view the reporter, browser, description and
+  screenshots, and set the status (Open / In progress / Resolved / Closed) with a note. Admins are notified of new
+  reports, and the reporter is notified when the status changes.
+- Migration `20260929030000_bug_reports` (new `BugReport`, `BugReportImage`, `BugReportStatus`,
+  `GoogleDriveConnection.bugReportsFolderId`).
+
+## 2026-09-26 → 2026-09-29 — highlights (see `git log` for all)
+- **Auth:** Clerk replaced by custom phone + SMS OTP + password (Argon2id), DB sessions, OTP-gated phone change;
+  students stay signed in until a second device logs in.
+- **Payments:** all prices in taka (৳); coupons fixed (taka amounts, Apply errors, stale unpaid orders); 100% coupons
+  check out for free; purchase-success SMS with an invoice link; payments and invoices survive mission deletion.
+- **Admin:** delete any mission (typed confirmation), coupon editor reachable from admin, student signup details,
+  manual or scheduled (daily/weekly/monthly) leaderboard resets.
+- **UX:** notification popover on the bell, Ctrl/Cmd+K command palette, phone-fitted lesson and live video players,
+  animated Proggy mascot, mobile overflow and font fixes; Drive files cached in the student's browser.
+- **Docs:** README rewritten as a working guide; DEPLOYMENT.md updated for migrations/crons/phone auth;
+  old phase log moved to `docs/HISTORY.md`; new `CLAUDE.md`.
+
+
 ## Unreleased — bug-fix, Bangladesh time, contrast and navigation pass
 
 ### Bangladesh time (UTC+6)
