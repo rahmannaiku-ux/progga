@@ -2,10 +2,10 @@ import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db/client";
 import { hashToken } from "@/lib/payments/reference"; // reused, not duplicated — see that file's doc comment
-import { SESSION_COOKIE_NAME } from "@/lib/auth/session-cookie-name";
+import { SESSION_COOKIE_NAME, DEVICE_COOKIE_NAME, SESSION_TTL_DAYS } from "@/lib/auth/session-cookie-name";
 import type { Session, User } from "@prisma/client";
 
-export { SESSION_COOKIE_NAME };
+export { SESSION_COOKIE_NAME, DEVICE_COOKIE_NAME };
 
 /**
  * Server-side session lifecycle for the Proggaa custom auth system.
@@ -14,7 +14,12 @@ export { SESSION_COOKIE_NAME };
  * `hashToken`) is the only form of it that ever reaches PostgreSQL.
  */
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Sliding: every recorded activity (see maybeTouchLastActivity) pushes
+// expiresAt out to SESSION_TTL_MS from then, and middleware re-issues
+// the cookie with the same lifetime, so an active student stays signed
+// in indefinitely. A session only ends on logout, on a password reset,
+// on another device taking over, or after SESSION_TTL_DAYS of no use.
+const SESSION_TTL_MS = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------
 // Performance strategy (see Phase 3 instructions §6) — documented here
@@ -96,6 +101,26 @@ export function setSessionCookie(rawToken: string, expiresAt: Date) {
 /** Clears the session cookie. Call only from a Server Action or Route Handler. */
 export function clearSessionCookie() {
   cookies().delete(SESSION_COOKIE_NAME);
+}
+
+const DEVICE_COOKIE_MAX_AGE_S = 2 * 365 * 24 * 60 * 60; // 2 years
+
+/**
+ * Returns this browser's device id, minting and setting one if it has
+ * none yet. Call only from a Server Action or Route Handler.
+ */
+export function getOrSetDeviceId(): string {
+  const existing = cookies().get(DEVICE_COOKIE_NAME)?.value;
+  if (existing && /^[a-f0-9]{32}$/.test(existing)) return existing;
+  const id = randomBytes(16).toString("hex");
+  cookies().set(DEVICE_COOKIE_NAME, id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: DEVICE_COOKIE_MAX_AGE_S,
+  });
+  return id;
 }
 
 /** Reads the raw session token from the incoming request's cookies, if any. */
@@ -189,7 +214,7 @@ function maybeTouchLastActivity(session: Session) {
   const now = Date.now();
   if (now - session.lastActivityAt.getTime() < LAST_ACTIVITY_WRITE_INTERVAL_MS) return;
   db.session
-    .update({ where: { id: session.id }, data: { lastActivityAt: new Date() } })
+    .update({ where: { id: session.id }, data: { lastActivityAt: new Date(now), expiresAt: new Date(now + SESSION_TTL_MS) } })
     .catch(() => {
       // Best-effort only. A failed activity-timestamp bump must never
       // fail the request or invalidate the session.
@@ -231,6 +256,14 @@ export async function revokeAllActiveSessionsForUser(userId: string, opts: { exc
   });
   for (const s of toRevoke) invalidateCacheFor(s.tokenHash);
   return toRevoke.length;
+}
+
+/** Every active (non-revoked, non-expired) session for `userId`, with its device id. */
+export async function listActiveSessions(userId: string): Promise<{ id: string; deviceId: string | null }[]> {
+  return db.session.findMany({
+    where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+    select: { id: true, deviceId: true },
+  });
 }
 
 /** True if `userId` currently has at least one active (non-revoked, non-expired) session. */

@@ -1,10 +1,13 @@
 import { UserX } from "lucide-react";
 import { RegisterFlow } from "@/components/auth/register-flow";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
+import { redirectIfSignedIn } from "@/lib/auth/signed-in-redirect";
 
 export const metadata = { title: "Create account — Proggaa" };
 
 export default async function RegisterPage() {
+  await redirectIfSignedIn();
+
   const registrationEnabled = await isFeatureEnabled("registration");
 
   if (!registrationEnabled) {

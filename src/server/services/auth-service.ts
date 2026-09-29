@@ -9,7 +9,7 @@ import {
   requestPhoneChangeOtp,
   verifyPhoneChangeOtp,
 } from "@/lib/auth/otp";
-import { createSession, revokeAllActiveSessionsForUser, revokeSessionByToken, hasActiveSession, type CreatedSession } from "@/lib/auth/session";
+import { createSession, revokeAllActiveSessionsForUser, revokeSessionByToken, listActiveSessions, type CreatedSession } from "@/lib/auth/session";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isMultiSessionRole } from "@/lib/auth/require-auth";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
@@ -92,7 +92,12 @@ export type CompleteRegistrationResult =
  * student in"); the caller sets the cookie and redirects to
  * /complete-profile (spec step 10 — that page belongs to Phase 4).
  */
-export async function completeRegistration(rawPhone: string, otp: string, password: string): Promise<CompleteRegistrationResult> {
+export async function completeRegistration(
+  rawPhone: string,
+  otp: string,
+  password: string,
+  opts: { deviceId?: string } = {}
+): Promise<CompleteRegistrationResult> {
   // Re-checked here too (not just in requestRegistration): closing
   // registration mid-flow (between a student requesting an OTP and
   // submitting this step) must still block account creation, not just
@@ -157,7 +162,7 @@ export async function completeRegistration(rawPhone: string, otp: string, passwo
     throw err;
   }
 
-  const { rawToken, session } = await createSession(user.id);
+  const { rawToken, session } = await createSession(user.id, { deviceId: opts.deviceId });
 
   return { ok: true, rawToken, session, user };
 }
@@ -195,7 +200,28 @@ function getDummyHash(): Promise<string> {
  * "continue" click alone (without the password) can't complete a
  * takeover.
  */
-export async function login(rawPhone: string, password: string, opts: { confirmTakeover?: boolean } = {}): Promise<LoginResult> {
+/**
+ * Sessions that belong to some OTHER device. A session counts as this
+ * device's if it carries the same device id (browser cookie) — so
+ * re-logging in from the same browser, even after the old session
+ * cookie was lost, never asks the student to "take over" from
+ * themselves. Legacy sessions with no device id count as other devices
+ * (we can't prove otherwise), except the one whose cookie this request
+ * is still carrying (`currentSessionId`).
+ */
+export function sessionsOnOtherDevices(
+  sessions: { id: string; deviceId: string | null }[],
+  deviceId: string | undefined,
+  currentSessionId: string | undefined
+) {
+  return sessions.filter((s) => s.id !== currentSessionId && !(deviceId && s.deviceId === deviceId));
+}
+
+export async function login(
+  rawPhone: string,
+  password: string,
+  opts: { confirmTakeover?: boolean; deviceId?: string; currentSessionId?: string } = {}
+): Promise<LoginResult> {
   const phone = normalizeBangladeshPhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid_credentials" };
 
@@ -216,18 +242,22 @@ export async function login(rawPhone: string, password: string, opts: { confirmT
 
   if (isMultiSessionRole(user.role)) {
     // Admins (and any future multi-session role): no takeover logic at all.
-    const { rawToken, session } = await createSession(user.id);
+    const { rawToken, session } = await createSession(user.id, { deviceId: opts.deviceId });
     return { ok: true, rawToken, session, user };
   }
 
-  const hasActive = await hasActiveSession(user.id);
-  if (hasActive && !opts.confirmTakeover) {
+  const active = await listActiveSessions(user.id);
+  const otherDevices = sessionsOnOtherDevices(active, opts.deviceId, opts.currentSessionId);
+  if (otherDevices.length > 0 && !opts.confirmTakeover) {
     return { ok: false, reason: "takeover_required" };
   }
 
-  const { rawToken, session } = await createSession(user.id);
+  const { rawToken, session } = await createSession(user.id, { deviceId: opts.deviceId });
 
-  if (hasActive) {
+  // Sweep everything else — other devices (confirmed takeover) and this
+  // device's own stale sessions alike — so one student has exactly one
+  // live session afterwards.
+  if (active.length > 0) {
     // Revoke every OTHER active session for this user. Deliberately
     // done AFTER creating the new one and excluding it by id, as a
     // self-healing sweep against the race described in

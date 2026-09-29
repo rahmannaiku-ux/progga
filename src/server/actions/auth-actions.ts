@@ -8,7 +8,7 @@ import {
   requestPasswordReset,
   resetPassword,
 } from "@/server/services/auth-service";
-import { setSessionCookie, clearSessionCookie, getSessionCookieToken } from "@/lib/auth/session";
+import { setSessionCookie, clearSessionCookie, getSessionCookieToken, getOrSetDeviceId, validateSessionToken } from "@/lib/auth/session";
 import type { User } from "@prisma/client";
 
 /**
@@ -44,7 +44,7 @@ export async function requestRegistrationOtpAction(input: { phone: string }) {
 }
 
 export async function completeRegistrationAction(input: { phone: string; otp: string; password: string }) {
-  const result = await completeRegistration(input.phone, input.otp, input.password);
+  const result = await completeRegistration(input.phone, input.otp, input.password, { deviceId: getOrSetDeviceId() });
   if (result.ok) {
     setSessionCookie(result.rawToken, result.session.expiresAt);
     return { ok: true as const, user: toSafeUser(result.user) };
@@ -53,7 +53,16 @@ export async function completeRegistrationAction(input: { phone: string; otp: st
 }
 
 export async function loginAction(input: { phone: string; password: string; confirmTakeover?: boolean }) {
-  const result = await login(input.phone, input.password, { confirmTakeover: input.confirmTakeover ?? false });
+  const deviceId = getOrSetDeviceId();
+  // A still-valid session cookie from this browser is this device's own
+  // session, never "another device" — pass it so login() can tell.
+  const token = getSessionCookieToken();
+  const current = token ? await validateSessionToken(token, { skipCache: true }) : null;
+  const result = await login(input.phone, input.password, {
+    confirmTakeover: input.confirmTakeover ?? false,
+    deviceId,
+    currentSessionId: current?.session.id,
+  });
   if (result.ok) {
     setSessionCookie(result.rawToken, result.session.expiresAt);
     return { ok: true as const, user: toSafeUser(result.user) };

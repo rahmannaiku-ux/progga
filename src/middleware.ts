@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/session-cookie-name";
+import { SESSION_COOKIE_NAME, SESSION_TTL_DAYS } from "@/lib/auth/session-cookie-name";
 
 // Kept in sync with PATHNAME_HEADER in src/lib/mission-paths.ts (not
 // imported: that module pulls in next/headers, which Edge middleware
@@ -120,6 +120,29 @@ async function hashForRateLimit(value: string): Promise<string> {
     .join("");
 }
 
+/**
+ * Sliding session cookie: every page navigation that carries a session
+ * cookie re-issues it with a fresh SESSION_TTL_DAYS lifetime, so an
+ * active student is never silently signed out when the original
+ * cookie's fixed expiry passes. Presence only — validity is still
+ * decided server-side (a revoked session stays rejected no matter how
+ * fresh its cookie is), and the DB-side expiresAt slides in step
+ * (session.ts's maybeTouchLastActivity).
+ */
+function withRefreshedSession(req: NextRequest, res: NextResponse): NextResponse {
+  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (token && req.method === "GET") {
+    res.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_TTL_DAYS * 24 * 60 * 60,
+    });
+  }
+  return res;
+}
+
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
@@ -132,7 +155,7 @@ export default async function middleware(req: NextRequest) {
   // through below because they need an identifier for rate-limit
   // keying and/or the redirect check.
   if (!isApiRoute && isPublicRoute(pathname)) {
-    return NextResponse.next();
+    return withRefreshedSession(req, NextResponse.next());
   }
 
   const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -164,7 +187,8 @@ export default async function middleware(req: NextRequest) {
   // page is being rendered in. Navigation only, not an auth signal.
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set(PATHNAME_HEADER, pathname);
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  return isApiRoute ? res : withRefreshedSession(req, res);
 }
 
 export const config = {

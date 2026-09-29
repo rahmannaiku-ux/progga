@@ -6,6 +6,7 @@ import { SiteLogo } from "@/components/marketing/site-logo";
 import { getCurrentUserRoleOptional } from "@/lib/auth/current-user";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
+import { dashboardHrefForRole } from "@/lib/auth/signed-in-redirect";
 
 const navLinks = [
   { href: "/courses", label: "Missions" },
@@ -13,13 +14,6 @@ const navLinks = [
   { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
 ];
-
-/** Role-appropriate landing page for the "Command Center" link. */
-function dashboardHrefForRole(role: string) {
-  if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin/dashboard";
-  if (role === "TEACHER") return "/mentor/dashboard";
-  return "/dashboard";
-}
 
 // Server component: auth state is resolved here (not in a client
 // effect) so signed-in visitors get the logged-in header on first

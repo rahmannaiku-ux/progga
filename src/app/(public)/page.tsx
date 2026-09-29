@@ -11,10 +11,11 @@ import { getFeaturedCourses } from "@/server/services/course-catalog";
 import { db } from "@/lib/db/client";
 import { testimonials } from "@/lib/data/testimonials";
 import { getSetting } from "@/lib/config/settings-service";
+import { getCurrentUserRoleOptional } from "@/lib/auth/current-user";
+import { dashboardHrefForRole } from "@/lib/auth/signed-in-redirect";
 
-// No per-user personalization on this page, so it can be served from
-// cache and revalidated in the background rather than hitting Postgres
-// on every single request.
+// The page body is shared, but the CTAs and header read the session, so
+// Next renders it per request; `revalidate` still caches the data fetches.
 export const revalidate = 60;
 
 const steps = [
@@ -56,6 +57,11 @@ export default async function LandingPage() {
       getSetting("homepage.announcementText"),
     ]);
 
+  // Signed-in visitors (the site header already reads the session, so
+  // this is request-cached) get sent back into the app, not to sign-up.
+  const signedInRole = await getCurrentUserRoleOptional();
+  const ctaHref = signedInRole ? dashboardHrefForRole(signedInRole) : "/register";
+
   return (
     <div className="font-body">
       {announcementEnabled && announcementText && (
@@ -89,8 +95,8 @@ export default async function LandingPage() {
                 size="lg"
                 className="comic-btn bg-primary text-primary-foreground hover:bg-primary"
               >
-                <Link href="/sign-up">
-                  {primaryCtaText} <ArrowRight className="h-4 w-4" />
+                <Link href={ctaHref}>
+                  {signedInRole ? "Continue your missions" : primaryCtaText} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button
@@ -280,8 +286,8 @@ export default async function LandingPage() {
               size="lg"
               className="comic-btn bg-primary text-primary-foreground hover:bg-primary"
             >
-              <Link href="/sign-up">
-                Create your account <ArrowRight className="h-4 w-4" />
+              <Link href={ctaHref}>
+                {signedInRole ? "Go to your Command Center" : "Create your account"} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>

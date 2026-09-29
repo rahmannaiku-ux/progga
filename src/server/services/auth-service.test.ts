@@ -43,13 +43,13 @@ vi.mock("@/lib/auth/password", () => ({
 const createSession = vi.fn();
 const revokeAllActiveSessionsForUser = vi.fn();
 const revokeSessionByToken = vi.fn();
-const hasActiveSession = vi.fn();
+const listActiveSessions = vi.fn();
 
 vi.mock("@/lib/auth/session", () => ({
   createSession: (...args: unknown[]) => createSession(...args),
   revokeAllActiveSessionsForUser: (...args: unknown[]) => revokeAllActiveSessionsForUser(...args),
   revokeSessionByToken: (...args: unknown[]) => revokeSessionByToken(...args),
-  hasActiveSession: (...args: unknown[]) => hasActiveSession(...args),
+  listActiveSessions: (...args: unknown[]) => listActiveSessions(...args),
 }));
 
 const checkRateLimit = vi.fn();
@@ -93,7 +93,7 @@ beforeEach(() => {
   createSession.mockReset().mockResolvedValue({ rawToken: "raw-token-abc", session: FAKE_SESSION });
   revokeAllActiveSessionsForUser.mockReset().mockResolvedValue(0);
   revokeSessionByToken.mockReset().mockResolvedValue(undefined);
-  hasActiveSession.mockReset().mockResolvedValue(false);
+  listActiveSessions.mockReset().mockResolvedValue([]);
   checkRateLimit.mockReset().mockResolvedValue({ success: true });
   isFeatureEnabled.mockReset().mockResolvedValue(true);
 });
@@ -238,44 +238,72 @@ describe("login", () => {
   it("logs a student in normally when there's no existing active session", async () => {
     userFindUnique.mockResolvedValue({ id: "user_1", passwordHash: "real-hash", role: "STUDENT", isActive: true, isSuspended: false });
     verifyPassword.mockResolvedValue(true);
-    hasActiveSession.mockResolvedValue(false);
 
-    const result = await login(PHONE, "correct");
+    const result = await login(PHONE, "correct", { deviceId: "dev_a" });
     expect(result).toEqual({ ok: true, rawToken: "raw-token-abc", session: FAKE_SESSION, user: expect.any(Object) });
+    expect(createSession).toHaveBeenCalledWith("user_1", { deviceId: "dev_a" });
     expect(revokeAllActiveSessionsForUser).not.toHaveBeenCalled();
   });
 
-  it("returns takeover_required for a student with an existing active session, without creating a new session", async () => {
+  it("returns takeover_required when a DIFFERENT device has an active session, without creating a new session", async () => {
     userFindUnique.mockResolvedValue({ id: "user_1", passwordHash: "real-hash", role: "STUDENT", isActive: true, isSuspended: false });
     verifyPassword.mockResolvedValue(true);
-    hasActiveSession.mockResolvedValue(true);
+    listActiveSessions.mockResolvedValue([{ id: "s_other", deviceId: "dev_b" }]);
 
-    const result = await login(PHONE, "correct");
+    const result = await login(PHONE, "correct", { deviceId: "dev_a" });
     expect(result).toEqual({ ok: false, reason: "takeover_required" });
     expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it("re-login from the SAME device never asks for a takeover and replaces the old session", async () => {
+    userFindUnique.mockResolvedValue({ id: "user_1", passwordHash: "real-hash", role: "STUDENT", isActive: true, isSuspended: false });
+    verifyPassword.mockResolvedValue(true);
+    listActiveSessions.mockResolvedValue([{ id: "s_old", deviceId: "dev_a" }]);
+
+    const result = await login(PHONE, "correct", { deviceId: "dev_a" });
+    expect(result.ok).toBe(true);
+    expect(revokeAllActiveSessionsForUser).toHaveBeenCalledWith("user_1", { exceptSessionId: FAKE_SESSION.id });
+  });
+
+  it("treats the session this browser's cookie still holds as the same device, even without a device id on it", async () => {
+    userFindUnique.mockResolvedValue({ id: "user_1", passwordHash: "real-hash", role: "STUDENT", isActive: true, isSuspended: false });
+    verifyPassword.mockResolvedValue(true);
+    listActiveSessions.mockResolvedValue([{ id: "s_legacy", deviceId: null }]);
+
+    const result = await login(PHONE, "correct", { deviceId: "dev_a", currentSessionId: "s_legacy" });
+    expect(result.ok).toBe(true);
+  });
+
+  it("a legacy session with no device id on some other browser still counts as another device", async () => {
+    userFindUnique.mockResolvedValue({ id: "user_1", passwordHash: "real-hash", role: "STUDENT", isActive: true, isSuspended: false });
+    verifyPassword.mockResolvedValue(true);
+    listActiveSessions.mockResolvedValue([{ id: "s_legacy", deviceId: null }]);
+
+    const result = await login(PHONE, "correct", { deviceId: "dev_a" });
+    expect(result).toEqual({ ok: false, reason: "takeover_required" });
   });
 
   it("confirmTakeover creates the new session and revokes every other active one", async () => {
     userFindUnique.mockResolvedValue({ id: "user_1", passwordHash: "real-hash", role: "STUDENT", isActive: true, isSuspended: false });
     verifyPassword.mockResolvedValue(true);
-    hasActiveSession.mockResolvedValue(true);
+    listActiveSessions.mockResolvedValue([{ id: "s_other", deviceId: "dev_b" }]);
 
-    const result = await login(PHONE, "correct", { confirmTakeover: true });
+    const result = await login(PHONE, "correct", { confirmTakeover: true, deviceId: "dev_a" });
     expect(result.ok).toBe(true);
-    expect(createSession).toHaveBeenCalledWith("user_1");
+    expect(createSession).toHaveBeenCalledWith("user_1", { deviceId: "dev_a" });
     expect(revokeAllActiveSessionsForUser).toHaveBeenCalledWith("user_1", { exceptSessionId: FAKE_SESSION.id });
   });
 
   it("admin accounts skip the takeover check entirely, even with an existing active session", async () => {
     userFindUnique.mockResolvedValue({ id: "admin_1", passwordHash: "real-hash", role: "ADMIN", isActive: true, isSuspended: false });
     verifyPassword.mockResolvedValue(true);
-    hasActiveSession.mockResolvedValue(true);
+    listActiveSessions.mockResolvedValue([{ id: "s_other", deviceId: "dev_b" }]);
 
     const result = await login(PHONE, "correct");
     expect(result.ok).toBe(true);
     expect(revokeAllActiveSessionsForUser).not.toHaveBeenCalled();
-    // hasActiveSession shouldn't even need to be consulted for an admin.
-    expect(hasActiveSession).not.toHaveBeenCalled();
+    // Active sessions shouldn't even need to be consulted for an admin.
+    expect(listActiveSessions).not.toHaveBeenCalled();
   });
 });
 
