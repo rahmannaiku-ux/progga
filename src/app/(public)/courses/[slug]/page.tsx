@@ -77,7 +77,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
       ? db.payment.findFirst({
           where: { userId: viewer.id, courseId: course.id, status: { in: ["PENDING", "AWAITING_VERIFICATION"] } },
           orderBy: { createdAt: "desc" },
-          select: { id: true },
+          select: { id: true, status: true },
         })
       : null,
   ]);
@@ -198,6 +198,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
               isFree={course.isFree}
               alreadyEnrolled={Boolean(enrollment)}
               pendingPaymentId={pendingPayment?.id ?? null}
+              pendingPaymentAwaiting={pendingPayment?.status === "AWAITING_VERIFICATION"}
               missionHref={`/missions/${course.id}`}
             />
             <p className="text-center text-xs text-muted-foreground">

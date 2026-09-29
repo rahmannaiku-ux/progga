@@ -47,7 +47,10 @@ export function CourseDiscountForm({
 
   const [type, setType] = useState<DiscountType>(discount?.type ?? "PERCENTAGE");
   const [percentOff, setPercentOff] = useState(discount?.percentOff?.toString() ?? "10");
-  const [amountOffCents, setAmountOffCents] = useState(discount?.amountOffCents?.toString() ?? "");
+  const [amountOffTaka, setAmountOffTaka] = useState(
+    discount?.amountOffCents != null ? String(discount.amountOffCents / 100) : ""
+  );
+  const amountOffCentsValue = Math.round((Number(amountOffTaka) || 0) * 100);
   const [isActive, setIsActive] = useState(discount?.isActive ?? true);
   const [startsAt, setStartsAt] = useState(toLocalInputValue(discount?.startsAt ?? null));
   const [endsAt, setEndsAt] = useState(toLocalInputValue(discount?.endsAt ?? null));
@@ -59,13 +62,13 @@ export function CourseDiscountForm({
     isActive,
     type,
     percentOff: type === "PERCENTAGE" ? Number(percentOff) || 0 : null,
-    amountOffCents: type === "FIXED" ? Math.round((Number(amountOffCents) || 0)) : null,
+    amountOffCents: type === "FIXED" ? amountOffCentsValue : null,
     startsAt: parseOptionalDhakaInput(startsAt),
     endsAt: parseOptionalDhakaInput(endsAt),
   };
   const preview = computeDiscountedPriceCents(priceCents, previewDiscount);
   const previewStatus = getDiscountStatus(previewDiscount);
-  const exceedsPrice = type === "FIXED" && (Number(amountOffCents) || 0) > priceCents;
+  const exceedsPrice = type === "FIXED" && amountOffCentsValue > priceCents;
 
   const currentStatus = getDiscountStatus(discount);
 
@@ -139,15 +142,20 @@ export function CourseDiscountForm({
         ) : (
           <div>
             <label className="mb-1.5 block text-xs font-medium text-foreground">
-              Discount amount (in {currency} cents)
+              Discount amount (৳)
             </label>
+            {/* Typed in taka; the server stores poisha (1/100 taka), so the
+                converted value rides along in a hidden field. This used to
+                ask for "cents" directly, and "100" meaning ৳100 saved ৳1. */}
+            <input type="hidden" name="amountOffCents" value={amountOffCentsValue} />
             <input
               type="number"
-              name="amountOffCents"
-              value={amountOffCents}
-              onChange={(e) => setAmountOffCents(e.target.value)}
+              inputMode="decimal"
+              value={amountOffTaka}
+              onChange={(e) => setAmountOffTaka(e.target.value)}
               min={0}
-              max={priceCents}
+              step="0.01"
+              max={priceCents / 100}
               required
               className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
             />

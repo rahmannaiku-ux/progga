@@ -32,6 +32,7 @@ export function PurchasePanel({
   isFree,
   alreadyEnrolled,
   pendingPaymentId,
+  pendingPaymentAwaiting = false,
   missionHref,
 }: {
   courseId: string;
@@ -42,6 +43,8 @@ export function PurchasePanel({
   alreadyEnrolled: boolean;
   /** An in-flight (PENDING/AWAITING_VERIFICATION) payment this student already has on this course, if any. */
   pendingPaymentId: string | null;
+  /** True once that payment's TXID was submitted (AWAITING_VERIFICATION) — money may already be sent. */
+  pendingPaymentAwaiting?: boolean;
   missionHref: string;
 }) {
   const [code, setCode] = useState("");
@@ -62,13 +65,21 @@ export function PurchasePanel({
     }
     setApplyError(null);
     startApplying(async () => {
-      const result = await previewCoupon(courseId, code);
-      if (result.ok) {
-        setApplied(result);
-        setApplyError(null);
-      } else {
+      // previewCoupon throws (rather than returning ok:false) when the
+      // visitor isn't signed in or hasn't finished their profile; before
+      // this catch the Apply button then just silently did nothing.
+      try {
+        const result = await previewCoupon(courseId, code);
+        if (result.ok) {
+          setApplied(result);
+          setApplyError(null);
+        } else {
+          setApplied(null);
+          setApplyError(result.error);
+        }
+      } catch (e) {
         setApplied(null);
-        setApplyError(result.error);
+        setApplyError(e instanceof Error ? e.message : "Couldn't check that coupon. Please try again.");
       }
     });
   }
@@ -106,7 +117,11 @@ export function PurchasePanel({
     );
   }
 
-  if (pendingPaymentId) {
+  // Only an order the student has already sent money for (TXID
+  // submitted) locks the page. An unpaid PENDING order must not: that
+  // hid the coupon box, and checkout then reused the old full-price
+  // order, so a coupon applied afterwards never took effect.
+  if (pendingPaymentId && pendingPaymentAwaiting) {
     return (
       <Button asChild variant="accent" size="lg" className="comic-btn w-full font-display text-base">
         <Link href={`/payments/${pendingPaymentId}`}>Continue your payment</Link>
@@ -206,6 +221,15 @@ export function PurchasePanel({
       {enrollError && (
         <p className="rounded-lg border-2 border-danger/40 bg-danger/10 px-3 py-2 text-center text-xs font-medium text-danger">
           {enrollError}
+        </p>
+      )}
+      {pendingPaymentId && (
+        <p className="text-center text-xs text-muted-foreground">
+          You have an unpaid order for this mission.{" "}
+          <Link href={`/payments/${pendingPaymentId}`} className="font-semibold text-accent hover:text-accent/80">
+            Continue it
+          </Link>{" "}
+          or enroll again to use a coupon.
         </p>
       )}
     </div>

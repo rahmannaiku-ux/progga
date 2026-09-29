@@ -116,7 +116,20 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
     },
     orderBy: { createdAt: "desc" },
   });
-  if (existing) redirect(`/payments/${existing.id}`);
+  if (existing) {
+    // Reuse the in-flight order only when it matches what the student is
+    // asking for now. An unpaid PENDING order (no TXID yet, so no money
+    // sent) with a different coupon — typically the full-price order from
+    // a first click, before a coupon was applied — is cancelled and a new
+    // one created below, instead of silently ignoring the coupon.
+    // AWAITING_VERIFICATION always wins: the student may have paid already.
+    const sameCoupon = (existing.couponCode ?? null) === (redeemedCoupon?.code ?? null);
+    if (existing.status === "AWAITING_VERIFICATION" || sameCoupon) redirect(`/payments/${existing.id}`);
+    await db.payment.updateMany({
+      where: { id: existing.id, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+  }
 
   // A 100%-off coupon leaves nothing to pay, so there's no TXID for the
   // student to submit and nothing for an admin or device to verify —

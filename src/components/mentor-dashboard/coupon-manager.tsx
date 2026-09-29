@@ -68,17 +68,18 @@ function CreateCouponForm({ courseId, priceCents, currency }: { courseId: string
   const [code, setCode] = useState("");
   const [type, setType] = useState<DiscountType>("PERCENTAGE");
   const [percentOff, setPercentOff] = useState("20");
-  const [amountOffCents, setAmountOffCents] = useState("");
+  const [amountOffTaka, setAmountOffTaka] = useState("");
+  const amountOffCentsValue = Math.round((Number(amountOffTaka) || 0) * 100);
   const [expiresAt, setExpiresAt] = useState("");
   const [usageLimit, setUsageLimit] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [formKey, setFormKey] = useState(0); // bump to reset uncontrolled bits after a successful create
 
-  const exceedsPrice = type === "FIXED" && (Number(amountOffCents) || 0) > priceCents;
+  const exceedsPrice = type === "FIXED" && amountOffCentsValue > priceCents;
   const preview = computeCouponPriceCents(priceCents, {
     discountType: type,
     percentOff: type === "PERCENTAGE" ? Number(percentOff) || 0 : null,
-    amountOffCents: type === "FIXED" ? Number(amountOffCents) || 0 : null,
+    amountOffCents: type === "FIXED" ? amountOffCentsValue : null,
   });
 
   function handleSubmit(formData: FormData) {
@@ -88,7 +89,7 @@ function CreateCouponForm({ courseId, priceCents, currency }: { courseId: string
         await createCoupon(courseId, formData);
         setCode("");
         setPercentOff("20");
-        setAmountOffCents("");
+        setAmountOffTaka("");
         setExpiresAt("");
         setUsageLimit("");
         setIsActive(true);
@@ -176,15 +177,20 @@ function CreateCouponForm({ courseId, priceCents, currency }: { courseId: string
         ) : (
           <div>
             <label className="mb-1.5 block text-xs font-medium text-foreground">
-              Discount amount (in {currency} cents)
+              Discount amount (৳)
             </label>
+            {/* Typed in taka; the server stores poisha (1/100 taka), so the
+                converted value rides along in a hidden field. This used to
+                ask for "cents" directly, and "100" meaning ৳100 saved ৳1. */}
+            <input type="hidden" name="amountOffCents" value={amountOffCentsValue} />
             <input
               type="number"
-              name="amountOffCents"
-              value={amountOffCents}
-              onChange={(e) => setAmountOffCents(e.target.value)}
-              min={1}
-              max={priceCents}
+              inputMode="decimal"
+              value={amountOffTaka}
+              onChange={(e) => setAmountOffTaka(e.target.value)}
+              min={0.01}
+              step="0.01"
+              max={priceCents / 100}
               required
               className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
             />
