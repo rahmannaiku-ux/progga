@@ -200,6 +200,8 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
               pendingPaymentId={pendingPayment?.id ?? null}
               pendingPaymentAwaiting={pendingPayment?.status === "AWAITING_VERIFICATION"}
               missionHref={`/missions/${course.id}`}
+              signedIn={Boolean(viewer)}
+              loginHref={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
             />
             <p className="text-center text-xs text-muted-foreground">
               {course._count.enrollments} hero{course._count.enrollments === 1 ? "" : "es"} already enrolled

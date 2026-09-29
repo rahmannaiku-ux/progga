@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Tag, CheckCircle2, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/payments/format";
@@ -34,6 +35,8 @@ export function PurchasePanel({
   pendingPaymentId,
   pendingPaymentAwaiting = false,
   missionHref,
+  signedIn = true,
+  loginHref = "/login",
 }: {
   courseId: string;
   currency: string;
@@ -46,7 +49,12 @@ export function PurchasePanel({
   /** True once that payment's TXID was submitted (AWAITING_VERIFICATION) — money may already be sent. */
   pendingPaymentAwaiting?: boolean;
   missionHref: string;
+  /** False for a signed-out visitor: purchasing sends them to sign in first. */
+  signedIn?: boolean;
+  /** The sign-in page, with a returnTo back to this course. */
+  loginHref?: string;
 }) {
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [applying, startApplying] = useTransition();
   const [enrolling, startEnrolling] = useTransition();
@@ -59,6 +67,10 @@ export function PurchasePanel({
     : { finalCents: basePrice.finalCents, amountOffCents: basePrice.amountOffCents, isDiscounted: basePrice.isDiscounted };
 
   function handleApply() {
+    if (!signedIn) {
+      setApplyError("Please sign in first to use a coupon.");
+      return;
+    }
     if (!code.trim()) {
       setApplyError("Enter a coupon code.");
       return;
@@ -91,6 +103,13 @@ export function PurchasePanel({
   }
 
   function handleEnroll() {
+    // Signed-out visitors can't purchase: send them to sign in, then
+    // straight back to this course (instead of a server error).
+    if (!signedIn) {
+      setEnrollError("Please sign in to continue — taking you to the sign-in page…");
+      router.push(loginHref);
+      return;
+    }
     setEnrollError(null);
     startEnrolling(async () => {
       try {
