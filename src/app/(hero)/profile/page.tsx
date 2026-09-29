@@ -8,6 +8,7 @@ import { AnimatedProgressBar } from "@/components/gamification/animated-progress
 import { AchievementIcon } from "@/components/gamification/achievement-icon";
 import { ScoreTrendSparkline } from "@/components/gamification/score-trend-sparkline";
 import { StickerCollection } from "@/components/profile/sticker-collection";
+import { StudentDetailsCard } from "@/components/profile/student-details-card";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { DoodleStar } from "@/components/marketing/cartoon-doodles";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
@@ -18,7 +19,7 @@ import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 export default async function ProfilePage() {
   const user = await getCurrentUser();
 
-  const [stats, achievements, enrollments, scoreTrend, ownedStickerPurchases] = await Promise.all([
+  const [stats, achievements, enrollments, scoreTrend, ownedStickerPurchases, studentProfile] = await Promise.all([
     getOrCreateHeroStats(user.id),
     db.userAchievement.findMany({
       where: { userId: user.id },
@@ -36,7 +37,12 @@ export default async function ProfilePage() {
       where: { userId: user.id, item: { type: "STICKER" } },
       select: { item: { select: { id: true, title: true, resourceUrl: true } } },
     }),
+    db.studentProfile.findUnique({ where: { userId: user.id } }),
   ]);
+
+  // Phone-registered students have no first/last name on User — the
+  // name they gave at sign-up lives on StudentProfile.
+  const displayName = studentProfile?.name?.trim() || `${user.firstName} ${user.lastName}`.trim();
 
   const ownedStickers = ownedStickerPurchases
     .filter((p) => p.item.resourceUrl)
@@ -57,7 +63,7 @@ export default async function ProfilePage() {
           </div>
           <div>
             <h1 className="font-display text-xl font-bold text-foreground">
-              {user.firstName} {user.lastName}
+              {displayName}
             </h1>
             {user.headline && <p className="text-sm text-muted-foreground">{user.headline}</p>}
           </div>
@@ -92,6 +98,25 @@ export default async function ProfilePage() {
           <AnimatedProgressBar percent={percent} className="mt-1.5" />
         </div>
       </StaggerItem>
+
+      {studentProfile && (
+        <StaggerItem>
+          <StudentDetailsCard
+            phone={user.phone}
+            fatherPhone={studentProfile.fatherPhone}
+            motherPhone={studentProfile.motherPhone}
+            details={{
+              name: studentProfile.name ?? "",
+              district: studentProfile.district ?? "",
+              zipCode: studentProfile.zipCode ?? "",
+              collegeName: studentProfile.collegeName ?? "",
+              collegeEIIN: studentProfile.collegeEIIN ?? "",
+              hscBatch: studentProfile.hscBatch ?? "",
+              studyVersion: studentProfile.studyVersion ?? "",
+            }}
+          />
+        </StaggerItem>
+      )}
 
       <StaggerItem>
         <ProfileEditForm initialHeadline={user.headline ?? ""} initialBio={user.bio ?? ""} />

@@ -1,7 +1,14 @@
 import { db } from "@/lib/db/client";
 import { normalizeBangladeshPhone } from "@/lib/auth/phone";
 import { hashPassword, verifyPassword, validatePasswordInput } from "@/lib/auth/password";
-import { requestRegistrationOtp, verifyRegistrationOtp, requestPasswordResetOtp, verifyPasswordResetOtp } from "@/lib/auth/otp";
+import {
+  requestRegistrationOtp,
+  verifyRegistrationOtp,
+  requestPasswordResetOtp,
+  verifyPasswordResetOtp,
+  requestPhoneChangeOtp,
+  verifyPhoneChangeOtp,
+} from "@/lib/auth/otp";
 import { createSession, revokeAllActiveSessionsForUser, revokeSessionByToken, hasActiveSession, type CreatedSession } from "@/lib/auth/session";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isMultiSessionRole } from "@/lib/auth/require-auth";
@@ -297,4 +304,67 @@ export async function resetPassword(rawPhone: string, otp: string, newPassword: 
   await revokeAllActiveSessionsForUser(user.id);
 
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Phone change (signed-in, from /profile)
+// ---------------------------------------------------------------------
+
+export type RequestPhoneChangeResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "invalid_phone" | "same_phone" | "phone_taken" | "rate_limited" | "cooldown" | "quota_exceeded";
+      retryAfterSeconds?: number;
+    };
+
+/**
+ * Step 1: send an OTP to the NEW number. A number already belonging to
+ * any other account is refused up front — one phone, one account — so
+ * no SMS is burned on a change that can never complete. Unlike
+ * password reset there's no enumeration concern worth hiding here: the
+ * caller is already authenticated, and registration discloses the same
+ * "already registered" fact.
+ */
+export async function requestPhoneChange(userId: string, rawPhone: string): Promise<RequestPhoneChangeResult> {
+  const phone = normalizeBangladeshPhone(rawPhone);
+  if (!phone) return { ok: false, reason: "invalid_phone" };
+
+  const owner = await db.user.findUnique({ where: { phone }, select: { id: true } });
+  if (owner) return { ok: false, reason: owner.id === userId ? "same_phone" : "phone_taken" };
+
+  return requestPhoneChangeOtp(phone, userId);
+}
+
+export type ConfirmPhoneChangeResult =
+  | { ok: true; phone: string }
+  | { ok: false; reason: "invalid_phone" | "otp_invalid" | "otp_max_attempts" | "phone_taken" | "rate_limited" };
+
+/**
+ * Step 2: verify the OTP sent to the new number and swap it in. The
+ * uniqueness pre-check in requestPhoneChange is a courtesy; the real
+ * guard is User.phone's unique constraint (P2002), which also closes
+ * the race where someone registers the number between the two steps.
+ */
+export async function confirmPhoneChange(userId: string, rawPhone: string, otp: string): Promise<ConfirmPhoneChangeResult> {
+  const phone = normalizeBangladeshPhone(rawPhone);
+  if (!phone) return { ok: false, reason: "invalid_phone" };
+
+  const otpResult = await verifyPhoneChangeOtp(phone, otp, userId);
+  if (!otpResult.ok) {
+    if (otpResult.reason === "rate_limited") return { ok: false, reason: "rate_limited" };
+    if (otpResult.reason === "max_attempts") return { ok: false, reason: "otp_max_attempts" };
+    return { ok: false, reason: "otp_invalid" };
+  }
+
+  try {
+    await db.user.update({ where: { id: userId }, data: { phone, phoneVerified: true } });
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
+      return { ok: false, reason: "phone_taken" };
+    }
+    throw err;
+  }
+
+  return { ok: true, phone };
 }

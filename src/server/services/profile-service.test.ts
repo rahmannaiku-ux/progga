@@ -6,6 +6,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const userFindUnique = vi.fn();
 const studentProfileUpsert = vi.fn();
+const studentProfileFindUnique = vi.fn();
+const studentProfileUpdate = vi.fn();
 const userUpdate = vi.fn();
 const transaction = vi.fn();
 
@@ -17,12 +19,14 @@ vi.mock("@/lib/db/client", () => ({
     },
     studentProfile: {
       upsert: (...args: unknown[]) => studentProfileUpsert(...args),
+      findUnique: (...args: unknown[]) => studentProfileFindUnique(...args),
+      update: (...args: unknown[]) => studentProfileUpdate(...args),
     },
     $transaction: (ops: Promise<unknown>[]) => transaction(ops),
   },
 }));
 
-const { completeStudentProfile } = await import("./profile-service");
+const { completeStudentProfile, updateStudentProfile } = await import("./profile-service");
 
 const VALID_INPUT = {
   name: "Fahim Rahman",
@@ -39,6 +43,8 @@ const VALID_INPUT = {
 beforeEach(() => {
   userFindUnique.mockReset().mockResolvedValue({ id: "user_1" });
   studentProfileUpsert.mockReset().mockResolvedValue({});
+  studentProfileFindUnique.mockReset().mockResolvedValue({ id: "sp_1" });
+  studentProfileUpdate.mockReset().mockResolvedValue({});
   userUpdate.mockReset().mockResolvedValue({});
   transaction.mockReset().mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
 });
@@ -164,5 +170,39 @@ describe("completeStudentProfile — persistence", () => {
     expect(first).toEqual({ ok: true });
     expect(second).toEqual({ ok: true });
     expect(studentProfileUpsert).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("updateStudentProfile", () => {
+  const { fatherPhone: _f, motherPhone: _m, ...EDITABLE } = VALID_INPUT;
+
+  it("saves the editable fields, trimmed", async () => {
+    const result = await updateStudentProfile("user_1", { ...EDITABLE, name: "  New Name  " });
+    expect(result).toEqual({ ok: true });
+    const data = studentProfileUpdate.mock.calls[0]![0].data;
+    expect(data.name).toBe("New Name");
+    expect(data.collegeEIIN).toBeNull();
+  });
+
+  it("never writes parent phones, even if a crafted request includes them", async () => {
+    await updateStudentProfile("user_1", { ...EDITABLE, fatherPhone: "01811111111", motherPhone: "01911111111" } as never);
+    const data = studentProfileUpdate.mock.calls[0]![0].data;
+    expect(data).not.toHaveProperty("fatherPhone");
+    expect(data).not.toHaveProperty("motherPhone");
+  });
+
+  it("rejects invalid fields without writing", async () => {
+    const result = await updateStudentProfile("user_1", { ...EDITABLE, hscBatch: "abc", name: "" });
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.reason === "validation") {
+      expect(result.fieldErrors.hscBatch).toBeTruthy();
+      expect(result.fieldErrors.name).toBeTruthy();
+    }
+    expect(studentProfileUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns not_found when the user has no profile row", async () => {
+    studentProfileFindUnique.mockResolvedValue(null);
+    expect(await updateStudentProfile("user_1", EDITABLE)).toEqual({ ok: false, reason: "not_found" });
   });
 });

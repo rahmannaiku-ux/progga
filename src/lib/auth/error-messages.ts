@@ -106,3 +106,28 @@ export function resetPasswordErrorMessage(reason: string, message?: string): str
       return GENERIC;
   }
 }
+
+export function phoneChangeErrorMessage(reason: string, retryAfterSeconds?: number): string {
+  switch (reason) {
+    case "invalid_phone":
+      return "Enter a valid Bangladeshi phone number.";
+    case "same_phone":
+      return "That's already your phone number.";
+    case "phone_taken":
+      return "This phone number is already linked to another account.";
+    case "otp_invalid":
+      return "That code is incorrect or has expired. Please try again or request a new one.";
+    case "otp_max_attempts":
+      return "Too many incorrect attempts for that code. Please request a new one.";
+    case "rate_limited":
+      return "Too many attempts. Please wait a few minutes and try again.";
+    case "cooldown":
+      return retryAfterSeconds
+        ? `Please wait ${retryAfterSeconds}s before requesting another code.`
+        : "Please wait a moment before requesting another code.";
+    case "quota_exceeded":
+      return "You have reached the maximum number of OTP requests. Please try again later.";
+    default:
+      return GENERIC;
+  }
+}

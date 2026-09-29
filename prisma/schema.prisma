@@ -649,6 +649,7 @@ model Session {
 enum OtpPurpose {
   REGISTRATION
   PASSWORD_RESET
+  PHONE_CHANGE // verifies a signed-in user's NEW number before it replaces User.phone
 }
 
 // Generic OTP record for both registration phone-verification and

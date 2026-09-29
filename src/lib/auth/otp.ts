@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { normalizeBangladeshPhone } from "@/lib/auth/phone";
 import { constantTimeEquals } from "@/lib/auth/bot-auth";
 import { getSmsProvider } from "@/lib/sms/onecodesoft";
-import { registrationOtpMessage, passwordResetOtpMessage } from "@/lib/sms/messages";
+import { registrationOtpMessage, passwordResetOtpMessage, phoneChangeOtpMessage } from "@/lib/sms/messages";
 import type { OtpPurpose } from "@prisma/client";
 
 /**
@@ -226,7 +226,12 @@ async function createAndSendOtp(phone: string, purpose: OtpPurpose, userId: stri
   const reserved = await reserveOtpSlot(phone, purpose, userId);
   if (!reserved.ok) return reserved;
 
-  const message = purpose === "REGISTRATION" ? registrationOtpMessage(reserved.code) : passwordResetOtpMessage(reserved.code);
+  const message =
+    purpose === "REGISTRATION"
+      ? registrationOtpMessage(reserved.code)
+      : purpose === "PHONE_CHANGE"
+        ? phoneChangeOtpMessage(reserved.code)
+        : passwordResetOtpMessage(reserved.code);
 
   // Never log the raw code outside of an explicit, non-production
   // debug path — see the development-only branch below.
@@ -242,7 +247,12 @@ async function createAndSendOtp(phone: string, purpose: OtpPurpose, userId: stri
   return { ok: true };
 }
 
-async function verifyOtp(rawPhone: string, purpose: OtpPurpose, submittedCode: string): Promise<OtpVerifyResult> {
+/**
+ * `userId`, when given, restricts the lookup to OTPs issued to that user
+ * — used by PHONE_CHANGE so a code sent on behalf of one account can
+ * never be redeemed by another.
+ */
+async function verifyOtp(rawPhone: string, purpose: OtpPurpose, submittedCode: string, userId?: string): Promise<OtpVerifyResult> {
   const phone = normalizeBangladeshPhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid_phone" };
 
@@ -250,7 +260,7 @@ async function verifyOtp(rawPhone: string, purpose: OtpPurpose, submittedCode: s
   if (!rl.success) return { ok: false, reason: "rate_limited" };
 
   const otp = await db.otp.findFirst({
-    where: { phone, purpose, consumedAt: null },
+    where: { phone, purpose, consumedAt: null, ...(userId ? { userId } : {}) },
     orderBy: { createdAt: "desc" },
   });
   if (!otp) return { ok: false, reason: "invalid_or_expired" };
@@ -354,4 +364,24 @@ export async function requestPasswordResetOtp(phone: string): Promise<OtpRequest
 /** Verifies a password-reset OTP. */
 export async function verifyPasswordResetOtp(phone: string, code: string): Promise<OtpVerifyResult> {
   return verifyOtp(phone, "PASSWORD_RESET", code);
+}
+
+/**
+ * Requests an OTP to a signed-in user's prospective NEW phone number.
+ * The caller (auth-service's requestPhoneChange) has already checked
+ * the number isn't taken by another account; this only sends the code.
+ */
+export async function requestPhoneChangeOtp(newPhone: string, userId: string): Promise<OtpRequestResult> {
+  const normalized = normalizeBangladeshPhone(newPhone);
+  if (!normalized) return { ok: false, reason: "invalid_phone" };
+
+  const rl = await checkRateLimit("otpRequest", `PHONE_CHANGE:${normalized}`);
+  if (!rl.success) return { ok: false, reason: "rate_limited" };
+
+  return createAndSendOtp(normalized, "PHONE_CHANGE", userId);
+}
+
+/** Verifies a phone-change OTP — only one issued to `userId` counts. */
+export async function verifyPhoneChangeOtp(newPhone: string, code: string, userId: string): Promise<OtpVerifyResult> {
+  return verifyOtp(newPhone, "PHONE_CHANGE", code, userId);
 }

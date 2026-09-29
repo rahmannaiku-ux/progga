@@ -40,15 +40,34 @@ function requiredText(value: string | undefined, label: string): string | null {
 }
 
 /**
- * Validates and normalizes the profile-completion input. Server-side
- * and authoritative — the client's own validation (Part 11) is a UX
- * convenience only, never trusted here. Returns either the
- * normalized, ready-to-persist data or a field-keyed error map.
+ * The profile fields a student may edit after first login — everything
+ * captured at completion except the parent phones, which are fixed once
+ * set (shown on /profile, never editable there).
  */
-function validate(input: CompleteStudentProfileInput):
-  | { ok: true; data: { name: string; district: string; zipCode: string; collegeName: string; collegeEIIN: string | null; fatherPhone: string | null; motherPhone: string | null; hscBatch: string; studyVersion: StudyVersion } }
-  | { ok: false; fieldErrors: Partial<Record<keyof CompleteStudentProfileInput, string>> } {
-  const fieldErrors: Partial<Record<keyof CompleteStudentProfileInput, string>> = {};
+export type EditableStudentProfileInput = Omit<CompleteStudentProfileInput, "fatherPhone" | "motherPhone">;
+
+type EditableStudentProfileData = {
+  name: string;
+  district: string;
+  zipCode: string;
+  collegeName: string;
+  collegeEIIN: string | null;
+  hscBatch: string;
+  studyVersion: StudyVersion;
+};
+
+type FieldErrors<T> = Partial<Record<keyof T, string>>;
+
+/**
+ * Validates and normalizes the editable fields. Server-side and
+ * authoritative — the client's own validation is a UX convenience only,
+ * never trusted here.
+ */
+function validateEditable(input: EditableStudentProfileInput): {
+  data: EditableStudentProfileData;
+  fieldErrors: FieldErrors<EditableStudentProfileInput>;
+} {
+  const fieldErrors: FieldErrors<EditableStudentProfileInput> = {};
 
   const nameErr = requiredText(input.name, "Name");
   if (nameErr) fieldErrors.name = nameErr;
@@ -73,6 +92,31 @@ function validate(input: CompleteStudentProfileInput):
 
   const collegeEIIN = (input.collegeEIIN ?? "").trim();
   if (collegeEIIN.length > MAX_TEXT_LENGTH) fieldErrors.collegeEIIN = "College EIIN is too long.";
+
+  return {
+    fieldErrors,
+    data: {
+      name: (input.name ?? "").trim(),
+      district: (input.district ?? "").trim(),
+      zipCode: (input.zipCode ?? "").trim(),
+      collegeName: (input.collegeName ?? "").trim(),
+      collegeEIIN: collegeEIIN.length > 0 ? collegeEIIN : null,
+      hscBatch,
+      studyVersion: input.studyVersion as StudyVersion,
+    },
+  };
+}
+
+/**
+ * Validates and normalizes the full profile-completion input: the
+ * editable fields plus the parent phones. Returns either the
+ * normalized, ready-to-persist data or a field-keyed error map.
+ */
+function validate(input: CompleteStudentProfileInput):
+  | { ok: true; data: EditableStudentProfileData & { fatherPhone: string | null; motherPhone: string | null } }
+  | { ok: false; fieldErrors: FieldErrors<CompleteStudentProfileInput> } {
+  const editable = validateEditable(input);
+  const fieldErrors: FieldErrors<CompleteStudentProfileInput> = { ...editable.fieldErrors };
 
   // Parent phones: each, if provided, must be a valid Bangladeshi
   // number (through the one shared normalization utility — never
@@ -100,20 +144,7 @@ function validate(input: CompleteStudentProfileInput):
 
   if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
 
-  return {
-    ok: true,
-    data: {
-      name: input.name.trim(),
-      district: input.district.trim(),
-      zipCode: input.zipCode.trim(),
-      collegeName: input.collegeName.trim(),
-      collegeEIIN: collegeEIIN.length > 0 ? collegeEIIN : null,
-      fatherPhone,
-      motherPhone,
-      hscBatch,
-      studyVersion: input.studyVersion as StudyVersion,
-    },
-  };
+  return { ok: true, data: { ...editable.data, fatherPhone, motherPhone } };
 }
 
 /**
@@ -144,5 +175,28 @@ export async function completeStudentProfile(userId: string, input: CompleteStud
     db.user.update({ where: { id: userId }, data: { profileCompleted: true } }),
   ]);
 
+  return { ok: true };
+}
+
+export type UpdateStudentProfileResult =
+  | { ok: true }
+  | { ok: false; reason: "validation"; fieldErrors: FieldErrors<EditableStudentProfileInput> }
+  | { ok: false; reason: "not_found" };
+
+/**
+ * Post-completion edit from /profile. Takes only the editable fields —
+ * the input type has no parent-phone keys and nothing but
+ * `validateEditable`'s output is written, so a crafted request can't
+ * change fatherPhone/motherPhone (or the login phone, which has its own
+ * OTP-gated flow in auth-service's confirmPhoneChange).
+ */
+export async function updateStudentProfile(userId: string, input: EditableStudentProfileInput): Promise<UpdateStudentProfileResult> {
+  const { data, fieldErrors } = validateEditable(input);
+  if (Object.keys(fieldErrors).length > 0) return { ok: false, reason: "validation", fieldErrors };
+
+  const profile = await db.studentProfile.findUnique({ where: { userId }, select: { id: true } });
+  if (!profile) return { ok: false, reason: "not_found" };
+
+  await db.studentProfile.update({ where: { userId }, data });
   return { ok: true };
 }

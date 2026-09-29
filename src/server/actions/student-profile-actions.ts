@@ -1,7 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { completeStudentProfile, type CompleteStudentProfileInput } from "@/server/services/profile-service";
+import {
+  completeStudentProfile,
+  updateStudentProfile,
+  type CompleteStudentProfileInput,
+  type EditableStudentProfileInput,
+} from "@/server/services/profile-service";
+import { requestPhoneChange, confirmPhoneChange } from "@/server/services/auth-service";
 
 /**
  * The authenticated user comes ONLY from `requireAuth()` (the Phase 3
@@ -17,4 +24,34 @@ import { completeStudentProfile, type CompleteStudentProfileInput } from "@/serv
 export async function completeStudentProfileAction(input: CompleteStudentProfileInput) {
   const user = await requireAuth();
   return completeStudentProfile(user.id, input);
+}
+
+/** Edits the post-completion profile fields (never the parent phones). Same userId rule as above. */
+export async function updateStudentProfileAction(input: EditableStudentProfileInput) {
+  const user = await requireAuth();
+  const result = await updateStudentProfile(user.id, {
+    name: input.name,
+    district: input.district,
+    zipCode: input.zipCode,
+    collegeName: input.collegeName,
+    collegeEIIN: input.collegeEIIN,
+    hscBatch: input.hscBatch,
+    studyVersion: input.studyVersion,
+  });
+  if (result.ok) revalidatePath("/profile");
+  return result;
+}
+
+/** Sends an OTP to the student's prospective new login phone. */
+export async function requestPhoneChangeOtpAction(input: { phone: string }) {
+  const user = await requireAuth();
+  return requestPhoneChange(user.id, input.phone);
+}
+
+/** Verifies that OTP and swaps the new number in as the login phone. */
+export async function confirmPhoneChangeAction(input: { phone: string; otp: string }) {
+  const user = await requireAuth();
+  const result = await confirmPhoneChange(user.id, input.phone, input.otp);
+  if (result.ok) revalidatePath("/profile");
+  return result;
 }

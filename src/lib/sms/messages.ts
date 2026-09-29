@@ -13,6 +13,10 @@ export function passwordResetOtpMessage(code: string): string {
   return `Proggaa password reset code: ${code}. It expires in 5 minutes. Do not share this code with anyone. If you didn't request this, ignore this message.`;
 }
 
+export function phoneChangeOtpMessage(code: string): string {
+  return `Proggaa code to confirm your new phone number: ${code}. It expires in 5 minutes. Do not share this code with anyone.`;
+}
+
 /**
  * Sent once, right after a payment flips to PAID (see
  * markPaidAndEnroll in server/services/payment-verification.ts).
