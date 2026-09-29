@@ -105,6 +105,16 @@ export const SETTING_DEFINITIONS = {
     min: 1,
     max: 180,
   },
+  "leaderboard.resetSchedule": {
+    key: "leaderboard.resetSchedule",
+    category: "Leaderboard",
+    label: "Leaderboard reset schedule",
+    description:
+      "How often the student leaderboard starts over (Dhaka time; weeks start Sunday). XP and levels are never reset — the board just ranks XP earned in the current period. Admins can also reset it manually from Admin → Leaderboard.",
+    type: "ENUM",
+    defaultValue: "NEVER",
+    enumOptions: ["NEVER", "DAILY", "WEEKLY", "MONTHLY"],
+  },
 } as const satisfies Record<string, SettingDefinition>;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

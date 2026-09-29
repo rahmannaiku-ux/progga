@@ -1745,6 +1745,7 @@ model RewardEvent {
 
   @@unique([sourceType, sourceId, rewardType, userId])
   @@index([userId])
+  @@index([createdAt])
 }
 
 // ---------------------------------------------------------------------
@@ -1843,6 +1844,20 @@ model CoinPurchase {
   @@unique([userId, itemId])
   @@index([userId])
   @@index([itemId])
+}
+
+// One row per admin "Reset now" on the leaderboard. Resetting never
+// touches XP or levels — the leaderboard ranks XP earned (RewardEvent
+// rows) since the latest period start, which is the later of the newest
+// row here and the start of the scheduled period (see
+// src/lib/gamification/leaderboard.ts).
+model LeaderboardReset {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  resetById   String?
+  resetByName String?
+
+  @@index([createdAt])
 }
 
 model HeroStats {

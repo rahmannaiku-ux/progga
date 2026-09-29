@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { Trophy, Flame, Medal } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { db } from "@/lib/db/client";
 import { cn } from "@/lib/utils";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { Avatar } from "@/components/shared/avatar";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
+import { getLeaderboard, getLeaderboardPeriod, type ResetSchedule } from "@/lib/gamification/leaderboard";
+import { formatDhakaDateTime } from "@/lib/timezone";
 
 const TOP_N = 50;
 
-const TABS = [
-  { key: "global", label: "Global", enabled: true },
-  { key: "all-time", label: "All-Time", enabled: true },
-  { key: "week", label: "This Week", enabled: false },
-  { key: "friends", label: "Friends", enabled: false },
-] as const;
+const PERIOD_LABEL: Record<ResetSchedule, string> = {
+  DAILY: "Today",
+  WEEKLY: "This Week",
+  MONTHLY: "This Month",
+  NEVER: "This Season", // no schedule, but an admin has reset the board
+};
 
 const PODIUM_THEME = [
   { medal: "text-xp", ring: "bg-xp/15", label: "1st", scale: "sm:scale-110 sm:-translate-y-2" },
@@ -28,32 +29,26 @@ export default async function LeaderboardPage({
   searchParams: { tab?: string };
 }) {
   const user = await getCurrentUser();
+  const period = await getLeaderboardPeriod();
+
+  // "global" is the current period (or all-time when the board has
+  // never been reset and has no schedule — then both tabs match).
+  const TABS = [
+    { key: "global", label: period.start ? PERIOD_LABEL[period.schedule] : "Global", enabled: true },
+    { key: "all-time", label: "All-Time", enabled: true },
+    { key: "friends", label: "Friends", enabled: false },
+  ];
   const activeTab = TABS.some((t) => t.key === searchParams.tab && t.enabled) ? searchParams.tab : "global";
+  const periodStart = activeTab === "global" ? period.start : null;
 
-  const top = await db.heroStats.findMany({
-    orderBy: { xp: "desc" },
-    take: TOP_N,
-    include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
-  });
+  const { top, me } = await getLeaderboard(periodStart, user.id, TOP_N);
+  const myRankRow = me?.row ?? null;
+  const myRank = me?.rank ?? null;
 
-  const myRankIndex = top.findIndex((s) => s.userId === user.id);
-  let myRankRow: (typeof top)[number] | null = null;
-  let myRank: number | null = null;
-
-  if (myRankIndex === -1) {
-    const myStats = await db.heroStats.findUnique({
-      where: { userId: user.id },
-      include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
-    });
-    if (myStats) {
-      const higherCount = await db.heroStats.count({ where: { xp: { gt: myStats.xp } } });
-      myRankRow = myStats;
-      myRank = higherCount + 1;
-    }
-  }
-
-  const podium = top.slice(0, 3);
-  const rest = top.slice(3);
+  // The podium needs three heroes; with fewer (common right after a
+  // reset) everyone goes in the plain list instead of vanishing.
+  const podium = top.length >= 3 ? top.slice(0, 3) : [];
+  const rest = top.slice(podium.length);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -64,7 +59,9 @@ export default async function LeaderboardPage({
         </h1>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Top heroes by total XP across the platform.
+        {periodStart
+          ? `Top heroes by XP earned since ${formatDhakaDateTime(periodStart)}.`
+          : "Top heroes by total XP across the platform."}
       </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -103,7 +100,7 @@ export default async function LeaderboardPage({
             const isMe = row.userId === user.id;
             return (
               <StaggerItem
-                key={row.id}
+                key={row.userId}
                 className={cn(
                   "comic-panel flex min-w-0 flex-col items-center gap-1.5 bg-surface p-2.5 text-center transition-transform sm:gap-2 sm:p-4",
                   theme.scale
@@ -126,7 +123,7 @@ export default async function LeaderboardPage({
                   {isMe && <span className="text-accent"> (you)</span>}
                 </p>
                 <span className="text-[9px] font-semibold text-muted-foreground sm:text-[10px]">
-                  Lvl {xpProgressWithinLevel(row.xp).level}
+                  Lvl {xpProgressWithinLevel(row.totalXp).level}
                 </span>
                 <span className="font-mono text-[11px] font-bold text-xp sm:text-xs">
                   {row.xp.toLocaleString("en-US")} XP
@@ -142,11 +139,11 @@ export default async function LeaderboardPage({
           const isMe = row.userId === user.id;
           return (
             <StaggerItem
-              key={row.id}
+              key={row.userId}
               className={cn("flex items-center gap-3 p-3 sm:gap-4 sm:p-4", isMe && "bg-primary/10")}
             >
               <span className="w-6 shrink-0 text-center font-mono text-sm font-bold text-muted-foreground">
-                {i + 4}
+                {podium.length + i + 1}
               </span>
               <Avatar src={row.user.avatarUrl} name={row.user.firstName} size={32} className="h-8 w-8" />
               <div className="min-w-0 flex-1">
@@ -155,7 +152,7 @@ export default async function LeaderboardPage({
                   {isMe && <span className="ml-1.5 text-xs text-accent">(you)</span>}
                 </p>
                 <p className="text-[10px] font-semibold text-muted-foreground">
-                  Level {xpProgressWithinLevel(row.xp).level}
+                  Level {xpProgressWithinLevel(row.totalXp).level}
                 </p>
               </div>
               {row.currentStreak > 0 && (
@@ -193,9 +190,9 @@ export default async function LeaderboardPage({
           </div>
         )}
 
-        {rest.length === 0 && !myRankRow && podium.length < 3 && (
+        {top.length === 0 && !myRankRow && (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            Not enough heroes on the board yet.
+            {periodStart ? "No XP earned yet this period — be the first on the board!" : "Not enough heroes on the board yet."}
           </p>
         )}
       </StaggerContainer>

@@ -137,6 +137,7 @@ export const adminNav: NavSection[] = [
       { label: "Provider Rules", href: "/admin/payments/provider-rules", icon: ListTree, prefetch: false },
       { label: "Suspicious Transactions", href: "/admin/payments/suspicious", icon: ShieldAlert, prefetch: false },
       { label: "Heroes", href: "/admin/heroes", icon: User },
+      { label: "Leaderboard", href: "/admin/leaderboard", icon: Trophy, prefetch: false },
       {
         label: "Roles & Permissions",
         href: "/admin/roles-permissions",
