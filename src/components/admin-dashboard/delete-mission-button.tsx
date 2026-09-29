@@ -78,11 +78,16 @@ export function DeleteMissionButton({
                 <span className="font-bold break-words">{title}</span> and all of its content (operations, lessons,
                 exams, assignments, question bank, coupons, live classes) will be permanently deleted.
               </p>
-              {(enrollmentCount > 0 || paymentCount > 0) && (
+              {enrollmentCount > 0 && (
                 <p className="font-semibold text-danger">
-                  This also deletes {enrollmentCount} enrollment{enrollmentCount === 1 ? "" : "s"} and {paymentCount}{" "}
-                  payment record{paymentCount === 1 ? "" : "s"}, plus students&apos; progress, exam attempts and
-                  certificates for this mission.
+                  This also deletes {enrollmentCount} enrollment{enrollmentCount === 1 ? "" : "s"}, plus
+                  students&apos; progress, exam attempts and certificates for this mission.
+                </p>
+              )}
+              {paymentCount > 0 && (
+                <p className="text-muted-foreground">
+                  {paymentCount} payment record{paymentCount === 1 ? " is" : "s are"} kept, so students keep their
+                  invoices as proof of payment.
                 </p>
               )}
             </div>

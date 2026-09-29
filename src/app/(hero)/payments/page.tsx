@@ -3,6 +3,7 @@ import { Wallet } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { formatMoney, PAYMENT_STATUS_META } from "@/lib/payments/format";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 export default async function PaymentHistoryPage() {
   const user = await getCurrentUser();
@@ -43,7 +44,7 @@ export default async function PaymentHistoryPage() {
                 className="comic-panel hover-glow-card flex flex-wrap items-center justify-between gap-3 bg-surface p-4"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-display font-bold text-foreground">{p.course.title}</p>
+                  <p className="truncate font-display font-bold text-foreground">{paymentCourseTitle(p)}</p>
                   <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                     {p.paymentReference}
                     {p.transactionId ? ` · ${p.transactionId}` : ""}

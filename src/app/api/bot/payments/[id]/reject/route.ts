@@ -4,6 +4,7 @@ import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
 import { rejectPaymentCore } from "@/server/actions/payment-actions";
 import { sendBotEvent } from "@/lib/bot-webhook/dispatch";
 import { db } from "@/lib/db/client";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 
@@ -62,7 +63,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     await sendBotEvent({
       type: "PAYMENT_REJECTED",
       proggaaUserId: fresh.userId,
-      payload: { paymentId: fresh.id, courseTitle: fresh.course.title, reason: parsed.data.reason },
+      payload: { paymentId: fresh.id, courseTitle: paymentCourseTitle(fresh), reason: parsed.data.reason },
     });
   }
 

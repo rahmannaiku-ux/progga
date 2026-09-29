@@ -9,6 +9,7 @@ import { ProviderPicker } from "@/components/payments/provider-picker";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { formatMoney, PAYMENT_STATUS_META, verificationMethodLabel, MFS_PROVIDER_META } from "@/lib/payments/format";
 import type { MfsProvider } from "@/lib/payments/sms/types";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 export default async function PaymentPage({
   params,
@@ -51,7 +52,7 @@ export default async function PaymentPage({
       <div className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
         <Sparkles className="absolute right-5 top-5 h-6 w-6 text-xp animate-cartoon-wiggle" />
         <p className="text-xs font-bold uppercase tracking-wide text-accent">Unlocking mission</p>
-        <h1 className="mt-1 font-display text-2xl font-extrabold text-foreground">{payment.course.title}</h1>
+        <h1 className="mt-1 font-display text-2xl font-extrabold text-foreground">{paymentCourseTitle(payment)}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <span className="sticker bg-primary px-4 py-1.5 font-display text-xl font-extrabold text-primary-foreground">
             {formatMoney(payment.amountCents, payment.currency)}
@@ -191,7 +192,7 @@ function PaidState({
   paymentId,
 }: {
   methodLabel: string | null;
-  missionId: string;
+  missionId: string | null;
   paymentId: string;
 }) {
   return (
@@ -204,7 +205,7 @@ function PaidState({
       {methodLabel && <p className="mt-2 text-xs font-semibold text-muted-foreground">{methodLabel}</p>}
       <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
         <Link
-          href={`/missions/${missionId}`}
+          href={missionId ? `/missions/${missionId}` : "/my-courses"}
           className="comic-btn inline-flex items-center justify-center bg-primary px-6 py-3 font-display font-bold text-primary-foreground"
         >
           Start the mission →
@@ -220,7 +221,7 @@ function PaidState({
   );
 }
 
-function RejectedState({ reason, missionId }: { reason: string | null; missionId: string }) {
+function RejectedState({ reason, missionId }: { reason: string | null; missionId: string | null }) {
   return (
     <div className="comic-panel !bg-danger/10 p-8 text-center">
       <XCircle className="mx-auto h-14 w-14 text-danger" />
@@ -234,7 +235,7 @@ function RejectedState({ reason, missionId }: { reason: string | null; missionId
         </p>
       )}
       <Link
-        href={`/missions/${missionId}`}
+        href={missionId ? `/missions/${missionId}` : "/my-courses"}
         className="comic-btn mt-5 inline-flex items-center justify-center bg-primary px-6 py-3 font-display font-bold text-primary-foreground"
       >
         Try again
@@ -243,7 +244,7 @@ function RejectedState({ reason, missionId }: { reason: string | null; missionId
   );
 }
 
-function ExpiredState({ missionId, label }: { missionId: string; label: string }) {
+function ExpiredState({ missionId, label }: { missionId: string | null; label: string }) {
   return (
     <div className="comic-panel bg-surface p-8 text-center">
       <p className="font-display text-xl font-extrabold text-foreground">{label}</p>
@@ -251,7 +252,7 @@ function ExpiredState({ missionId, label }: { missionId: string; label: string }
         This payment attempt is no longer active. Start a new one from the mission page.
       </p>
       <Link
-        href={`/missions/${missionId}`}
+        href={missionId ? `/missions/${missionId}` : "/my-courses"}
         className="comic-btn mt-5 inline-flex items-center justify-center bg-primary px-6 py-3 font-display font-bold text-primary-foreground"
       >
         Back to mission

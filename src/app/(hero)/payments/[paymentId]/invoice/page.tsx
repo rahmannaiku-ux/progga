@@ -8,6 +8,7 @@ import { buildInvoice, formatInvoiceMoney, invoiceNumber } from "@/lib/payments/
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { formatDhakaDate, formatDhakaDateTimeBST } from "@/lib/timezone";
 import { PrintButton } from "@/components/payments/print-button";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 async function loadPaidPayment(paymentId: string) {
   const user = await getCurrentUser();
@@ -131,7 +132,7 @@ export default async function InvoicePage({
             <tbody>
               <tr className="border-b border-border/30">
                 <td className="py-3 pr-3">
-                  <p className="font-semibold">{payment.course.title}</p>
+                  <p className="font-semibold">{paymentCourseTitle(payment)}</p>
                   <p className="text-xs text-muted-foreground">Course enrollment</p>
                 </td>
                 <td className="py-3 px-3 text-center font-mono">1</td>

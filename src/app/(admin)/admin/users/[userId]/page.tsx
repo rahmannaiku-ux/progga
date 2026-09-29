@@ -6,6 +6,7 @@ import { db } from "@/lib/db/client";
 import { Badge } from "@/components/ui/badge";
 import { formatDhakaDate, formatDhakaDateTime } from "@/lib/timezone";
 import { formatMoney, PAYMENT_STATUS_META } from "@/lib/payments/format";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 /**
  * Admin-only view of one user's full record — most importantly the
@@ -68,6 +69,7 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
           couponCode: true,
           createdAt: true,
           course: { select: { title: true } },
+          courseTitle: true,
         },
       },
     },
@@ -171,7 +173,7 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
               return (
                 <li key={p.id} className="space-y-1 py-2.5 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="min-w-0 break-words text-foreground">{p.course.title}</span>
+                    <span className="min-w-0 break-words text-foreground">{paymentCourseTitle(p)}</span>
                     <span className="font-mono text-foreground">{formatMoney(p.amountCents, p.currency)}</span>
                   </div>
                   <p className="break-words text-xs text-muted-foreground">

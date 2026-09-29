@@ -7,6 +7,7 @@ import { formatMoney, PAYMENT_STATUS_META, sourceLabel } from "@/lib/payments/fo
 import { formatDhakaDateTime } from "@/lib/timezone";
 import type { PaymentStatus, VerificationMethod, Prisma } from "@prisma/client";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 const STATUS_TABS: { key: string; label: string; status?: PaymentStatus }[] = [
   { key: "all", label: "All" },
@@ -120,7 +121,7 @@ export default async function AdminPaymentsPage({
                       {p.user.firstName} {p.user.lastName}
                     </p>
                     <p className="text-xs text-muted-foreground">{p.user.email}</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{p.course.title}</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{paymentCourseTitle(p)}</p>
                   </div>
                   <span className="font-display text-xl font-extrabold text-foreground">
                     {formatMoney(p.amountCents, p.currency)}

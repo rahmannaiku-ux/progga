@@ -7,6 +7,7 @@ import { markPaidAndEnroll } from "@/server/services/payment-verification";
 import { notifyPaymentAdmins } from "@/lib/payments/notify-admins";
 import { sendPaymentVerifiedAlert, sendPaymentReviewAlert } from "@/lib/payments/telegram";
 import { formatMoney } from "@/lib/payments/format";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 /**
  * POST /api/payment-bridge/bkash
@@ -168,7 +169,7 @@ export async function POST(req: Request) {
   if (verifiedWithRelations) {
     await sendPaymentVerifiedAlert({
       studentName: `${verifiedWithRelations.user.firstName} ${verifiedWithRelations.user.lastName}`,
-      missionTitle: verifiedWithRelations.course.title,
+      missionTitle: paymentCourseTitle(verifiedWithRelations),
       amountLabel: formatMoney(verifiedWithRelations.amountCents, verifiedWithRelations.currency),
       reference: verifiedWithRelations.paymentReference,
       txid: verifiedWithRelations.transactionId,

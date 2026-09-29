@@ -1490,8 +1490,14 @@ model Payment {
   id                String              @id @default(cuid())
   userId            String
   user              User                @relation("PaymentBuyer", fields: [userId], references: [id], onDelete: Restrict)
-  courseId          String
-  course            Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  // Nullable + SetNull: a payment is the student's proof of purchase and
+  // must outlive the mission it paid for. Deleting a Course keeps every
+  // Payment (and so its invoice), just unlinked — `courseTitle` below is
+  // what the invoice shows once the course row is gone.
+  courseId          String?
+  course            Course?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  // Snapshot of Course.title when the payment was created.
+  courseTitle       String?
 
   // Snapshot of the price at submission time, always re-derived
   // server-side from Course.priceCents (minus any currently-active

@@ -356,12 +356,16 @@ export async function adminSetCourseStatus(
 
 /**
  * Permanently deletes a mission and everything that depends on it. Most
- * child rows cascade from Course, but Enrollment, Certificate and Payment
- * are onDelete: Restrict (deliberately — they're student/financial
- * history), as are exam attempts, assignment submissions, and uses of
+ * child rows cascade from Course, but Enrollment and Certificate are
+ * onDelete: Restrict (deliberately — they're student history), as are
+ * exam attempts, assignment submissions, and uses of
  * this mission's question-bank questions in other missions' exams. Those
  * are removed explicitly first, all in one transaction, so a failure
- * leaves the mission fully intact. The typed confirmation phrase is
+ * leaves the mission fully intact. Payments are NOT deleted: they're the
+ * students' proof of purchase, so they're kept (courseId is set null by
+ * the FK; the invoice shows the snapshotted Payment.courseTitle). The
+ * title is re-snapshotted first for rows created before that column
+ * existed. The typed confirmation phrase is
  * re-checked here; the dialog is not the only guard.
  */
 export async function adminDeleteCourse(courseId: string, confirmation: string) {
@@ -385,13 +389,14 @@ export async function adminDeleteCourse(courseId: string, confirmation: string) 
       await tx.questionAnswer.deleteMany({ where: { question: { courseId } } });
       await tx.assessmentQuestion.deleteMany({ where: { question: { courseId } } });
       const certificates = await tx.certificate.deleteMany({ where: { courseId } });
-      // Coupon redemptions cascade; matched SMS transactions are unlinked (SetNull).
-      const payments = await tx.payment.deleteMany({ where: { courseId } });
+      // Keep every payment (proof of purchase) — make sure each carries the
+      // title before the FK nulls courseId out on the course delete below.
+      const payments = await tx.payment.updateMany({ where: { courseId }, data: { courseTitle: course.title } });
       const enrollments = await tx.enrollment.deleteMany({ where: { courseId } });
       await tx.course.delete({ where: { id: courseId } });
       return {
         enrollments: enrollments.count,
-        payments: payments.count,
+        paymentsKept: payments.count,
         certificates: certificates.count,
         attempts: attempts.count,
         submissions: submissions.count,

@@ -25,6 +25,7 @@ import { getReceivingNumber } from "@/server/services/payment-config";
 import { matchStoredTransactionForPayment } from "@/server/services/sms-ingestion";
 import { enqueueWebhook } from "@/lib/payments/webhooks";
 import { MFS_PROVIDERS } from "@/lib/payments/sms/types";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 /**
  * Entry point from "Enroll" on a paid mission. Returns the existing
@@ -139,6 +140,7 @@ export async function startBkashPayment(courseId: string, couponCode?: string) {
         data: {
           userId: user.id,
           courseId,
+          courseTitle: course.title, // snapshot: the invoice must survive a course delete
           amountCents: chargeCents,
           currency: course.currency,
           provider: "MANUAL_BKASH",
@@ -250,7 +252,7 @@ export async function submitBkashTxid(paymentId: string, formData: FormData) {
 
   await notifyPaymentAdmins({
     title: "Payment awaiting verification",
-    body: `${user.firstName} ${user.lastName} submitted a bKash TXID for "${payment.course.title}" (${payment.paymentReference}).`,
+    body: `${user.firstName} ${user.lastName} submitted a bKash TXID for "${paymentCourseTitle(payment)}" (${payment.paymentReference}).`,
   });
   await sendPaymentReviewAlert({
     reference: payment.paymentReference,
@@ -310,14 +312,14 @@ export async function verifyPaymentManually(paymentId: string) {
         userId: fresh.userId,
         type: "PAYMENT_VERIFIED",
         title: "Payment verified! 🎉",
-        body: `Your payment for "${fresh.course.title}" was verified by the Proggaa team. The mission is unlocked!`,
+        body: `Your payment for "${paymentCourseTitle(fresh)}" was verified by the Proggaa team. The mission is unlocked!`,
       },
     });
     if (fresh.user.email) {
       await sendTemplatedEmail(
         "payment-verified",
         fresh.user.email,
-        { courseTitle: fresh.course.title },
+        { courseTitle: paymentCourseTitle(fresh) },
         {
           subject: "Payment verified — you're in! 🎉",
           bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
@@ -326,7 +328,7 @@ export async function verifyPaymentManually(paymentId: string) {
     }
     await sendPaymentVerifiedAlert({
       studentName: `${fresh.user.firstName} ${fresh.user.lastName}`,
-      missionTitle: fresh.course.title,
+      missionTitle: paymentCourseTitle(fresh),
       amountLabel: formatMoney(fresh.amountCents, fresh.currency),
       reference: fresh.paymentReference,
       txid: fresh.transactionId,
@@ -391,7 +393,7 @@ export async function rejectPaymentCore(paymentId: string, admin: { id: string }
       userId: payment.userId,
       type: "PAYMENT_REJECTED",
       title: "Payment needs another look",
-      body: `Your payment for "${payment.course.title}" (${payment.paymentReference}) couldn't be verified: ${reason}`,
+      body: `Your payment for "${paymentCourseTitle(payment)}" (${payment.paymentReference}) couldn't be verified: ${reason}`,
     },
   });
   await sendPaymentRejectedAlert({ reference: payment.paymentReference, reason });

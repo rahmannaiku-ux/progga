@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { SuspiciousTransactions } from "@/components/admin-dashboard/suspicious-transactions";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 export default async function AdminSuspiciousTransactionsPage() {
   await requireRole("ADMIN");
@@ -24,6 +25,7 @@ export default async function AdminSuspiciousTransactionsPage() {
           paymentReference: true,
           amountCents: true,
           course: { select: { title: true } },
+          courseTitle: true,
           user: { select: { firstName: true, lastName: true } },
         },
       })
@@ -52,7 +54,7 @@ export default async function AdminSuspiciousTransactionsPage() {
       id: c.id,
       reference: c.paymentReference,
       amountCents: c.amountCents,
-      courseTitle: c.course.title,
+      courseTitle: paymentCourseTitle(c),
       studentName: `${c.user.firstName} ${c.user.lastName}`,
     })),
   }));

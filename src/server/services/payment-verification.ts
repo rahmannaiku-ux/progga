@@ -7,6 +7,7 @@ import { writeAudit } from "./payment-audit";
 import { enqueueWebhook } from "@/lib/payments/webhooks";
 import { getSmsProvider } from "@/lib/sms/onecodesoft";
 import { invoiceUrlFor, purchaseSuccessMessage } from "@/lib/sms/messages";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 /**
  * Evidence from an approved Android device that this verification rests on.
@@ -79,9 +80,15 @@ export async function markPaidAndEnroll(
       }
     }
 
+    // The course was deleted after checkout: there's nothing to enroll in.
+    // Throwing rolls back the PAID claim above; the payment stays as the
+    // student's record and an admin handles it (e.g. refund) by hand.
+    const courseId = payment.courseId;
+    if (!courseId) throw new Error("This payment's mission has been deleted, so it can't be verified into an enrollment.");
+
     const enrollment = await tx.enrollment.upsert({
-      where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
-      create: { userId: payment.userId, courseId: payment.courseId },
+      where: { userId_courseId: { userId: payment.userId, courseId } },
+      create: { userId: payment.userId, courseId },
       update: {},
     });
 
@@ -174,6 +181,7 @@ async function sendPurchaseSuccessSms(paymentId: string) {
         paymentReference: true,
         user: { select: { phone: true, firstName: true, lastName: true, studentProfile: { select: { name: true } } } },
         course: { select: { title: true } },
+        courseTitle: true,
       },
     });
     if (!payment?.user.phone) return;
@@ -183,7 +191,7 @@ async function sendPurchaseSuccessSms(paymentId: string) {
       payment.user.phone,
       purchaseSuccessMessage({
         studentName,
-        courseTitle: payment.course.title,
+        courseTitle: paymentCourseTitle(payment),
         amountCents: payment.amountCents,
         originalCents: payment.couponDiscountCents ? payment.amountCents + payment.couponDiscountCents : null,
         currency: payment.currency,
@@ -216,14 +224,14 @@ export async function notifyAutomaticVerification(paymentId: string) {
         userId: fresh.userId,
         type: "PAYMENT_VERIFIED",
         title: "Payment verified! 🎉",
-        body: `Your payment for "${fresh.course.title}" was verified automatically. The mission is unlocked!`,
+        body: `Your payment for "${paymentCourseTitle(fresh)}" was verified automatically. The mission is unlocked!`,
       },
     });
     if (fresh.user.email) {
       await sendTemplatedEmail(
         "payment-verified",
         fresh.user.email,
-        { courseTitle: fresh.course.title },
+        { courseTitle: paymentCourseTitle(fresh) },
         {
           subject: "Payment verified — you're in! 🎉",
           bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
@@ -232,7 +240,7 @@ export async function notifyAutomaticVerification(paymentId: string) {
     }
     await sendPaymentVerifiedAlert({
       studentName: `${fresh.user.firstName} ${fresh.user.lastName}`,
-      missionTitle: fresh.course.title,
+      missionTitle: paymentCourseTitle(fresh),
       amountLabel: formatMoney(fresh.amountCents, fresh.currency),
       reference: fresh.paymentReference,
       txid: fresh.transactionId,

@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { formatMoney } from "@/lib/payments/format";
 import { sendPaymentVerifiedAlert } from "@/lib/payments/telegram";
 import { sendBotEvent } from "@/lib/bot-webhook/dispatch";
+import { paymentCourseTitle } from "@/lib/payments/course-title";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 
@@ -67,12 +68,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           userId: fresh.userId,
           type: "PAYMENT_VERIFIED",
           title: "Payment verified! 🎉",
-          body: `Your payment for "${fresh.course.title}" was verified by the Proggaa team. The mission is unlocked!`,
+          body: `Your payment for "${paymentCourseTitle(fresh)}" was verified by the Proggaa team. The mission is unlocked!`,
         },
       });
       await sendPaymentVerifiedAlert({
         studentName: `${fresh.user.firstName} ${fresh.user.lastName}`,
-        missionTitle: fresh.course.title,
+        missionTitle: paymentCourseTitle(fresh),
         amountLabel: formatMoney(fresh.amountCents, fresh.currency),
         reference: fresh.paymentReference,
         txid: fresh.transactionId,
@@ -81,7 +82,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       await sendBotEvent({
         type: "PAYMENT_APPROVED",
         proggaaUserId: fresh.userId,
-        payload: { paymentId: fresh.id, courseTitle: fresh.course.title },
+        payload: { paymentId: fresh.id, courseTitle: paymentCourseTitle(fresh) },
       });
     }
   }
