@@ -114,7 +114,7 @@ export default async function MissionOverviewPage({
   return (
     <StaggerContainer className="mx-auto max-w-2xl space-y-6">
       <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
-        <DoodleStar className="pointer-events-none absolute -left-2 -top-2 h-10 w-10 -rotate-12 opacity-70" />
+        <DoodleStar className="pointer-events-none absolute -left-2 -top-2 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
         <DoodleSparkle className="pointer-events-none absolute right-24 top-4 hidden h-8 w-8 opacity-70 sm:block" />
 
         <div className="relative flex flex-wrap items-center justify-between gap-4">

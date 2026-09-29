@@ -55,7 +55,7 @@ export default async function ProfilePage() {
     <StaggerContainer className="mx-auto max-w-2xl space-y-6">
       {/* Hero Card */}
       <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
-        <DoodleStar className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rotate-12 opacity-70" />
+        <DoodleStar className="pointer-events-none absolute -right-4 -top-4 hidden h-16 w-16 rotate-12 opacity-70 sm:block" />
 
         <div className="relative flex items-center gap-5">
           <div className="sticker rounded-full bg-surface p-1">

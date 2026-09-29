@@ -63,7 +63,7 @@ export default async function CommunityPage() {
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
       <StaggerContainer>
         <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
-          <DoodleStar className="pointer-events-none absolute -left-2 -top-2 h-10 w-10 -rotate-12 opacity-70" />
+          <DoodleStar className="pointer-events-none absolute -left-2 -top-2 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
           <DoodleSparkle className="pointer-events-none absolute right-20 top-4 hidden h-8 w-8 opacity-70 sm:block" />
           <div className="relative flex flex-wrap items-center justify-between gap-4">
             <div>

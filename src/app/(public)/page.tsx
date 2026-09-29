@@ -71,8 +71,8 @@ export default async function LandingPage() {
       )}
       {/* ---------------- Hero ---------------- */}
       <section className="halftone-dots relative overflow-hidden">
-        <DoodleStar className="animate-cartoon-wiggle absolute left-[6%] top-16 h-10 w-10 sm:h-14 sm:w-14" />
-        <DoodleSparkle className="animate-cartoon-bob absolute right-[10%] top-28 h-8 w-8 sm:h-10 sm:w-10" />
+        <DoodleStar className="animate-cartoon-wiggle absolute left-[6%] top-16 hidden h-10 w-10 sm:block sm:h-14 sm:w-14" />
+        <DoodleSparkle className="animate-cartoon-bob absolute right-[10%] top-28 hidden h-8 w-8 sm:block sm:h-10 sm:w-10" />
         <DoodleStar className="animate-cartoon-bob absolute bottom-16 left-[14%] h-6 w-6 sm:h-8 sm:w-8" />
         <DoodleBlob className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px]" />
         <DoodleBlob className="pointer-events-none absolute -bottom-32 -left-16 h-[360px] w-[360px]" />
@@ -135,7 +135,7 @@ export default async function LandingPage() {
 
           <FadeIn delay={0.15}>
             <div className="relative mx-auto w-full max-w-md">
-              <HeroIllustration className="pointer-events-none absolute inset-0 -z-10 h-full w-full scale-125 opacity-70" />
+              <HeroIllustration className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full scale-125 opacity-70 sm:block" />
               <ProggyMascot
                 state="welcoming"
                 className="mx-auto w-full max-w-sm"
@@ -270,7 +270,7 @@ export default async function LandingPage() {
       <section className="container pb-24">
         <FadeIn>
           <div className="comic-panel halftone-dots relative flex flex-col items-center gap-4 overflow-hidden bg-surface p-12 text-center">
-            <DoodleStar className="animate-cartoon-wiggle absolute left-6 top-6 h-9 w-9" />
+            <DoodleStar className="animate-cartoon-wiggle absolute left-6 top-6 hidden h-9 w-9 sm:block" />
             <DoodleSparkle className="animate-cartoon-bob absolute bottom-8 right-10 h-8 w-8" />
             <div className="sticker flex h-16 w-16 items-center justify-center bg-xp">
               <Trophy className="h-8 w-8 text-border" />

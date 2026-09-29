@@ -14,11 +14,13 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        display: ["var(--font-display)", "sans-serif"],
-        body: ["var(--font-body)", "sans-serif"],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "monospace"],
+        // --font-bengali (Hind Siliguri) is second everywhere: it only
+        // supplies glyphs the primary face lacks (Bangla text, the ৳ sign).
+        display: ["var(--font-display)", "var(--font-bengali)", "sans-serif"],
+        body: ["var(--font-body)", "var(--font-bengali)", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "var(--font-bengali)", "monospace"],
         // Bouncy heading face used only on the cartoon-themed landing page.
-        cartoon: ["var(--font-display)", "sans-serif"],
+        cartoon: ["var(--font-display)", "var(--font-bengali)", "sans-serif"],
       },
       // Tailwind's spacing scale has no 4.5 / 13, but the app uses h-4.5,
       // w-4.5 (icons) and h-13 (large buttons). Those classes silently

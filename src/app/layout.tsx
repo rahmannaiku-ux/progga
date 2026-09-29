@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Baloo_2, Inter } from "next/font/google";
+import { Baloo_2, Hind_Siliguri, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { getSiteBranding, hexToHslTriplet } from "@/lib/site-branding";
 import "./globals.css";
@@ -20,6 +20,19 @@ const display = Baloo_2({
 const body = Inter({
   subsets: ["latin"],
   variable: "--font-body",
+});
+
+// Bangla fallback, second in every font stack (tailwind.config.ts). Baloo
+// 2, Inter and the system monospace have no Bengali glyphs — not even
+// the ৳ on every price — so phones substituted whatever Bangla font they
+// had (different on iPhone vs Android), with mismatched heights that made
+// text look like overlapping fonts. The bengali subset's unicode-range
+// means browsers only download it on pages that contain Bangla or ৳.
+const bengali = Hind_Siliguri({
+  subsets: ["bengali"],
+  variable: "--font-bengali",
+  weight: ["400", "500", "600", "700"],
+  preload: false,
 });
 
 // Numbers (XP counters, timers, exam clocks) use the system monospace stack
@@ -102,7 +115,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${display.variable} ${body.variable}`}
+      className={`${display.variable} ${body.variable} ${bengali.variable}`}
       // Brand-colour override is set on <html> too, not only on the
       // wrapper below: dialogs/menus portal to <body>, outside the wrapper.
       style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}

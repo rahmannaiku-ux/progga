@@ -117,7 +117,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
         <div className="space-y-8">
           {/* Hero */}
           <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-primary p-8">
-            <DoodleStar className="pointer-events-none absolute -left-2 top-4 h-10 w-10 -rotate-12 opacity-70" />
+            <DoodleStar className="pointer-events-none absolute -left-2 top-4 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
             <DoodleSparkle className="pointer-events-none absolute right-8 top-6 hidden h-8 w-8 opacity-70 sm:block" />
             {course.thumbnailUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- decorative hero image, dimensions vary per upload

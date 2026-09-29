@@ -24,7 +24,7 @@ export async function MaintenancePage() {
     <div className="hero-backdrop flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
       <div className="comic-panel halftone-dots relative max-w-md overflow-hidden bg-surface p-10">
         <DoodleStar className="pointer-events-none absolute -left-3 -top-3 h-12 w-12 -rotate-12 opacity-70" />
-        <DoodleSparkle className="pointer-events-none absolute -right-2 top-8 h-8 w-8 opacity-70" />
+        <DoodleSparkle className="pointer-events-none absolute -right-2 top-8 hidden h-8 w-8 opacity-70 sm:block" />
 
         <ProggyMascot state="thinking" className="mx-auto h-40 w-40" groundShadow />
 

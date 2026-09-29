@@ -35,7 +35,7 @@ export default async function CoursesPage({
     <div className="container py-14">
       <StaggerContainer>
       <StaggerItem className="comic-panel halftone-dots relative flex flex-wrap items-center justify-between gap-6 overflow-hidden bg-surface p-8">
-        <DoodleStar className="pointer-events-none absolute -left-2 top-4 h-10 w-10 -rotate-12 opacity-70" />
+        <DoodleStar className="pointer-events-none absolute -left-2 top-4 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
         <DoodleSparkle className="pointer-events-none absolute right-24 top-6 hidden h-8 w-8 opacity-70 sm:block" />
         <div className="relative">
           <h1 className="font-display text-3xl font-extrabold text-foreground sm:text-4xl">
