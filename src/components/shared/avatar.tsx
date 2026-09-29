@@ -41,7 +41,9 @@ interface AvatarProps {
  * cookies and rejects anything Drive reports with a non-image
  * Content-Type, so a perfectly good uploaded photo would silently fall
  * back to the letter sticker. The proxy already sets Cache-Control for
- * avatars, so there's nothing for the optimizer to add here.
+ * avatars, so there's nothing for the optimizer to add here. Skipping
+ * it also means no copy of a Drive file is ever written to this
+ * server's .next/cache/images.
  */
 export function isProxiedUpload(src: string | null | undefined): boolean {
   return Boolean(src && src.startsWith("/api/files/"));

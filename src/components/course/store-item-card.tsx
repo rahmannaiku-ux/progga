@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FileText, Video, CheckCircle2, Coins, ExternalLink, Sparkles } from "lucide-react";
 import { purchaseCoinStoreItem } from "@/server/actions/store-actions";
 import type { StoreItemWithOwnership } from "@/server/services/store";
+import { isProxiedUpload } from "@/components/shared/avatar";
 
 const TYPE_ICON = { PDF: FileText, EXCLUSIVE_CLASS: Video, STICKER: Sparkles } as const;
 const TYPE_LABEL = { PDF: "PDF", EXCLUSIVE_CLASS: "Class", STICKER: "Sticker" } as const;
@@ -48,7 +49,7 @@ export function StoreItemCard({
     <div className="comic-panel flex flex-col bg-surface p-4">
       {item.thumbnailUrl ? (
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
-          <Image src={item.thumbnailUrl} alt={item.title} fill className="object-cover" />
+          <Image src={item.thumbnailUrl} alt={item.title} fill unoptimized={isProxiedUpload(item.thumbnailUrl)} className="object-cover" />
         </div>
       ) : (
         <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-accent/10">

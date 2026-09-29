@@ -114,6 +114,8 @@ export async function connectGoogleDriveAccount(code: string, connectedByUserId:
     },
   });
 
+  cachedDrive = null; // a new account/token: never reuse the old client
+
   const drive = google.drive({ version: "v3", auth: client });
   await ensureFolderStructure(drive);
 
@@ -122,6 +124,7 @@ export async function connectGoogleDriveAccount(code: string, connectedByUserId:
 
 /** Disconnects without touching a single file already in Drive. */
 export async function disconnectGoogleDriveAccount() {
+  cachedDrive = null;
   await db.googleDriveConnection.updateMany({
     where: { id: CONNECTION_ID },
     data: {
@@ -143,6 +146,18 @@ async function getConnection() {
 }
 
 /**
+ * One authorized client per server process, reused across requests.
+ * Building a fresh OAuth2 client per call (as before) threw away its
+ * access token every time, so EVERY file view paid an extra round trip
+ * to Google's token endpoint before Drive was even asked for the bytes.
+ * A cached client refreshes its own access token only when it expires.
+ * Keyed by the encrypted refresh token, so a reconnect (new token) or
+ * disconnect (cleared token) is picked up on the next call even from
+ * another process that didn't run the connect/disconnect itself.
+ */
+let cachedDrive: { tokenCipher: string; drive: drive_v3.Drive; connectionId: string } | null = null;
+
+/**
  * Returns an authenticated Drive client for the one connected account.
  * Also marks the connection ERROR (rather than leaving a stale
  * "Connected" badge on the admin page) if the refresh token turns out
@@ -151,12 +166,18 @@ async function getConnection() {
  */
 async function getAuthorizedDrive(): Promise<{ drive: drive_v3.Drive; connectionId: string }> {
   const connection = await getConnection();
+  const tokenCipher = connection.refreshTokenEncrypted!;
+  if (cachedDrive && cachedDrive.tokenCipher === tokenCipher) {
+    return { drive: cachedDrive.drive, connectionId: cachedDrive.connectionId };
+  }
+
   const client = getOAuthClient();
-  client.setCredentials({ refresh_token: decryptSecret(connection.refreshTokenEncrypted!) });
+  client.setCredentials({ refresh_token: decryptSecret(tokenCipher) });
 
   try {
     await client.getAccessToken();
   } catch (err) {
+    cachedDrive = null;
     await db.googleDriveConnection.update({
       where: { id: CONNECTION_ID },
       data: {
@@ -168,7 +189,9 @@ async function getAuthorizedDrive(): Promise<{ drive: drive_v3.Drive; connection
     throw new DriveNotConnectedError();
   }
 
-  return { drive: google.drive({ version: "v3", auth: client }), connectionId: connection.id };
+  const drive = google.drive({ version: "v3", auth: client });
+  cachedDrive = { tokenCipher, drive, connectionId: connection.id };
+  return { drive, connectionId: connection.id };
 }
 
 async function findOrCreateFolder(
@@ -259,21 +282,31 @@ export async function deleteFromDrive(driveFileId: string) {
   await drive.files.delete({ fileId: driveFileId });
 }
 
-export async function streamFromDrive(driveFileId: string) {
+/**
+ * Streams a file's bytes straight from Drive to the caller — nothing is
+ * buffered to disk or memory on this server. One Drive API call: the
+ * name/type/size already live on our Upload row, so the old parallel
+ * metadata request was pure latency. `range` (an HTTP Range header
+ * value) is forwarded so PDF viewers and <video> can fetch just the
+ * part they need; the returned status/headers say whether Drive
+ * honoured it (206) or sent the whole file (200).
+ */
+export async function streamFromDrive(driveFileId: string, opts: { range?: string } = {}) {
   const { drive } = await getAuthorizedDrive();
-  const [meta, media] = await Promise.all([
-    drive.files.get({ fileId: driveFileId, fields: "name, mimeType, size" }),
-    drive.files.get({ fileId: driveFileId, alt: "media" }, { responseType: "stream" }),
-  ]);
+  const media = await drive.files.get(
+    { fileId: driveFileId, alt: "media" },
+    { responseType: "stream", headers: opts.range ? { Range: opts.range } : undefined }
+  );
+  const headers = media.headers as Record<string, string | undefined>;
   return {
     // googleapis types this as `any` internally for responseType:
     // "stream", but it's actually a Node.js Readable at runtime — the
     // caller (api/files/[uploadId]) converts it to a Web ReadableStream
     // via Readable.toWeb() before handing it to NextResponse.
     stream: media.data as NodeJS.ReadableStream,
-    mimeType: meta.data.mimeType ?? "application/octet-stream",
-    name: meta.data.name ?? driveFileId,
-    size: meta.data.size ? Number(meta.data.size) : undefined,
+    status: media.status,
+    contentRange: headers["content-range"],
+    contentLength: headers["content-length"],
   };
 }
 

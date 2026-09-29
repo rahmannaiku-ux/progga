@@ -4,12 +4,33 @@ import { db } from "@/lib/db/client";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { streamFromDrive } from "@/lib/storage/google-drive";
 
+// Always run per request and never let Next persist anything from this
+// route: Drive bytes pass straight through to the browser and are never
+// written to this server's disk (no .next/cache entry, no temp file).
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+/**
+ * Where the "instant" comes from: the student's own browser cache.
+ * An Upload's bytes never change (a new file is always a new Upload id
+ * and URL), so after the first view the browser keeps its copy for a
+ * year and re-shows it with no network at all. `private` means only
+ * that user's browser may store it — never a CDN or shared proxy — and
+ * the authorization check below still runs on every request that does
+ * reach the server.
+ */
+const BROWSER_CACHE = "private, max-age=31536000, immutable";
+
 /**
  * Server-controlled file serving (storage spec §10) — this is the ONLY
  * way a Google-Drive-backed Upload's bytes ever reach a browser. Drive
  * files are never made public; every request here re-checks that the
  * signed-in user is actually allowed to see this specific file before
  * proxying it from Drive.
+ *
+ * Nothing is stored locally: bytes stream Drive → this route → the
+ * browser, and the browser (not this server) is the cache — see
+ * BROWSER_CACHE above.
  *
  * Only handles provider=GOOGLE_DRIVE uploads. UploadThing-backed
  * uploads (including the fallback path) keep using UploadThing's own
@@ -35,32 +56,36 @@ export async function GET(req: NextRequest, { params }: { params: { uploadId: st
   const allowed = await canAccessUpload(upload, viewer);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // Unchanged file already in this browser's cache (e.g. after a hard
+  // refresh): answer 304 without touching Drive at all.
+  const etag = `"${upload.id}"`;
+  if (req.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304, headers: { ETag: etag, "Cache-Control": BROWSER_CACHE } });
+  }
+
   try {
-    const { stream, mimeType, name } = await streamFromDrive(upload.driveFileId);
+    const range = req.headers.get("range") ?? undefined;
+    const { stream, status, contentRange, contentLength } = await streamFromDrive(upload.driveFileId, { range });
     // The googleapis client returns a Node.js Readable (responseType:
     // "stream") — NextResponse's body needs a Web ReadableStream, so
     // this converts explicitly rather than casting past the mismatch.
     const webStream = Readable.toWeb(stream as unknown as Readable) as ReadableStream;
-    // Drive sometimes reports a generic type (or none) for files it
-    // didn't sniff itself. Combined with the app-wide
-    // `X-Content-Type-Options: nosniff` header, that makes browsers refuse
-    // to render an uploaded avatar as an image — fall back to the type
-    // recorded at upload time instead.
-    const contentType =
-      mimeType && mimeType !== "application/octet-stream" ? mimeType : upload.fileType || mimeType;
-    return new NextResponse(webStream, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${name.replace(/"/g, "")}"`,
-        // Avatars change rarely and are re-fetched on every profile/
-        // leaderboard/community render across the app — caching keeps
-        // this proxy from becoming a Drive-API-call-per-pageview
-        // bottleneck (storage spec §11). Non-avatar files (assignments,
-        // certificates) are private and per-request, so they aren't cached.
-        "Cache-Control":
-          upload.context === "AVATAR" ? "private, max-age=3600" : "private, no-store",
-      },
-    });
+    // The type recorded at upload time, not whatever Drive guesses: with
+    // the app-wide `X-Content-Type-Options: nosniff`, a generic type from
+    // Drive made browsers refuse to render uploaded avatars as images.
+    const contentType = upload.fileType || "application/octet-stream";
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+      "Content-Disposition": `inline; filename="${upload.name.replace(/"/g, "")}"`,
+      "Cache-Control": BROWSER_CACHE,
+      ETag: etag,
+      "Accept-Ranges": "bytes",
+    };
+    if (contentLength) headers["Content-Length"] = contentLength;
+    else if (status !== 206 && upload.sizeBytes) headers["Content-Length"] = String(upload.sizeBytes);
+    if (status === 206 && contentRange) headers["Content-Range"] = contentRange;
+
+    return new NextResponse(webStream, { status: status === 206 ? 206 : 200, headers });
   } catch (err) {
     console.error(`Failed to stream upload ${upload.id} from Drive:`, err);
     return NextResponse.json(

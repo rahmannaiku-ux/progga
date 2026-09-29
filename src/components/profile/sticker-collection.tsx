@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { isProxiedUpload } from "@/components/shared/avatar";
 
 export type OwnedSticker = {
   id: string;
@@ -25,7 +26,7 @@ export function StickerCollection({ stickers }: { stickers: OwnedSticker[] }) {
           className="sticker relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-surface"
           title={sticker.title}
         >
-          <Image src={sticker.imageUrl} alt={sticker.title} fill className="object-cover" />
+          <Image src={sticker.imageUrl} alt={sticker.title} fill unoptimized={isProxiedUpload(sticker.imageUrl)} className="object-cover" />
         </div>
       ))}
     </div>
