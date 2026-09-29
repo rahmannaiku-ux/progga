@@ -60,6 +60,10 @@ export default async function LandingPage() {
   // Signed-in visitors (the site header already reads the session, so
   // this is request-cached) get sent back into the app, not to sign-up.
   const signedInRole = await getCurrentUserRoleOptional();
+  // "Continue your missions" is about learning, so it always opens the
+  // student dashboard (admins/teachers can use it too); the bottom CTA
+  // and the header's Command Center link go to each role's own portal.
+  const missionsHref = signedInRole ? "/dashboard" : "/register";
   const ctaHref = signedInRole ? dashboardHrefForRole(signedInRole) : "/register";
 
   return (
@@ -95,7 +99,7 @@ export default async function LandingPage() {
                 size="lg"
                 className="comic-btn bg-primary text-primary-foreground hover:bg-primary"
               >
-                <Link href={ctaHref}>
+                <Link href={missionsHref}>
                   {signedInRole ? "Continue your missions" : primaryCtaText} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
