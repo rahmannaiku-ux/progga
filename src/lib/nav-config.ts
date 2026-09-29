@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  Bug,
   Rocket,
   Trophy,
   Award,
@@ -124,6 +125,7 @@ export const adminNav: NavSection[] = [
       { label: "Reports", href: "/admin/reports", icon: BarChart3 },
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Activity Logs", href: "/admin/activity-logs", icon: FileClock, prefetch: false },
+      { label: "Bug Reports", href: "/admin/bug-reports", icon: Bug, prefetch: false },
     ],
   },
   {

@@ -16,8 +16,8 @@ import {
  * lessonPdfUploader / lessonResourceUploader UploadThing routes for
  * teacher-uploaded lesson resources / "Slides" links) is a completely
  * separate system from this one and must never be routed through here.
- * This module is exclusively for the 5 student/user-upload categories:
- * AVATAR, ASSIGNMENT_SUBMISSION, CERTIFICATE, COMMUNITY_IMAGE, OTHER.
+ * This module is exclusively for the student/user-upload categories:
+ * AVATAR, ASSIGNMENT_SUBMISSION, CERTIFICATE, COMMUNITY_IMAGE, BUG_REPORT, OTHER.
  *
  * Provider selection: Google Drive when the admin has connected it,
  * automatically falling back to UploadThing (the pre-existing, already

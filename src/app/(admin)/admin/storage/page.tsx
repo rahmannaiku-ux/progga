@@ -10,6 +10,7 @@ import {
   Award,
   Users as UsersIcon,
   FolderOpen,
+  Bug,
   Trash2,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
@@ -29,6 +30,7 @@ const CATEGORIES: { context: UploadContext; label: string; icon: typeof UserIcon
   { context: "ASSIGNMENT_SUBMISSION", label: "Assignments", icon: FileText },
   { context: "CERTIFICATE", label: "Certificates", icon: Award },
   { context: "COMMUNITY_IMAGE", label: "Community Uploads", icon: UsersIcon },
+  { context: "BUG_REPORT", label: "Bug Reports", icon: Bug },
   { context: "OTHER", label: "Other Files", icon: FolderOpen },
 ];
 

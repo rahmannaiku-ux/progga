@@ -541,6 +541,7 @@ model User {
   coinTransactions  ProggyCoinTransaction[]
   coinPurchases     CoinPurchase[]
   uploads           Upload[]
+  bugReports        BugReport[]
   driveConnectionsMade GoogleDriveConnection[]
   questionsCreated  Question[]
 
@@ -877,6 +878,7 @@ enum UploadContext {
   AVATAR
   CERTIFICATE
   COMMUNITY_IMAGE
+  BUG_REPORT
   OTHER
 }
 
@@ -922,6 +924,7 @@ model Upload {
   // undesired, and gives an audit trail of what an upload became.
   consumedAt  DateTime?
   createdAt   DateTime        @default(now())
+  bugReportImage BugReportImage?
 
   @@index([uploaderId])
   @@index([context])
@@ -968,6 +971,7 @@ model GoogleDriveConnection {
   certificatesFolderId      String?
   communityFolderId         String?
   otherFolderId             String?
+  bugReportsFolderId        String?
   updatedAt      DateTime               @updatedAt
 }
 
@@ -2272,4 +2276,49 @@ model LiveClassAttendance {
   @@index([liveClassId, userId])
   @@index([liveClassId, leftAt])
   @@index([userId])
+}
+
+// --- Bug reports -----------------------------------------------------
+// Filed by any signed-in user from /support; triaged by admins at
+// /admin/bug-reports. Screenshots are regular Upload rows (context
+// BUG_REPORT, stored in the PROGGAA/bug-reports Drive folder) linked
+// through BugReportImage, so /api/files/[uploadId] serves them with the
+// usual owner-or-admin check.
+enum BugReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model BugReport {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String           @db.Text
+  // Where it happened (optional, as the student described it) and the
+  // browser that filed it (captured automatically).
+  pageUrl     String?
+  userAgent   String?
+  status      BugReportStatus  @default(OPEN)
+  adminNote   String?          @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  images      BugReportImage[]
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model BugReportImage {
+  id          String    @id @default(cuid())
+  bugReportId String
+  bugReport   BugReport @relation(fields: [bugReportId], references: [id], onDelete: Cascade)
+  uploadId    String    @unique
+  upload      Upload    @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([bugReportId])
 }

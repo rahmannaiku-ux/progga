@@ -19,7 +19,7 @@ const DRIVE_SCOPES = [
 
 const ROOT_FOLDER_NAME = "PROGGAA";
 
-/** The 5 Drive-backed upload categories — LESSON_RESOURCE deliberately
+/** The Drive-backed upload categories — LESSON_RESOURCE deliberately
  * excluded (stays on the existing UploadThing-backed course-content
  * system; see regression-protection note in lib/storage/index.ts). */
 const CATEGORY_FOLDER_NAME: Record<
@@ -30,17 +30,19 @@ const CATEGORY_FOLDER_NAME: Record<
   ASSIGNMENT_SUBMISSION: "assignments",
   CERTIFICATE: "certificates",
   COMMUNITY_IMAGE: "community",
+  BUG_REPORT: "bug-reports",
   OTHER: "other",
 };
 
 const CATEGORY_FOLDER_DB_FIELD: Record<
   Exclude<UploadContext, "LESSON_RESOURCE">,
-  "profilePicturesFolderId" | "assignmentsFolderId" | "certificatesFolderId" | "communityFolderId" | "otherFolderId"
+  "profilePicturesFolderId" | "assignmentsFolderId" | "certificatesFolderId" | "communityFolderId" | "bugReportsFolderId" | "otherFolderId"
 > = {
   AVATAR: "profilePicturesFolderId",
   ASSIGNMENT_SUBMISSION: "assignmentsFolderId",
   CERTIFICATE: "certificatesFolderId",
   COMMUNITY_IMAGE: "communityFolderId",
+  BUG_REPORT: "bugReportsFolderId",
   OTHER: "otherFolderId",
 };
 
