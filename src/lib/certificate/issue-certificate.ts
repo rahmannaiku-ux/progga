@@ -87,5 +87,17 @@ export async function issueCertificate(certificateId: string) {
     // Certificate stays PENDING; the medals page offers a manual retry
     // rather than silently failing the enrollment-completion flow.
     console.error(`Certificate ${certificateId} issuance failed:`, err);
+    // Release the claim taken above, otherwise every retry would hit the
+    // unique constraint and return early without ever trying again.
+    await db.rewardEvent
+      .deleteMany({
+        where: {
+          userId: certificate.userId,
+          sourceType: "CERTIFICATE_ISSUANCE",
+          sourceId: certificateId,
+          rewardType: "CERTIFICATE_ISSUED",
+        },
+      })
+      .catch((releaseErr) => console.error(`Certificate ${certificateId} claim release failed:`, releaseErr));
   }
 }
