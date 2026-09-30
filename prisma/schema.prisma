@@ -243,8 +243,7 @@ model CourseDiscount {
   // Exactly one of these is meaningful, matching `type` — enforced in
   // application-layer validation (Zod), not by a DB CHECK constraint,
   // consistent with how the rest of this schema keeps that kind of
-  // cross-field rule in the Zod layer (see e.g. batchCreateSchema's
-  // endDate >= startDate .refine()) rather than in Postgres.
+  // cross-field rule in the Zod layer rather than in Postgres.
   percentOff     Int? // 1-100, required when type = PERCENTAGE
   amountOffCents Int? // >=0, required when type = FIXED — same unit/currency as Course.priceCents
 
@@ -557,8 +556,6 @@ model User {
   // Content authored (as blog admin)
   blogPostsAuthored BlogPost[]
 
-  batchMemberships  BatchMember[]
-
   // Telegram bot integration
   telegramLink      TelegramLink?
   telegramLinkTokens TelegramLinkToken[]
@@ -733,7 +730,6 @@ model Course {
   wishlistedBy     Wishlist[]
   announcements    Announcement[]
   calendarEvents   CalendarEvent[]
-  batches          Batch[]
   reviews          CourseReview[]
   assessments      Assessment[]
   questionBank     Question[]
@@ -1040,33 +1036,8 @@ model Wishlist {
 }
 
 // ---------------------------------------------------------------------
-// ENROLLMENT / BATCHES
+// ENROLLMENT
 // ---------------------------------------------------------------------
-
-model Batch {
-  id         String        @id @default(cuid())
-  courseId   String
-  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  name       String
-  startDate  DateTime
-  endDate    DateTime?
-  capacity   Int?
-  members    BatchMember[]
-  createdAt  DateTime      @default(now())
-
-  @@index([courseId])
-}
-
-model BatchMember {
-  id        String   @id @default(cuid())
-  batchId   String
-  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  joinedAt  DateTime @default(now())
-
-  @@unique([batchId, userId])
-}
 
 model Enrollment {
   id            String           @id @default(cuid())

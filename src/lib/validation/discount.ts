@@ -4,8 +4,7 @@ import { parseOptionalDhakaInput } from "@/lib/timezone";
 /**
  * Admin discount form input. Cross-field rules (percentOff required
  * for PERCENTAGE, amountOffCents required for FIXED, endsAt >=
- * startsAt) live in .refine() below, matching how batchCreateSchema
- * handles its startDate/endDate pair — kept in the Zod layer rather
+ * startsAt) live in .refine() below — kept in the Zod layer rather
  * than a DB constraint. The "can't produce a negative price" rule
  * against a specific course's priceCents can't be expressed here since
  * this schema doesn't know the course's price — that check happens in

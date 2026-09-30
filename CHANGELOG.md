@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-01 — Batches removed
+- Removed the Batches feature: **Admin → Batches** (`/admin/batches`), its actions and validation, and the `Batch` /
+  `BatchMember` tables. Migration `20261001000000_remove_batches` drops both tables (any existing batch rows are lost).
+  The HSC batch (graduation year) on student profiles is unrelated and unchanged.
+
 ## 2026-09-29 — Bug reports
 - Students can report a bug from **Support** (`/support#report-bug`): title, description, where it happened, and up to 5
   screenshots (images ≤ 10 MB). Screenshots are stored in Google Drive under `PROGGAA/bug-reports` (new `BUG_REPORT`

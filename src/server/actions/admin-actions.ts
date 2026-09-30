@@ -8,7 +8,6 @@ import {
   categoryCreateSchema,
   categoryUpdateSchema,
   categoryDeleteSchema,
-  batchCreateSchema,
 } from "@/lib/validation/admin";
 import type { Role } from "@prisma/client";
 import { requireAdminUser } from "./require-user";
@@ -292,46 +291,6 @@ export async function deleteCategory(
   revalidatePath("/courses");
   revalidatePath("/blog");
   return { ok: true };
-}
-
-// ---------------------------------------------------------------------
-// BATCHES
-// ---------------------------------------------------------------------
-
-export async function createBatch(formData: FormData) {
-  const admin = await requireAdminUser();
-
-  const parsed = batchCreateSchema.safeParse({
-    courseId: formData.get("courseId"),
-    name: formData.get("name"),
-    startDate: formData.get("startDate"),
-    endDate: formData.get("endDate") || undefined,
-    capacity: formData.get("capacity") || undefined,
-  });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid batch details");
-  }
-  const data = parsed.data;
-
-  const batch = await db.batch.create({
-    data: {
-      courseId: data.courseId,
-      name: data.name,
-      startDate: data.startDate,
-      endDate: data.endDate ?? null,
-      capacity: data.capacity ?? null,
-    },
-  });
-
-  await logActivity(admin.id, "CREATE", "Batch", batch.id);
-  revalidatePath("/admin/batches");
-}
-
-export async function deleteBatch(batchId: string) {
-  const admin = await requireAdminUser();
-  await db.batch.delete({ where: { id: batchId } });
-  await logActivity(admin.id, "DELETE", "Batch", batchId);
-  revalidatePath("/admin/batches");
 }
 
 // ---------------------------------------------------------------------

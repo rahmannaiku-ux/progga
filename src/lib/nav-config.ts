@@ -156,7 +156,6 @@ export const adminNav: NavSection[] = [
       { label: "Missions", href: "/admin/missions", icon: Rocket },
       { label: "Categories", href: "/admin/categories", icon: Layers },
       { label: "Blog", href: "/admin/blog", icon: Newspaper },
-      { label: "Batches", href: "/admin/batches", icon: BookOpen },
       { label: "Medals", href: "/admin/medals", icon: Award },
       { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
       { label: "Calendar", href: "/admin/calendar", icon: Calendar },

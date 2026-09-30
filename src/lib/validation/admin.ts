@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { parseDhakaInput } from "@/lib/timezone";
 
 export const categoryCreateSchema = z.object({
   name: z.string().min(2, "Category name is too short").max(100),
@@ -48,23 +47,3 @@ export const blogPostUpsertSchema = z.object({
     .optional()
     .or(z.literal("")),
 });
-
-export const batchCreateSchema = z
-  .object({
-    courseId: z.string().min(1, "Select a mission"),
-    name: z.string().min(2, "Give the batch a name").max(150),
-    // <input type="date"> values are Dhaka calendar days (see lib/timezone.ts).
-    startDate: z.preprocess(
-      (v) => (typeof v === "string" ? parseDhakaInput(v) : v),
-      z.date({ errorMap: () => ({ message: "Pick a valid start date" }) })
-    ),
-    endDate: z.preprocess(
-      (v) => (typeof v === "string" ? (v.trim() ? parseDhakaInput(v) : undefined) : v),
-      z.date().optional()
-    ),
-    capacity: z.coerce.number().int().min(1).optional(),
-  })
-  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
-    message: "End date can't be before the start date",
-    path: ["endDate"],
-  });
