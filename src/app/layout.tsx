@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Baloo_2, Hind_Siliguri, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/theme-provider";
-import { getSiteBranding, hexToHslTriplet } from "@/lib/site-branding";
+import { getSiteBranding, hexToHslTriplet, primaryForegroundFor } from "@/lib/site-branding";
 import "./globals.css";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { CookieConsentBanner } from "@/components/shared/cookie-consent-banner";
@@ -111,6 +111,11 @@ export default async function RootLayout({
     branding.primaryColor.toLowerCase() === DEFAULT_PRIMARY_HEX.toLowerCase()
       ? null
       : hexToHslTriplet(branding.primaryColor);
+  // A custom primary needs a matching text colour, or dark mode puts dark
+  // text on a dark-ish brand colour.
+  const primaryVars = primaryHsl
+    ? ({ "--primary": primaryHsl, "--primary-foreground": primaryForegroundFor(branding.primaryColor) } as React.CSSProperties)
+    : undefined;
 
   return (
     <html
@@ -119,9 +124,15 @@ export default async function RootLayout({
       className={`${display.variable} ${body.variable} ${bengali.variable}`}
       // Brand-colour override is set on <html> too, not only on the
       // wrapper below: dialogs/menus portal to <body>, outside the wrapper.
-      style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
+      style={primaryVars}
     >
       <body className="font-body">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-primary-foreground"
+        >
+          Skip to content
+        </a>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -144,7 +155,7 @@ export default async function RootLayout({
           <NavigationProgress />
           <div
             className="theme-cartoon min-h-dvh"
-            style={primaryHsl ? ({ "--primary": primaryHsl } as React.CSSProperties) : undefined}
+            style={primaryVars}
           >
             {children}
           </div>

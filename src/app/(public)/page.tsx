@@ -98,7 +98,7 @@ export default async function LandingPage() {
       {/* ---------------- 1 · Hero: what is Proggaa ---------------- */}
       <section className="halftone-dots relative overflow-hidden">
         <DoodleBlob className="pointer-events-none absolute -right-24 -top-24 h-[360px] w-[360px]" />
-        <DoodleStar className="animate-cartoon-wiggle absolute left-[5%] top-14 hidden h-10 w-10 lg:block" />
+        <DoodleStar className="animate-cartoon-wiggle absolute left-[46%] top-10 hidden h-10 w-10 lg:block" />
         <DoodleSparkle className="animate-cartoon-bob absolute right-[6%] top-40 hidden h-9 w-9 lg:block" />
 
         <div className="container relative grid items-center gap-12 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">

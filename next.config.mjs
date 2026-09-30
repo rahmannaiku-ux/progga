@@ -41,6 +41,8 @@ const cspDirectives = [
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
+  // Browsers ignore this over plain http (local dev); in production the site is https-only.
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -92,7 +94,11 @@ const nextConfig = {
   },
   // Student exam pages moved from /encounters to /exams.
   async redirects() {
-    return [{ source: "/encounters/:examId", destination: "/exams/:examId", permanent: false }];
+    return [
+      { source: "/encounters/:examId", destination: "/exams/:examId", permanent: false },
+      // The testimonials page only held placeholder quotes, so it was removed.
+      { source: "/testimonials", destination: "/", permanent: false },
+    ];
   },
   async headers() {
     return [

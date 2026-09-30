@@ -158,6 +158,7 @@ export function ExamRunner({
     const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
     return Math.max(0, timeLimitSeconds - elapsed);
   });
+  const [tick, setTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [tabWarning, setTabWarning] = useState<string | null>(null);
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
@@ -193,10 +194,18 @@ export function ExamRunner({
       if (autoSubmitOnExpiry) doSubmit();
       return;
     }
-    const t = setTimeout(() => setRemaining((r) => (r !== null ? r - 1 : r)), 1000);
+    // Recomputed from the start time rather than decremented: timers stop
+    // while a phone is locked or the tab is in the background, which would
+    // otherwise leave the on-screen countdown behind the real clock.
+    const t = setTimeout(() => {
+      if (!timeLimitSeconds) return;
+      const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+      setRemaining(Math.max(0, timeLimitSeconds - elapsed));
+      setTick((n) => n + 1); // keep the loop going even if the value didn't change
+    }, 1000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remaining]);
+  }, [remaining, tick]);
 
   // Fullscreen enforcement (PHASE 7) — requests fullscreen, and now
   // also listens for the browser's own fullscreenchange event so an

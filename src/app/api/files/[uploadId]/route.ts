@@ -37,6 +37,12 @@ const BROWSER_CACHE = "private, max-age=31536000, immutable";
  * hosted URL directly and never route through here.
  */
 export async function GET(req: NextRequest, { params }: { params: { uploadId: string } }) {
+  // Upload ids are cuids. Anything else (e.g. a NUL byte, which Postgres
+  // rejects with a 500) is simply "not found" without touching the DB.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.uploadId)) {
+    return NextResponse.json({ error: "File not found." }, { status: 404 });
+  }
+
   // Optional/anonymous-safe (AVATAR context is publicly viewable;
   // canAccessUpload below does the real per-context authorization).
   const sessionUser = await getCurrentSessionUser();

@@ -24,7 +24,7 @@ export default async function AdminLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar title="Admin Console" />
         {/* pb-24 clears the fixed mobile bottom nav, matching hero/mentor. */}
-        <main className="relative flex-1 overflow-x-auto p-4 pb-24 sm:p-6 lg:pb-6">
+        <main id="main-content" tabIndex={-1} className="relative flex-1 overflow-x-auto p-4 pb-24 sm:p-6 lg:pb-6">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

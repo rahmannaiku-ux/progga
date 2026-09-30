@@ -26,7 +26,6 @@ const columns = [
     title: "Resources",
     links: [
       { href: "/faq", label: "FAQ" },
-      { href: "/testimonials", label: "Testimonials" },
     ],
   },
   {
@@ -89,12 +88,12 @@ export async function SiteFooter() {
         {columns.map((col) => (
           <div key={col.title}>
             <p className="text-sm font-semibold text-foreground">{col.title}</p>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-2">
               {col.links.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-muted-foreground hover:text-foreground"
+                    className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
                   >
                     {l.label}
                   </Link>
@@ -102,7 +101,7 @@ export async function SiteFooter() {
               ))}
               {col.title === "Legal" && (
                 <li>
-                  <CookieSettingsLink className="text-sm text-muted-foreground hover:text-foreground" />
+                  <CookieSettingsLink className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground" />
                 </li>
               )}
             </ul>

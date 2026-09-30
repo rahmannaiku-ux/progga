@@ -98,6 +98,9 @@ async function loadOwnedInProgressAttempt(attemptId: string, userId: string) {
   return attempt;
 }
 
+/** Slack after the time limit for the last autosave / auto-submit to land. */
+const ANSWER_GRACE_SECONDS = 30;
+
 async function assertAccessToAssessment(assessmentId: string, userId: string) {
   const assessment = await db.assessment.findUnique({
     where: { id: assessmentId },
@@ -247,10 +250,25 @@ export async function saveAnswer(input: {
 
   const attempt = await db.assessmentAttempt.findUnique({
     where: { id: input.attemptId },
-    include: { assessment: { select: { lockAnswersAfterSelection: true } } },
+    include: {
+      assessment: { select: { lockAnswersAfterSelection: true, timeLimitSeconds: true, autoSubmitOnExpiry: true } },
+    },
   });
   if (!attempt || attempt.userId !== user.id) throw new Error("Attempt not found.");
   if (attempt.status !== "IN_PROGRESS") throw new Error("This attempt is already submitted.");
+
+  // The countdown runs in the browser, so the server is what actually
+  // closes a timed exam: answers saved after the deadline (plus a short
+  // grace for the final autosave/submit round trip) are refused. Exams
+  // that don't auto-submit on expiry are deliberately soft-timed.
+  const { timeLimitSeconds, autoSubmitOnExpiry } = attempt.assessment;
+  if (
+    timeLimitSeconds &&
+    autoSubmitOnExpiry &&
+    Date.now() > attempt.startedAt.getTime() + (timeLimitSeconds + ANSWER_GRACE_SECONDS) * 1000
+  ) {
+    throw new Error("Time is up for this exam.");
+  }
 
   // Never trust questionId directly — it must be one of the exact
   // questions actually selected for THIS attempt (selectedQuestionIds

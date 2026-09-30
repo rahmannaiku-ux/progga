@@ -37,7 +37,7 @@ export default async function MentorLayout({
         {/* pb-24 clears the fixed mobile bottom nav (h-14 + safe-area
             inset), matching the hero layout's spacing; lg:pb-6 restores
             plain desktop padding once the bottom nav is gone. */}
-        <main className="relative flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
+        <main id="main-content" tabIndex={-1} className="relative flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
           <AntiDevToolsProvider enabled={devtoolsGuard}>
             <PageTransition>{children}</PageTransition>
           </AntiDevToolsProvider>

@@ -14,7 +14,7 @@ export default async function PublicLayout({
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <SiteHeader />
-      <main className="relative flex-1">
+      <main id="main-content" tabIndex={-1} className="relative flex-1">
         <PageTransition>{children}</PageTransition>
       </main>
       <SiteFooter />

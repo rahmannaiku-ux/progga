@@ -83,6 +83,25 @@ export function isSafeLogoUrl(url: string): boolean {
 }
 
 /**
+ * Text colour (as an HSL triplet) that stays readable on a custom brand
+ * primary: the theme's own --primary-foreground only suits its own default
+ * primary, so an admin-chosen colour needs its foreground picked to match.
+ */
+export function primaryForegroundFor(hex: string): string {
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  const light = "0 0% 100%";
+  const dark = "258 40% 10%"; // same ink as the dark theme's --primary-foreground
+  if (!match) return light;
+  const channel = (i: number) => {
+    const c = parseInt(match[1]!.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const lum = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  // Pick whichever of white / ink has the higher contrast against the colour.
+  return 1.05 / (lum + 0.05) >= (lum + 0.05) / 0.059 ? light : dark;
+}
+
+/**
  * "#RRGGBB" -> "H S% L%" (the raw-triplet format globals.css uses for
  * every --primary declaration, consumed elsewhere as hsl(var(--primary))).
  * Returns null for anything that doesn't parse as 6-digit hex, so callers
