@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # Compile only. `npm run build` also runs `prisma migrate deploy`,
+      # which must never run in CI.
+      - run: npx next build
+        env:
+          # Build-time placeholders; no database is contacted while compiling.
+          DATABASE_URL: postgresql://user:pass@localhost:5432/ci
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

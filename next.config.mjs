@@ -1,33 +1,15 @@
 /** @type {import('next').NextConfig} */
 
 // CSP built for the external services this app actually talks to from
-// the browser: Clerk (auth widgets + its own asset/API domains),
-// YouTube (lesson video embeds/thumbnails), UploadThing (file uploads
-// + its CDN), and Google Fonts if used by the design system. `unsafe-inline`
-// on style-src and a limited `unsafe-eval`/`unsafe-inline` on script-src
-// are included because Next.js's App Router and Clerk's prebuilt
-// components rely on inline scripts/styles that a strict nonce-based
-// policy would break without deeper framework-level changes — this is a
-// pragmatic baseline that meaningfully restricts *third-party* origins
-// (the main XSS/exfiltration/clickjacking vectors) without breaking the
-// app; it is not a guarantee against inline-script injection. Tighten
-// further (nonces, stricter script-src) as a follow-up once there's a
-// way to actually test each change against a running app.
-// In production Clerk serves its frontend API from the app's own custom
-// domain (e.g. clerk.example.com), which none of the *.clerk.com /
-// *.clerk.accounts.dev entries below cover — sign-in would be blocked by the
-// CSP. The host is encoded in the publishable key, so derive it from there.
-function clerkFrontendOrigin() {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (!key) return "";
-  try {
-    const host = Buffer.from(key.split("_")[2] ?? "", "base64").toString("utf8").replace(/\$$/, "");
-    return /^[a-z0-9.-]+$/i.test(host) ? `https://${host}` : "";
-  } catch {
-    return "";
-  }
-}
-const clerkOrigin = clerkFrontendOrigin();
+// the browser: YouTube (lesson video embeds/thumbnails), UploadThing (file
+// uploads + its CDN), Google Docs/Drive previews, and Google Fonts.
+// `unsafe-inline` on style-src and a limited `unsafe-eval`/`unsafe-inline`
+// on script-src are included because Next.js's App Router relies on inline
+// scripts/styles that a strict nonce-based policy would break without
+// deeper framework-level changes -- this is a pragmatic baseline that
+// restricts *third-party* origins without breaking the app; it is not a
+// guarantee against inline-script injection. Tighten further (nonces,
+// stricter script-src) once each change can be tested against a running app.
 
 // Stream Chat (Live Room, behind the `live_room` feature flag). Only added
 // to the CSP when the public key is actually configured, so environments
@@ -43,14 +25,14 @@ const streamConnectSrc = process.env.NEXT_PUBLIC_STREAM_API_KEY
 
 const cspDirectives = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://www.youtube.com http://www.youtube.com https://s.ytimg.com ${clerkOrigin}`.trim(),
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.youtube.com http://www.youtube.com https://s.ytimg.com`.trim(),
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://utfs.io https://img.clerk.com https://*.clerk.com https://lh3.googleusercontent.com",
+  "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://utfs.io https://lh3.googleusercontent.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "media-src 'self' https://utfs.io",
-  `connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org ${clerkOrigin}${streamConnectSrc}`.trim(),
-  `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://docs.google.com https://drive.google.com ${clerkOrigin}`.trim(),
+  `connect-src 'self' https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org ${streamConnectSrc}`.trim(),
+  `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com https://docs.google.com https://drive.google.com`.trim(),
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'self'",
