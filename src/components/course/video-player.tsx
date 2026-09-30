@@ -359,6 +359,97 @@ export function VideoPlayer({
     }
   }
 
+  // Keyboard shortcuts (YouTube-style). The iframe has disablekb:1 and is
+  // pointer-events-none, so nothing else handles keys. The handler is
+  // stored in a ref that's refreshed every render, so the single document
+  // listener below never sees stale currentTime/duration/isPlaying.
+  const keyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  keyHandlerRef.current = (e: KeyboardEvent) => {
+    if (status !== "ready" || shielded) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const target = e.target as HTMLElement | null;
+    const inPlayer = !!target && !!containerRef.current?.contains(target);
+    // Act when the player is fullscreen, focus is inside it, or nothing
+    // specific has focus (page body) — never while typing elsewhere.
+    if (!isFullscreen && !inPlayer && target !== document.body) return;
+    if (target) {
+      const tag = target.tagName;
+      if (tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+      if (tag === "INPUT") {
+        // The volume slider keeps its native arrow-key behaviour; other
+        // inputs (text fields) are left alone. The seek slider is ours.
+        if ((target as HTMLInputElement).getAttribute("aria-label") !== "Seek video") return;
+      }
+    }
+
+    const player = playerRef.current;
+    if (!player) return;
+    const key = e.key;
+    let handled = true;
+
+    switch (key) {
+      case "ArrowRight":
+      case "l":
+      case "L":
+        seekBy(SEEK_STEP_SECONDS);
+        break;
+      case "ArrowLeft":
+      case "j":
+      case "J":
+        seekBy(-SEEK_STEP_SECONDS);
+        break;
+      case "ArrowUp":
+        handleVolumeChange(Math.min(100, (isMuted ? 0 : volume) + 5));
+        break;
+      case "ArrowDown":
+        handleVolumeChange(Math.max(0, (isMuted ? 0 : volume) - 5));
+        break;
+      case "k":
+      case "K":
+        togglePlay();
+        break;
+      case " ":
+        // Space on a focused button/link already activates it natively.
+        if (target && (target.tagName === "BUTTON" || target.tagName === "A")) {
+          handled = false;
+        } else {
+          togglePlay();
+        }
+        break;
+      case "m":
+      case "M":
+        toggleMute();
+        break;
+      case "f":
+      case "F":
+        void toggleFullscreen();
+        break;
+      case "Home":
+        commitSeek(0);
+        break;
+      case "End":
+        if (duration > 0) commitSeek(Math.max(0, duration - 1));
+        break;
+      default:
+        if (/^[0-9]$/.test(key) && duration > 0) {
+          commitSeek((Number(key) / 10) * duration);
+        } else {
+          handled = false;
+        }
+    }
+
+    if (handled) {
+      e.preventDefault();
+      wakeControls();
+    }
+  };
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => keyHandlerRef.current(e);
+    document.addEventListener("keydown", listener);
+    return () => document.removeEventListener("keydown", listener);
+  }, []);
+
   const displayTime = isSeeking ? seekPreview : currentTime;
 
   // Phones: the inline player is only ~200px tall, so full-size (44px)
