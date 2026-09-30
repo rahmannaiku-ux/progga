@@ -93,7 +93,7 @@ export default async function ChapterGroupsPage({
               return (
                 <Link
                   key={a.id}
-                  href={`/encounters/${a.id}`}
+                  href={`/exams/${a.id}`}
                   className="hover-glow-card comic-panel flex items-center gap-3 bg-xp/10 p-4"
                 >
                   <span className="sticker flex h-10 w-10 shrink-0 items-center justify-center bg-xp/20 text-xp-foreground">

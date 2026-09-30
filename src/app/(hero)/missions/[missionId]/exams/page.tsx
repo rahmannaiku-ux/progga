@@ -121,14 +121,14 @@ export default async function CourseExamsPage({ params }: { params: { missionId:
             <div className="mt-4">
               {inProgress ? (
                 <Link
-                  href={`/encounters/${a.id}`}
+                  href={`/exams/${a.id}`}
                   className="comic-btn inline-flex items-center gap-1.5 bg-xp px-4 py-2 text-xs font-bold text-xp-foreground"
                 >
                   Continue attempt
                 </Link>
               ) : canStartNew ? (
                 <Link
-                  href={`/encounters/${a.id}`}
+                  href={`/exams/${a.id}`}
                   className="comic-btn inline-flex items-center gap-1.5 bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
                 >
                   {attemptsUsed > 0 ? "Retake" : "Start"}

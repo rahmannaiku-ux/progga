@@ -90,6 +90,10 @@ const nextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
+  // Student exam pages moved from /encounters to /exams.
+  async redirects() {
+    return [{ source: "/encounters/:examId", destination: "/exams/:examId", permanent: false }];
+  },
   async headers() {
     return [
       {

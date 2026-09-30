@@ -177,7 +177,7 @@ export async function startAttempt(assessmentId: string) {
   const inProgress = await db.assessmentAttempt.findFirst({
     where: { assessmentId, userId: user.id, status: "IN_PROGRESS" },
   });
-  if (inProgress) throw new AttemptRedirectSignal(`/encounters/${assessmentId}`);
+  if (inProgress) throw new AttemptRedirectSignal(`/exams/${assessmentId}`);
 
   if (priorAttempts >= assessment.maxAttempts) {
     throw new Error("You've used all your attempts for this encounter.");
@@ -222,15 +222,15 @@ export async function startAttempt(assessmentId: string) {
     createdAttemptId = created.id;
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new AttemptRedirectSignal(`/encounters/${assessmentId}`);
+      throw new AttemptRedirectSignal(`/exams/${assessmentId}`);
     }
     throw err;
   }
 
   await logIntegrityEvent(createdAttemptId, "EXAM_STARTED", { userAgent });
 
-  revalidatePath(`/encounters/${assessmentId}`);
-  throw new AttemptRedirectSignal(`/encounters/${assessmentId}`);
+  revalidatePath(`/exams/${assessmentId}`);
+  throw new AttemptRedirectSignal(`/exams/${assessmentId}`);
 }
 
 // ---------------------------------------------------------------------
@@ -860,5 +860,5 @@ export async function submitAttempt(
     });
   }
 
-  revalidatePath(`/encounters/${attempt.assessmentId}`);
+  revalidatePath(`/exams/${attempt.assessmentId}`);
 }

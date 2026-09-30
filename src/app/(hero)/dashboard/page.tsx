@@ -19,6 +19,7 @@ import { getStudentLiveClasses } from "@/server/services/live-classes";
 import { DashboardLiveClassCard } from "@/components/course/dashboard-live-class-card";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
+import { ExamPortalCard } from "@/components/exam/exam-portal-card";
 import { dhakaStartOfDay, dhakaGreeting } from "@/lib/timezone";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 
@@ -219,6 +220,10 @@ export default async function HeroDashboardPage() {
               <DashboardLiveClassCard live={liveNowClass} nextUpcoming={nextUpcomingClass} now={liveClassNow} />
             </StaggerItem>
           )}
+
+          <StaggerItem>
+            <ExamPortalCard />
+          </StaggerItem>
 
           {/* 3 · Today's Missions */}
           <StaggerItem className="comic-panel bg-surface p-4">
@@ -431,6 +436,10 @@ export default async function HeroDashboardPage() {
                 </Button>
               </div>
             )}
+          </StaggerItem>
+
+          <StaggerItem>
+            <ExamPortalCard />
           </StaggerItem>
 
           {/* ── Recommended for you ─────────────────────────────── */}

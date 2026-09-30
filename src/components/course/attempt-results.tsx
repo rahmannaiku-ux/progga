@@ -1,4 +1,8 @@
-import { CheckCircle2, XCircle, Clock3, AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleSlash, Clock3, Hourglass, Timer, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatDuration, formatScore } from "@/lib/exam-display";
+import { ScoreRing } from "@/components/exam/score-ring";
+import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 
 type AnswerBreakdown = {
   questionId: string;
@@ -23,6 +27,7 @@ export function AttemptResults({
   showBreakdown,
   breakdown,
   attemptsRemaining,
+  timeTakenSeconds,
 }: {
   status: string;
   rawScore: number | null;
@@ -34,92 +39,204 @@ export function AttemptResults({
   showBreakdown: boolean;
   breakdown: AnswerBreakdown[];
   attemptsRemaining: number;
+  /** Submit time minus start time, when both are known. */
+  timeTakenSeconds?: number | null;
 }) {
   const pendingReview = status === "SUBMITTED";
 
+  // Counted only from the per-question analysis, which the exam's own
+  // "show results instantly" rule already gates, so nothing hidden leaks.
+  const unanswered = breakdown.filter((b) => b.yourAnswerLabels.length === 0);
+  const correct = breakdown.filter((b) => b.isCorrect === true);
+  const incorrect = breakdown.filter((b) => b.isCorrect === false && b.yourAnswerLabels.length > 0);
+  const showAnalysis = showBreakdown && !pendingReview && breakdown.length > 0;
+
   return (
-    <div>
+    <div className="space-y-6">
       {wasDisqualified && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          <AlertTriangle className="h-4 w-4" /> This attempt was auto-submitted due to
-          repeated tab switching.
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" /> This attempt was auto-submitted due to repeated tab
+          switching.
         </div>
       )}
 
       {pendingReview ? (
-        <div className="glass-panel flex items-center gap-3 p-6">
-          <Clock3 className="h-6 w-6 text-accent" />
+        <section className="comic-panel flex items-start gap-3 bg-surface p-5 sm:p-6">
+          <Hourglass className="mt-0.5 h-6 w-6 shrink-0 text-accent" aria-hidden="true" />
           <div>
-            <p className="font-display font-semibold text-foreground">
-              Awaiting mentor review
-            </p>
+            <p className="font-display text-lg font-extrabold text-foreground">Awaiting mentor review</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              This encounter includes written questions a mentor grades by hand.
-              You'll get a notification once your score is final.
+              This exam includes written questions a mentor grades by hand. You'll get a notification once your
+              score is final.
             </p>
+            {timeTakenSeconds != null && (
+              <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Timer className="h-3.5 w-3.5" aria-hidden="true" /> Time taken {formatDuration(timeTakenSeconds)}
+              </p>
+            )}
           </div>
-        </div>
+        </section>
       ) : (
-        <div className="glass-panel p-6 text-center">
-          {isPassed ? (
-            <CheckCircle2 className="mx-auto h-8 w-8 text-accent" />
-          ) : (
-            <XCircle className="mx-auto h-8 w-8 text-danger" />
-          )}
-          <p className="mt-2 font-display text-2xl font-semibold text-foreground">
-            {percentage}%
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {rawScore} / {maxScore} points · pass mark {passPercentage}%
-          </p>
-          <p
-            className={`mt-2 text-sm font-semibold ${
-              isPassed ? "text-accent" : "text-danger"
-            }`}
+        <section className="comic-panel bg-surface p-5 sm:p-6">
+          <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+            <ScoreRing percentage={percentage ?? 0} passed={isPassed} />
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide",
+                  isPassed ? "bg-accent/10 text-accent" : "bg-danger/10 text-danger"
+                )}
+              >
+                {isPassed ? (
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <XCircle className="h-4 w-4" aria-hidden="true" />
+                )}
+                {isPassed ? "Passed" : "Not passed"}
+              </p>
+              <p className="mt-2 font-display text-4xl font-extrabold text-foreground">
+                {formatScore(rawScore)}
+                <span className="text-2xl font-bold text-muted-foreground"> / {formatScore(maxScore)}</span>
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">points · pass mark {passPercentage}%</p>
+              {!isPassed && attemptsRemaining > 0 && (
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {attemptsRemaining} attempt{attemptsRemaining === 1 ? "" : "s"} remaining. You can try again.
+                </p>
+              )}
+            </div>
+            <ProggyMascot
+              state={isPassed ? "celebrating" : "encouraging"}
+              className="hidden h-24 w-24 shrink-0 md:block"
+            />
+          </div>
+
+          <dl
+            className={cn(
+              "mt-5 grid gap-3 border-t border-border/40 pt-5",
+              showAnalysis ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1"
+            )}
           >
-            {isPassed ? "Passed" : "Not passed"}
-          </p>
-          {!isPassed && attemptsRemaining > 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {attemptsRemaining} attempt{attemptsRemaining === 1 ? "" : "s"} remaining
-            </p>
-          )}
-        </div>
+            {showAnalysis && (
+              <>
+                <Stat icon={CheckCircle2} label="Correct" value={correct.length} />
+                <Stat icon={XCircle} label="Incorrect" value={incorrect.length} />
+                <Stat icon={CircleSlash} label="Skipped" value={unanswered.length} />
+              </>
+            )}
+            {timeTakenSeconds != null && (
+              <Stat icon={Timer} label="Time taken" value={formatDuration(timeTakenSeconds)} />
+            )}
+          </dl>
+        </section>
       )}
 
-      {showBreakdown && !pendingReview && breakdown.length > 0 && (
-        <div className="mt-6 space-y-3">
-          {breakdown.map((b, i) => (
-            <div key={b.questionId} className="glass-panel p-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-foreground">
-                  Q{i + 1}. {b.prompt}
-                </p>
-                {b.isCorrect !== null &&
-                  (b.isCorrect ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />
-                  ) : (
-                    <XCircle className="h-4 w-4 shrink-0 text-danger" />
-                  ))}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Your answer: {b.yourAnswerLabels.join(", ") || "—"}
-              </p>
-              {!b.isCorrect && b.correctAnswerLabels.length > 0 && (
-                <p className="mt-1 text-xs text-accent">
-                  Correct: {b.correctAnswerLabels.join(", ")}
-                </p>
-              )}
-              {b.explanation && (
-                <p className="mt-2 text-xs text-muted-foreground">{b.explanation}</p>
-              )}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {b.pointsAwarded ?? 0} / {b.points} pts
-              </p>
-            </div>
-          ))}
-        </div>
+      {showAnalysis && (
+        <section aria-labelledby="analysis-heading">
+          <h2 id="analysis-heading" className="font-display text-lg font-extrabold text-foreground">
+            Question analysis
+          </h2>
+          <ol className="mt-3 space-y-3">
+            {breakdown.map((b, i) => {
+              const skipped = b.yourAnswerLabels.length === 0;
+              const verdict = b.isCorrect === true ? "correct" : skipped ? "skipped" : b.isCorrect === false ? "incorrect" : "pending";
+              return (
+                <li
+                  key={b.questionId}
+                  className={cn(
+                    "comic-panel border-l-[6px] bg-surface p-4",
+                    verdict === "correct" && "border-l-accent",
+                    verdict === "incorrect" && "border-l-danger",
+                    (verdict === "skipped" || verdict === "pending") && "border-l-border"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      <span className="mr-1 font-mono text-muted-foreground">Q{i + 1}.</span>
+                      {b.prompt}
+                    </p>
+                    <VerdictBadge verdict={verdict} />
+                  </div>
+
+                  <dl className="mt-3 space-y-1.5 text-sm">
+                    <div className="flex gap-2">
+                      <dt className="w-32 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Your answer
+                      </dt>
+                      <dd className={cn("min-w-0 break-words", skipped ? "italic text-muted-foreground" : "text-foreground")}>
+                        {skipped ? "No answer given" : b.yourAnswerLabels.join(", ")}
+                      </dd>
+                    </div>
+                    {!b.isCorrect && b.correctAnswerLabels.length > 0 && (
+                      <div className="flex gap-2">
+                        <dt className="w-32 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Correct answer
+                        </dt>
+                        <dd className="min-w-0 break-words font-semibold text-accent">
+                          {b.correctAnswerLabels.join(", ")}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+
+                  {b.explanation && (
+                    <p className="mt-3 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
+                      <span className="font-bold text-foreground">Explanation. </span>
+                      {b.explanation}
+                    </p>
+                  )}
+                  <p className="mt-2 font-mono text-xs text-muted-foreground">
+                    {formatScore(b.pointsAwarded ?? 0)} / {formatScore(b.points)} pts
+                  </p>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
       )}
     </div>
+  );
+}
+
+function Stat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Clock3;
+  label: string;
+  value: number | string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-3 py-2.5">
+      <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+      <div>
+        <dd className="font-mono text-lg font-extrabold leading-none text-foreground">{value}</dd>
+        <dt className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      </div>
+    </div>
+  );
+}
+
+function VerdictBadge({ verdict }: { verdict: "correct" | "incorrect" | "skipped" | "pending" }) {
+  const map = {
+    correct: { Icon: CheckCircle2, label: "Correct", className: "bg-accent/10 text-accent" },
+    incorrect: { Icon: XCircle, label: "Incorrect", className: "bg-danger/10 text-danger" },
+    skipped: { Icon: CircleSlash, label: "Unanswered", className: "bg-muted text-muted-foreground" },
+    pending: { Icon: Clock3, label: "Pending review", className: "bg-muted text-muted-foreground" },
+  } as const;
+  const { Icon, label, className } = map[verdict];
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
+        className
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" /> {label}
+    </span>
   );
 }

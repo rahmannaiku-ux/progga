@@ -901,3 +901,29 @@
     overflow: visible !important;
   }
 }
+
+/* Result score reveal (/results/[id], exam result screen): the ring fills
+ * once and the number fades up. Skipped entirely for reduced motion. */
+@keyframes score-ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+}
+@keyframes score-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+}
+.score-ring-fill {
+  animation: score-ring-fill 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s backwards;
+}
+.score-reveal {
+  animation: score-reveal 0.5s ease-out 0.35s backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .score-ring-fill,
+  .score-reveal {
+    animation: none;
+  }
+}

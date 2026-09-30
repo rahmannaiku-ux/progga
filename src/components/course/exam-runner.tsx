@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Clock, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Check, Clock, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   saveAnswer,
@@ -43,6 +43,55 @@ type SavedAnswer = {
 // Tuned to keep write volume low on a long exam per PHASE 24.
 const TIME_FLUSH_INTERVAL_MS = 15_000;
 const SESSION_CHECK_INTERVAL_MS = 45_000;
+
+function ChoiceOption({
+  index,
+  label,
+  checked,
+  disabled,
+  type,
+  name,
+  onChange,
+}: {
+  index: number;
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  type: "radio" | "checkbox";
+  name?: string;
+  onChange: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex min-h-[52px] items-center gap-3 rounded-xl border-2 px-3.5 py-3 text-base font-medium text-foreground transition-colors focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 focus-within:ring-offset-background",
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-accent/60",
+        checked ? "border-accent bg-accent/10" : "border-border/70 bg-surface"
+      )}
+    >
+      <input
+        type={type}
+        name={name}
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        className="sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 font-mono text-sm font-bold",
+          type === "checkbox" && "rounded-lg",
+          checked ? "border-accent bg-accent text-accent-foreground" : "border-border/70 text-muted-foreground"
+        )}
+      >
+        {checked ? <Check className="h-4 w-4" /> : String.fromCharCode(65 + (index % 26))}
+      </span>
+      <span className="min-w-0 flex-1 break-words">{label}</span>
+      {checked && <span className="shrink-0 text-xs font-bold text-accent">Selected</span>}
+    </label>
+  );
+}
 
 export function ExamRunner({
   attemptId,
@@ -492,28 +541,52 @@ export function ExamRunner({
           same confirm step as the bottom button rather than submitting
           immediately — a single mis-tap while scrolling on a phone
           must never instantly end the exam. */}
-      <div className="glass-panel sticky top-16 z-10 mb-3 flex items-center justify-between gap-3 p-3 sm:top-20 sm:p-4">
-        {remaining !== null ? (
-          <span className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground">
-            <Clock className={`h-4 w-4 shrink-0 ${remaining < 60 ? "text-danger" : "text-accent"}`} />
-            {formatTime(remaining)}
+      <div className="glass-panel sticky top-16 z-10 mb-3 p-3 sm:top-20 sm:p-4">
+        <div className="flex items-center justify-between gap-3">
+          {remaining !== null ? (
+            <span
+              role="timer"
+              aria-label="Time remaining"
+              className={cn(
+                "flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 font-mono text-lg font-extrabold tabular-nums",
+                remaining < 60 ? "border-danger bg-danger/10 text-danger" : "border-border/60 bg-surface text-foreground"
+              )}
+            >
+              <Clock className={`h-5 w-5 shrink-0 ${remaining < 60 ? "text-danger" : "text-accent"}`} />
+              {formatTime(remaining)}
+            </span>
+          ) : (
+            <span className="rounded-xl border-2 border-border/60 px-3 py-1.5 text-sm font-semibold text-muted-foreground">
+              Untimed
+            </span>
+          )}
+          <span className="text-xs font-semibold text-muted-foreground">
+            {answeredCount}/{questions.length} answered
           </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">Untimed</span>
-        )}
-        <span className="hidden text-xs font-semibold text-muted-foreground sm:inline">
-          {answeredCount}/{questions.length} answered
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="accent"
-          disabled={submitting}
-          onClick={() => setConfirmingSubmit(true)}
-          className="min-h-[40px]"
+          <Button
+            type="button"
+            size="sm"
+            variant="accent"
+            disabled={submitting}
+            onClick={() => setConfirmingSubmit(true)}
+            className="min-h-[44px]"
+          >
+            Submit
+          </Button>
+        </div>
+        <div
+          className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label="Questions answered"
+          aria-valuemin={0}
+          aria-valuemax={questions.length}
+          aria-valuenow={answeredCount}
         >
-          Submit
-        </Button>
+          <div
+            className="h-full rounded-full bg-accent"
+            style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }}
+          />
+        </div>
       </div>
 
       {/* Question navigator — a horizontally scrollable strip of numbered
@@ -551,7 +624,7 @@ export function ExamRunner({
                 href={`#question-${q.id}`}
                 aria-label={`Jump to question ${i + 1}${isMarked ? " (marked for review)" : isAnswered ? " (answered)" : " (unanswered)"}`}
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-mono text-xs font-bold transition-transform hover:-translate-y-0.5",
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 font-mono text-sm font-bold transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   isMarked
                     ? "border-xp bg-xp/30 text-foreground"
                     : isAnswered
@@ -597,13 +670,13 @@ export function ExamRunner({
               id={`question-${q.id}`}
               data-question-id={q.id}
               className={cn(
-                "comic-panel scroll-mt-40 bg-surface p-5",
+                "comic-panel scroll-mt-40 bg-surface p-4 sm:p-6",
                 detectScreenshotAttempts && "select-none"
               )}
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="sticker-badge bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                  Q{i + 1} · {q.points} pt{q.points === 1 ? "" : "s"}
+                <span className="sticker-badge bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
+                  Question {i + 1} of {questions.length} · {q.points} pt{q.points === 1 ? "" : "s"}
                   {isLocked && " · 🔒 Locked"}
                 </span>
                 <button
@@ -611,7 +684,7 @@ export function ExamRunner({
                   onClick={() => toggleMark(q.id)}
                   aria-pressed={marked.has(q.id)}
                   className={cn(
-                    "flex items-center gap-1 rounded-full border-[2px] px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                    "flex min-h-[36px] items-center gap-1 rounded-full border-[2px] px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                     marked.has(q.id)
                       ? "border-xp bg-xp/20 text-foreground"
                       : "border-border/60 text-muted-foreground hover:text-foreground"
@@ -620,59 +693,42 @@ export function ExamRunner({
                   {marked.has(q.id) ? "★ Marked" : "☆ Mark for review"}
                 </button>
               </div>
-              <p className="mt-2 text-base font-semibold text-foreground">{q.prompt}</p>
+              <p className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.prompt}</p>
 
               <div className="mt-4 space-y-2">
                 {(q.type === "MCQ" || q.type === "TRUE_FALSE") &&
-                  q.options.map((opt) => {
-                    const checked = current.selectedOptionIds[0] === opt.id;
-                    return (
-                      <label
-                        key={opt.id}
-                        className={cn(
-                          "comic-panel flex min-h-[48px] items-center gap-2.5 border-2 bg-surface p-3 text-base font-medium transition-transform",
-                          isLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:-translate-y-0.5",
-                          checked ? "border-accent bg-accent/10 text-foreground" : "border-border text-foreground"
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name={`q-${q.id}`}
-                          checked={checked}
-                          disabled={isLocked}
-                          onChange={() => updateAnswer(q.id, { selectedOptionIds: [opt.id] })}
-                        />
-                        {opt.label}
-                      </label>
-                    );
-                  })}
+                  q.options.map((opt, optIndex) => (
+                    <ChoiceOption
+                      key={opt.id}
+                      index={optIndex}
+                      label={opt.label}
+                      type="radio"
+                      name={`q-${q.id}`}
+                      checked={current.selectedOptionIds[0] === opt.id}
+                      disabled={isLocked}
+                      onChange={() => updateAnswer(q.id, { selectedOptionIds: [opt.id] })}
+                    />
+                  ))}
 
                 {q.type === "MULTIPLE_SELECT" &&
-                  q.options.map((opt) => {
+                  q.options.map((opt, optIndex) => {
                     const checked = current.selectedOptionIds.includes(opt.id);
                     return (
-                      <label
+                      <ChoiceOption
                         key={opt.id}
-                        className={cn(
-                          "comic-panel flex min-h-[48px] items-center gap-2.5 border-2 bg-surface p-3 text-base font-medium transition-transform",
-                          isLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:-translate-y-0.5",
-                          checked ? "border-accent bg-accent/10 text-foreground" : "border-border text-foreground"
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={isLocked}
-                          onChange={() =>
-                            updateAnswer(q.id, {
-                              selectedOptionIds: checked
-                                ? current.selectedOptionIds.filter((id) => id !== opt.id)
-                                : [...current.selectedOptionIds, opt.id],
-                            })
-                          }
-                        />
-                        {opt.label}
-                      </label>
+                        index={optIndex}
+                        label={opt.label}
+                        type="checkbox"
+                        checked={checked}
+                        disabled={isLocked}
+                        onChange={() =>
+                          updateAnswer(q.id, {
+                            selectedOptionIds: checked
+                              ? current.selectedOptionIds.filter((id) => id !== opt.id)
+                              : [...current.selectedOptionIds, opt.id],
+                          })
+                        }
+                      />
                     );
                   })}
 
@@ -686,7 +742,7 @@ export function ExamRunner({
                     // 16px triggers iOS Safari's automatic zoom-in on
                     // focus, which is jarring mid-exam and can make the
                     // Submit button scroll out of view unexpectedly.
-                    className="h-11 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground disabled:opacity-60"
+                    className="h-12 w-full rounded-xl border-2 border-border/70 bg-surface px-3 text-base text-foreground focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
                   />
                 )}
 
@@ -700,7 +756,7 @@ export function ExamRunner({
                       disabled={isLocked}
                       onChange={(e) => updateAnswer(q.id, { textAnswer: e.target.value }, { debounce: true })}
                       placeholder="Your answer"
-                      className="h-11 w-full max-w-[12rem] rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground disabled:opacity-60"
+                      className="h-12 w-full max-w-[12rem] rounded-xl border-2 border-border/70 bg-surface px-3 text-base text-foreground focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
                     />
                     {q.numericUnit && (
                       <span className="text-sm text-muted-foreground">{q.numericUnit}</span>
@@ -715,7 +771,7 @@ export function ExamRunner({
                     onChange={(e) => updateAnswer(q.id, { textAnswer: e.target.value }, { debounce: true })}
                     rows={q.type === "ESSAY" ? 6 : 3}
                     placeholder="Your answer"
-                    className="w-full rounded-lg border border-border/60 bg-surface px-3 py-2.5 text-base text-foreground disabled:opacity-60"
+                    className="w-full rounded-xl border-2 border-border/70 bg-surface px-3 py-2.5 text-base text-foreground focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
                   />
                 )}
               </div>
@@ -771,7 +827,7 @@ export function ExamRunner({
           onClick={() => setConfirmingSubmit(true)}
           className="mt-6 min-h-[48px] w-full"
         >
-          Submit encounter
+          Submit exam
         </Button>
       )}
     </div>

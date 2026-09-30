@@ -245,7 +245,7 @@ export default async function LessonPlayerPage({
   const objectives = [
     ...lesson.assessments.map((a) => ({
       id: a.id,
-      href: `/encounters/${a.id}`,
+      href: `/exams/${a.id}`,
       title: a.title,
       kind: a.kind === "EXAM" ? "Exam" : "Quiz",
       dueAt: null as Date | null,

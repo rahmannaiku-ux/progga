@@ -35,6 +35,8 @@ import {
   Newspaper,
   Store,
   Wrench,
+  GraduationCap,
+  ClipboardList,
 } from "lucide-react";
 
 export type NavItem = {
@@ -64,6 +66,8 @@ export const heroNav: NavSection[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "My Courses", href: "/my-courses", icon: BookOpen },
       { label: "Missions", href: "/missions", icon: Rocket },
+      { label: "Exams", href: "/exams", icon: GraduationCap },
+      { label: "Results", href: "/results", icon: ClipboardList },
       { label: "Live Classes", href: "/live-classes", icon: Video },
       { label: "Proggy Store", href: "/store", icon: Store },
       { label: "Wallet", href: "/wallet", icon: Coins },
