@@ -3,7 +3,6 @@ import { connectGoogleDriveAccount } from "@/lib/storage/google-drive";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 export async function GET(req: NextRequest) {
-  // PHASE 5: migrated off Clerk.
   const user = await getCurrentActiveSessionUser();
   if (!user) return NextResponse.redirect(new URL("/login", req.url));
   if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {

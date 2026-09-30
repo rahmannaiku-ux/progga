@@ -4,7 +4,6 @@ import { encryptSecret } from "@/lib/storage/token-crypto";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 export async function GET(req: NextRequest) {
-  // PHASE 5: migrated off Clerk.
   const user = await getCurrentActiveSessionUser();
   if (!user) return NextResponse.redirect(new URL("/login", req.url));
   if (!["TEACHER", "ADMIN", "SUPER_ADMIN"].includes(user.role)) {

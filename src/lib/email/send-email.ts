@@ -6,7 +6,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 // Every caller passes plain values (titles, names, numbers) that were
 // never meant to contain HTML — course titles are teacher-authored,
-// names come from Clerk signup, both lower-trust than this template
+// names come from student registration, both lower-trust than this template
 // system's own admin-authored markup. Escaping here, once, at the
 // interpolation boundary, closes the injection vector for every current
 // and future call site without each caller needing to remember to do it.

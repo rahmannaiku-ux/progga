@@ -11,7 +11,7 @@ const ROLE_RANK: Record<Role, number> = {
 };
 
 /**
- * PHASE 5: migrated off Clerk. Verifies the current custom session
+ * Verifies the current custom session
  * belongs to a User holding at least `minimumRole` — never trusts the
  * client, and role always comes from the database row the session
  * resolves to, never from anything client-supplied. Used at the top of
@@ -43,10 +43,8 @@ export const requireRole = cache(async (minimumRole: Role) => {
     redirect("/dashboard?error=insufficient_permissions");
   }
 
-  // Narrowed to match the original Clerk-era `select` shape exactly —
-  // this return value has gone through dozens of (mentor)/(admin) call
-  // sites unaudited by this migration, so keep it exactly as
-  // least-privilege as it was before rather than widening it to the
-  // full row (which, as of Phase 1, now includes passwordHash).
+  // Deliberately narrow: this value reaches dozens of (mentor)/(admin)
+  // call sites, so don't widen it to the full row (which includes
+  // passwordHash).
   return { id: user.id, role: user.role, isActive: user.isActive, isSuspended: user.isSuspended };
 });

@@ -7,8 +7,6 @@ import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
  * Admin → Storage → "Connect Google Drive" hits this route, which
  * redirects to Google's consent screen. Admin-only (storage spec §21) —
  * students must never see or reach this endpoint.
- *
- * PHASE 5: migrated off Clerk.
  */
 export async function GET(req: NextRequest) {
   const user = await getCurrentActiveSessionUser();

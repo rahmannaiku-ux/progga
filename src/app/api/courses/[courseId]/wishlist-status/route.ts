@@ -6,10 +6,8 @@ export async function GET(
   _req: Request,
   { params }: { params: { courseId: string } }
 ) {
-  // PHASE 5: migrated off Clerk. Optional/anonymous-safe, same as
-  // before — no active/suspended check here either originally, so
-  // getCurrentSessionUser (not the Active variant) preserves that
-  // exactly rather than silently tightening a harmless read endpoint.
+  // Optional/anonymous-safe: no active/suspended check on this harmless
+  // read endpoint, so getCurrentSessionUser (not the Active variant).
   const user = await getCurrentSessionUser();
   if (!user) return NextResponse.json({ wishlisted: false });
 

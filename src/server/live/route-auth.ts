@@ -3,10 +3,9 @@ import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 import type { Role } from "@prisma/client";
 
 /**
- * PHASE 5: migrated off Clerk. Shared "who is calling this
- * /api/live/** route" resolver — now backed by the custom session via
- * getCurrentActiveSessionUser (src/lib/auth/require-auth.ts) instead of
- * Clerk auth() + a clerkId lookup. Return contract unchanged.
+ * Shared "who is calling this /api/live/** route" resolver, backed by
+ * the custom session via getCurrentActiveSessionUser
+ * (src/lib/auth/require-auth.ts).
  */
 export type LiveApiUser = { id: string; role: Role };
 

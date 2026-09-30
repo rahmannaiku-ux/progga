@@ -5,10 +5,8 @@ import { db } from "@/lib/db/client";
 import { requireActiveUser } from "@/server/actions/require-user";
 
 export async function updateProfile(input: { headline: string; bio: string }) {
-  // PHASE 5: migrated off Clerk. requireActiveUser throws "Unauthorized"-
-  // equivalent ("Your session has expired...") the same way the old
-  // Clerk check did, and gives us user.id directly — no more
-  // update-by-clerkId lookup needed.
+  // requireActiveUser throws ("Your session has expired...") when signed
+  // out and gives us user.id directly.
   const user = await requireActiveUser();
 
   await db.user.update({

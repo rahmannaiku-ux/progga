@@ -10,7 +10,7 @@ const PATHNAME_HEADER = "x-proggaa-pathname";
 /**
  * Route-group based RBAC.
  *
- * PHASE 5: migrated off Clerk. This middleware runs on the Edge
+ * This middleware runs on the Edge
  * runtime, which cannot load the Prisma Client — so, same division of
  * labor as before, just with a different boundary: this layer only
  * checks "is there a session cookie that could plausibly be valid" (a
@@ -47,9 +47,9 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/cookies$/,
   // Certificate verification: anyone holding a certificate ID can check it.
   /^\/certificates\/verify(\/.*)?$/,
-  // New Proggaa auth pages + the legacy Clerk routes kept only as
-  // redirect targets (src/app/(auth)/sign-in|sign-up), all public by
-  // definition — nobody has a session yet while using them.
+  // Auth pages, plus the legacy /sign-in and /sign-up routes kept only
+  // as redirects to /login (src/app/(auth)/sign-in|sign-up) for old
+  // links — all public by definition, nobody has a session yet.
   /^\/login$/,
   /^\/register$/,
   /^\/forgot-password$/,

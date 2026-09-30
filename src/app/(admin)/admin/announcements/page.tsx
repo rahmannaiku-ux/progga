@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
-import { createGlobalAnnouncement, deleteAnnouncement } from "@/server/actions/admin-actions";
+import { deleteAnnouncement } from "@/server/actions/admin-actions";
+import { AnnouncementForm } from "@/components/admin-dashboard/announcement-form";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { PaginationControls, parsePageParam } from "@/components/shared/pagination-controls";
@@ -63,27 +64,7 @@ export default async function AdminAnnouncementsPage({
         <h2 className="font-display text-sm font-bold text-foreground">
           New announcement
         </h2>
-        <form action={createGlobalAnnouncement} className="mt-3 space-y-3">
-          <input
-            name="title"
-            required
-            placeholder="Title"
-            className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
-          />
-          <textarea
-            name="body"
-            required
-            rows={3}
-            placeholder="Message"
-            className="w-full rounded-lg border border-border/60 bg-surface px-3 py-2 text-base text-foreground"
-          />
-          <button
-            type="submit"
-            className="comic-btn h-10 w-full bg-primary text-sm font-bold text-primary-foreground"
-          >
-            Send to all users
-          </button>
-        </form>
+        <AnnouncementForm />
       </div>
     </div>
   );

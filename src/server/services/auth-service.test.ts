@@ -185,7 +185,7 @@ describe("completeRegistration", () => {
     expect(result).toEqual({ ok: true, rawToken: "raw-token-abc", session: FAKE_SESSION, user: createdUser });
   });
 
-  it("does not invent StudentProfile field values on creation, and also creates an empty HeroStats row (Phase 5 fix — matches the Clerk paths' nested create)", async () => {
+  it("does not invent StudentProfile field values on creation, and also creates an empty HeroStats row", async () => {
     userCreate.mockResolvedValue({ id: "user_1" });
     await completeRegistration(PHONE, "123456", "goodpassword");
     const createArg = userCreate.mock.calls[0]![0];

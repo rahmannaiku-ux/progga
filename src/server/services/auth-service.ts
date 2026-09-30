@@ -22,9 +22,6 @@ import type { Session, User } from "@prisma/client";
  * wrappers in src/server/actions/auth-actions.ts own the cookie —
  * they call these functions, then call setSessionCookie/clearSessionCookie
  * themselves with whatever raw token this layer returns.
- *
- * PHASE 5: this module has migrated every remaining Clerk call site in
- * the rest of the repository, but never itself depended on Clerk.
  */
 
 // ---------------------------------------------------------------------
@@ -46,9 +43,8 @@ export type RequestRegistrationOtpResult =
  * verify step) — a duplicate-phone registration attempt should not
  * burn an SMS.
  *
- * PHASE 5: the "registration" feature flag (the same one the old Clerk
- * sign-up page checked, now also checked by the /register page) is
- * enforced HERE too — the UI check alone would let a direct call to
+ * The "registration" feature flag (also checked by the /register page)
+ * is enforced HERE too — the UI check alone would let a direct call to
  * this server action bypass a closed sign-up window entirely.
  */
 export async function requestRegistration(rawPhone: string): Promise<RequestRegistrationOtpResult> {
@@ -130,23 +126,13 @@ export async function completeRegistration(
         phoneVerified: true,
         profileCompleted: false,
         role: "STUDENT",
-        // Matches the existing lazy-create convention in
-        // src/lib/auth/current-user.ts (Clerk path) and the Clerk
-        // webhook (src/app/api/webhooks/clerk/route.ts) — an empty
-        // StudentProfile row up front, filled in by Phase 4's
+        // An empty StudentProfile row up front, filled in by the
         // mandatory profile-completion flow. No fake values supplied.
         //
-        // heroStats is created here too (Phase 5 fix): both Clerk
-        // user-creation paths always create one alongside
-        // studentProfile, and the gamification system (XP, coins,
-        // leaderboard, dashboard sidebar, wallet, store — see
-        // src/lib/gamification/*) reads user.heroStats throughout.
-        // completeRegistration originally didn't create this, which
-        // would have left every phone-registered student without a
-        // HeroStats row from their very first login — found during the
-        // Phase 5 Clerk-dependency audit (see the webhook's own nested
-        // create) and fixed here rather than left as a landmine for
-        // whichever gamification page happened to assume it exists.
+        // heroStats is created here too: the gamification system (XP,
+        // coins, leaderboard, dashboard sidebar, wallet, store — see
+        // src/lib/gamification/*) reads user.heroStats throughout, so
+        // every student needs one from their very first login.
         studentProfile: { create: {} },
         heroStats: { create: {} },
       },
@@ -334,6 +320,51 @@ export async function resetPassword(rawPhone: string, otp: string, newPassword: 
   await revokeAllActiveSessionsForUser(user.id);
 
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Change password / sign out everywhere (signed-in, from /profile)
+// ---------------------------------------------------------------------
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; reason: "wrong_password" | "invalid_password" | "same_password" | "rate_limited" | "account_not_found"; message?: string };
+
+/**
+ * Changes the password of an already-signed-in user after re-checking
+ * their current one. Every OTHER session is revoked (an old session must
+ * not outlive a password change); `currentSessionId` is spared so the
+ * device changing the password stays signed in. Wrong-password attempts
+ * share the login rate limit, keyed by user.
+ */
+export async function changePassword(
+  userId: string,
+  currentSessionId: string | undefined,
+  currentPassword: string,
+  newPassword: string
+): Promise<ChangePasswordResult> {
+  const rl = await checkRateLimit("login", `change-password:${userId}`);
+  if (!rl.success) return { ok: false, reason: "rate_limited" };
+
+  const user = await db.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  if (!user?.passwordHash) return { ok: false, reason: "account_not_found" };
+
+  if (!(await verifyPassword(currentPassword, user.passwordHash))) return { ok: false, reason: "wrong_password" };
+
+  const passwordCheck = validatePasswordInput(newPassword);
+  if (!passwordCheck.ok) return { ok: false, reason: "invalid_password", message: passwordCheck.error };
+  if (newPassword === currentPassword) return { ok: false, reason: "same_password" };
+
+  const passwordHash = await hashPassword(newPassword);
+  await db.user.update({ where: { id: userId }, data: { passwordHash } });
+  await revokeAllActiveSessionsForUser(userId, { exceptSessionId: currentSessionId });
+
+  return { ok: true };
+}
+
+/** Revokes every session of the user, including the one making the request. */
+export async function signOutEverywhere(userId: string): Promise<void> {
+  await revokeAllActiveSessionsForUser(userId);
 }
 
 // ---------------------------------------------------------------------

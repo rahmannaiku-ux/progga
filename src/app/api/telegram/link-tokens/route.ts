@@ -10,8 +10,6 @@ import { getCurrentSessionUser } from "@/lib/auth/require-auth";
  * PROGGAA_API_KEY — since this endpoint acts on behalf of whichever
  * human is currently logged into the website, exactly like every other
  * authenticated browser-facing endpoint in this app.
- *
- * PHASE 5: migrated off Clerk.
  */
 export async function POST(req: Request) {
   // CSRF defense-in-depth: unlike Server Actions, plain Route Handlers

@@ -20,8 +20,6 @@ const CLIENT_UPLOADABLE_CONTEXTS: UploadContext[] = [
  * LESSON_RESOURCE uploads are untouched and keep going straight through
  * the existing /api/uploadthing route — this endpoint doesn't accept
  * that context at all.
- *
- * PHASE 5: migrated off Clerk.
  */
 export async function POST(req: NextRequest) {
   const user = await getCurrentActiveSessionUser();

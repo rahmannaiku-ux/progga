@@ -37,9 +37,8 @@ const BROWSER_CACHE = "private, max-age=31536000, immutable";
  * hosted URL directly and never route through here.
  */
 export async function GET(req: NextRequest, { params }: { params: { uploadId: string } }) {
-  // PHASE 5: migrated off Clerk. Optional/anonymous-safe, same as
-  // before (AVATAR context is publicly viewable; canAccessUpload below
-  // does the real per-context authorization).
+  // Optional/anonymous-safe (AVATAR context is publicly viewable;
+  // canAccessUpload below does the real per-context authorization).
   const sessionUser = await getCurrentSessionUser();
 
   const upload = await db.upload.findUnique({

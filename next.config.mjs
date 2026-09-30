@@ -83,10 +83,10 @@ const nextConfig = {
       { protocol: "https", hostname: "img.youtube.com" },
       { protocol: "https", hostname: "i.ytimg.com" },
       { protocol: "https", hostname: "utfs.io" }, // uploadthing CDN
+      // Legacy: avatar URLs saved on accounts created before the custom
+      // auth system (img.clerk.com, and Google's CDN for Google sign-ins).
+      // Remove once no User.imageUrl points at these hosts.
       { protocol: "https", hostname: "img.clerk.com" },
-      // Clerk sometimes returns the original OAuth provider's avatar URL
-      // (not always re-hosted at img.clerk.com) — Google's is the one
-      // we've seen show up unproxied for Google-sign-in students.
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },

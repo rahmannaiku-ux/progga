@@ -356,7 +356,7 @@ export async function verifyPaymentManually(paymentId: string) {
 
 /**
  * Core rejection logic, decoupled from how the caller authenticated as
- * an admin — the website's Clerk-authenticated form action and the
+ * an admin — the website's session-authenticated form action and the
  * bot's API-key-authenticated route both resolve their own admin user
  * first, then call this so the business logic (and its race guard)
  * lives in exactly one place.

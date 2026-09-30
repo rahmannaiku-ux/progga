@@ -15,8 +15,6 @@ import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
  * authenticated user id from the session — never taken from the body),
  * when, which route, and the detection categories. No cookies, tokens or
  * request bodies beyond that are stored.
- *
- * PHASE 5: migrated off Clerk.
  */
 const ALLOWED_REASONS = new Set([
   "debugger-pause",

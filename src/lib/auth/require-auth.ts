@@ -4,11 +4,9 @@ import type { Role, User } from "@prisma/client";
 import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
 
 /**
- * New-auth-system counterpart to src/lib/auth/current-user.ts and
- * src/lib/auth/require-role.ts (both Clerk-based). Deliberately kept as
- * separate files rather than modifying those — per the Phase 3
- * instructions, existing Clerk call sites are not touched until the
- * later migration/cutover phase. Nothing in this file imports Clerk.
+ * Session-based guards for route handlers and Server Actions. Page
+ * guards live in src/lib/auth/current-user.ts and
+ * src/lib/auth/require-role.ts; all three read the same custom session.
  */
 
 const ROLE_RANK: Record<Role, number> = {
@@ -65,11 +63,8 @@ export async function requireRole(minimumRole: Role): Promise<User> {
  * Non-throwing, active/suspended-checked variant of `requireAuth`, for
  * JSON API routes (src/app/api/**) that need to respond with their own
  * NextResponse.json(401) shape rather than throwing an Error the way
- * Server Actions do. PHASE 5: this is the one shared resolver behind
- * every migrated `/api/**` route handler's auth check — previously
- * each route repeated the same `auth()` -> `db.user.findUnique({where:
- * {clerkId}})` -> active/suspended check block individually; now they
- * all call this instead of re-deriving it.
+ * Server Actions do. This is the one shared resolver behind every
+ * `/api/**` route handler's auth check.
  */
 export async function getCurrentActiveSessionUser(): Promise<User | null> {
   const user = await getCurrentSessionUser();
@@ -110,14 +105,8 @@ export async function requireCompletedProfile(): Promise<User> {
  * session, or to /complete-profile if the session is valid but the
  * mandatory first-login profile hasn't been completed yet.
  *
- * Scope note: as of Phase 4, nothing under the existing (hero) route
- * group calls this — those pages are still gated by Clerk's
- * getCurrentUser()/requireRole() (src/lib/auth/current-user.ts,
- * require-role.ts), untouched per this phase's instructions. This
- * function is the infrastructure Phase 5 is expected to wire in once
- * the two auth systems are merged; today it guards /complete-profile's
- * own "you're already done" case and is ready for any future
- * new-auth-system page to call.
+ * Today it guards /complete-profile's own "you're already done" case
+ * and is available to any page that needs the profile gate.
  */
 export async function requireCompletedProfileForPage(returnTo?: string): Promise<User> {
   const user = await getCurrentSessionUser();

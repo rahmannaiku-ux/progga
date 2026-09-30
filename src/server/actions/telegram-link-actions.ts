@@ -20,7 +20,7 @@ export class TelegramLinkError extends Error {
 
 /**
  * Creates a new one-time link token for an already-authenticated
- * Proggaa user (Clerk session verified by the caller). Rate-limited per
+ * Proggaa user (session verified by the caller). Rate-limited per
  * user so a compromised or scripted session can't mint an unbounded
  * number of tokens.
  */
@@ -44,7 +44,7 @@ export async function createLinkToken(userId: string): Promise<{ token: string; 
  * Redeems a raw token on behalf of a specific Telegram id — the core of
  * PHASE 1. Called only from the bot-facing, API-key-authenticated
  * route; the raw token itself is the proof of account ownership here,
- * not a Clerk session (the whole point is that the bot never sees a
+ * not a website session (the whole point is that the bot never sees a
  * Proggaa password or session).
  */
 export async function consumeLinkToken(

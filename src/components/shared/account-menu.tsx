@@ -9,13 +9,10 @@ import { Avatar } from "@/components/shared/avatar";
 import { logoutAction } from "@/server/actions/auth-actions";
 
 /**
- * PHASE 5: replaces Clerk's <UserButton>. Deliberately self-contained
+ * Account dropdown for the custom session. Deliberately self-contained
  * and prop-free — it doesn't need the viewer's name/avatar plumbed in
  * from every Topbar call site across (hero)/(mentor)/(admin); it only
- * needs to offer "Profile" and "Sign out", which is everything
- * <UserButton> was actually used for here (no afterSignOutUrl-style
- * config beyond "go to /login", no org switcher, none of Clerk's other
- * account-management surface was in use).
+ * offers "Profile" and "Sign out" (signing out goes to /login).
  *
  * The viewer's photo is passed in as two plain strings resolved
  * server-side by the caller (Topbar / SiteHeader) — never a client-side

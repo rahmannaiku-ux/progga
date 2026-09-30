@@ -3,30 +3,18 @@ import { redirect } from "next/navigation";
 import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
 
 /**
- * PHASE 5: migrated off Clerk. Identity now comes from the custom
- * session cookie (src/lib/auth/session.ts) rather than Clerk's auth().
- * Every exported name/signature here is unchanged on purpose — dozens
- * of call sites across (hero)/(mentor)/(admin) pages and server actions
- * import these by name, and none of them needed to change for this
- * migration.
+ * Identity comes from the custom session cookie
+ * (src/lib/auth/session.ts). Dozens of pages and server actions import
+ * these helpers by name.
  *
- * The old Clerk-era lazy-create-on-first-visit logic (create a User row
- * the first time someone with a valid Clerk session but no DB row yet
- * hits a protected page) is gone: there is no external identity
- * provider anymore whose session can exist before a User row does.
- * Every User row a session can ever point to was created by
- * completeRegistration (src/server/services/auth-service.ts), which
- * already creates studentProfile + heroStats atomically at
- * registration time — nothing left to lazily backfill here.
+ * There is no lazy user creation: every User row a session can point to
+ * was created by completeRegistration
+ * (src/server/services/auth-service.ts), which creates studentProfile +
+ * heroStats atomically at registration time.
  *
- * Existing Clerk-only accounts (no phone/passwordHash, only a legacy
- * clerkId) have no custom session to present, so they simply cannot
- * authenticate through this path anymore. That is the accepted,
- * explicitly-instructed outcome ("existing Clerk users do NOT need to
- * be migrated") — their data is untouched, but their login story is a
- * deliberately open product decision, flagged repeatedly across the
- * Phase 5 staging/execution reports, not something this migration
- * resolves unilaterally.
+ * Legacy accounts that only have the old `clerkId` (no
+ * phone/passwordHash) have no custom session to present and cannot sign
+ * in through this path; their data is untouched.
  */
 export const getCurrentUser = cache(async () => {
   const token = getSessionCookieToken();

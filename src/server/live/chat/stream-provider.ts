@@ -31,7 +31,7 @@ import type {
  *   - custom channel data holds `announcement` and `liveState`, which
  *     the client reads on every connect/reconnect (no history scan)
  *
- * Stream user id = Proggaa User.id (not the Clerk id). The client SDK
+ * Stream user id = Proggaa User.id (not the legacy clerkId). The client SDK
  * connects with only `{ id }` (see the Live Room UI, step 9) -- this
  * file is the only place that sets name/image/role, via connectUser's
  * upsert, so the browser can never claim its own name or role.

@@ -10,7 +10,7 @@ Working notes for AI coding assistants. The README covers how to set up and run 
 
 ## Rules
 - UI calls courses "Missions", lessons "Patrols", exams "Encounters", assignments "Challenges", certificates "Medals", students "Heroes", teachers "Mentors". **Code and DB use the plain names** (Course, Lesson, …).
-- Auth is custom (phone + OTP + password, sessions in DB). **There is no Clerk.** Ignore Clerk comments and `clerkId`, which are legacy.
+- Auth is custom (phone + OTP + password, sessions in DB). **There is no Clerk.** The `clerkId` column and the `/sign-in`, `/sign-up` redirects to `/login` are legacy and kept on purpose.
 - Every mutation is a Server Action in `src/server/actions/`, guarded by `requireActiveUser` / `requireMentorUser` / `requireAdminUser` (`server/actions/require-user.ts`). Pages use `requireRole("ADMIN")` (`lib/auth/require-role.ts`) or `getCurrentUser()`. Middleware only checks that a cookie exists.
 - A Server Action whose error text must reach the user should **return** `{ ok: false, error }`, not throw (production hides thrown messages). A `"use server"` file may only export async functions, so put constants in `src/lib/`.
 - Never trust client-sent prices, scores, IDs or ownership. Re-check on the server.

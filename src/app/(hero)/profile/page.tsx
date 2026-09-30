@@ -9,6 +9,7 @@ import { AchievementIcon } from "@/components/gamification/achievement-icon";
 import { ScoreTrendSparkline } from "@/components/gamification/score-trend-sparkline";
 import { StickerCollection } from "@/components/profile/sticker-collection";
 import { StudentDetailsCard } from "@/components/profile/student-details-card";
+import { SecurityCard } from "@/components/profile/security-card";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { DoodleStar } from "@/components/marketing/cartoon-doodles";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
@@ -120,6 +121,10 @@ export default async function ProfilePage() {
 
       <StaggerItem>
         <ProfileEditForm initialHeadline={user.headline ?? ""} initialBio={user.bio ?? ""} />
+      </StaggerItem>
+
+      <StaggerItem>
+        <SecurityCard />
       </StaggerItem>
 
       <StaggerItem className="comic-panel bg-surface p-5">

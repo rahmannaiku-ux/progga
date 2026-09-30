@@ -22,6 +22,7 @@ import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { ExamPortalCard } from "@/components/exam/exam-portal-card";
 import { dhakaStartOfDay, dhakaGreeting } from "@/lib/timezone";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
+import { getResumeLessonPath } from "@/server/services/lesson-resume";
 
 const WEEKLY_QUIZ_TARGET_PCT = 80;
 const STUDY_GOAL_MINUTES = 30;
@@ -92,11 +93,14 @@ export default async function HeroDashboardPage() {
 
   const { level, xpIntoLevel, xpForNextLevel, percent } = xpProgressWithinLevel(stats.xp);
   const currentCourse = active[0];
-  // "Continue" on the dashboard goes to the mission overview
-  // (Subjects → Chapters → Lectures), same as My Courses — not a deep
-  // link straight into one lesson, which skipped the curriculum picker
-  // the student wanted to navigate through.
-  const resumeHref = currentCourse ? `/missions/${currentCourse.course.id}` : "/courses";
+  // "Resume" opens the exact next patrol. Falls back to the mission
+  // overview if that can't be resolved, and to the student Missions list
+  // when there is no active mission.
+  const resumeLessonPath = currentCourse
+    ? await getResumeLessonPath(user.id, currentCourse.course.id)
+    : null;
+  const resumeHref =
+    resumeLessonPath ?? (currentCourse ? `/missions/${currentCourse.course.id}` : "/missions");
   const studiedMinutesToday = Math.round((watchedTodayAgg._sum.watchedSeconds ?? 0) / 60);
   const liveClassNow = new Date();
   const liveNowClass = liveClasses.live[0] ?? null;

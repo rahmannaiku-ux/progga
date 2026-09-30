@@ -21,9 +21,8 @@ export async function issueCertificateAsAdmin(
 }
 
 export async function retryCertificateIssuance(certificateId: string): Promise<IssueCertificateResult> {
-  // PHASE 5: migrated off Clerk — requireActiveUser (require-user.ts)
-  // already throws the same "Your session has expired..." message this
-  // file used to construct inline, via the custom session.
+  // requireActiveUser (require-user.ts) throws "Your session has expired..."
+  // when there is no valid custom session.
   const [user, certificate] = await Promise.all([
     requireActiveUser(),
     db.certificate.findUnique({ where: { id: certificateId } }),

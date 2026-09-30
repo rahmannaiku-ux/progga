@@ -78,10 +78,7 @@ export const heroNav: NavSection[] = [
       // certificates), so the label is updated without renaming the route.
       { label: "Certificates", href: "/medals", icon: Award },
       { label: "Calendar", href: "/calendar", icon: Calendar, prefetch: false },
-      // No dedicated messaging feature exists in the data model — this
-      // points at the closest real feature (notifications) rather than
-      // a fabricated inbox with no backing data.
-      { label: "Messages", href: "/notifications", icon: Bell },
+      { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Support", href: "/support", icon: LifeBuoy, prefetch: false },
       { label: "Settings", href: "/profile", icon: Settings },
     ],

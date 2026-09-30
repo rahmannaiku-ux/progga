@@ -84,6 +84,21 @@ export function passwordResetRequestErrorMessage(reason: string, retryAfterSecon
   }
 }
 
+export function changePasswordErrorMessage(reason: string, message?: string): string {
+  switch (reason) {
+    case "wrong_password":
+      return "Your current password is incorrect.";
+    case "invalid_password":
+      return message ?? "Please choose a different password.";
+    case "same_password":
+      return "Your new password must be different from the current one.";
+    case "rate_limited":
+      return "Too many attempts. Please wait a few minutes and try again.";
+    default:
+      return GENERIC;
+  }
+}
+
 export function resetPasswordErrorMessage(reason: string, message?: string): string {
   switch (reason) {
     case "invalid_phone":

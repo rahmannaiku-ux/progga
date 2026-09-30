@@ -8,7 +8,13 @@ import {
   type CompleteStudentProfileInput,
   type EditableStudentProfileInput,
 } from "@/server/services/profile-service";
-import { requestPhoneChange, confirmPhoneChange } from "@/server/services/auth-service";
+import {
+  requestPhoneChange,
+  confirmPhoneChange,
+  changePassword,
+  signOutEverywhere,
+} from "@/server/services/auth-service";
+import { clearSessionCookie, getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
 
 /**
  * The authenticated user comes ONLY from `requireAuth()` (the Phase 3
@@ -54,4 +60,23 @@ export async function confirmPhoneChangeAction(input: { phone: string; otp: stri
   const result = await confirmPhoneChange(user.id, input.phone, input.otp);
   if (result.ok) revalidatePath("/profile");
   return result;
+}
+
+/**
+ * Changes the signed-in user's password. The current session is kept;
+ * every other session is revoked.
+ */
+export async function changePasswordAction(input: { currentPassword: string; newPassword: string }) {
+  const user = await requireAuth();
+  const token = getSessionCookieToken();
+  const current = token ? await validateSessionToken(token) : null;
+  return changePassword(user.id, current?.session.id, input.currentPassword, input.newPassword);
+}
+
+/** Revokes every session of the signed-in user (this device included) and clears the cookie. */
+export async function signOutEverywhereAction() {
+  const user = await requireAuth();
+  await signOutEverywhere(user.id);
+  clearSessionCookie();
+  return { ok: true as const };
 }

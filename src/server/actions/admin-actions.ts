@@ -422,11 +422,13 @@ export async function adminDeleteCourse(courseId: string, confirmation: string) 
 // ANNOUNCEMENTS
 // ---------------------------------------------------------------------
 
-export async function createGlobalAnnouncement(formData: FormData) {
+export async function createGlobalAnnouncement(
+  formData: FormData
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = await requireAdminUser();
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  if (!title || !body) throw new Error("Title and body are required.");
+  if (!title || !body) return { ok: false, error: "Title and body are required." };
 
   const announcement = await db.announcement.create({
     data: { title, body, isGlobal: true, createdById: admin.id },
@@ -447,6 +449,7 @@ export async function createGlobalAnnouncement(formData: FormData) {
 
   await logActivity(admin.id, "CREATE", "Announcement", announcement.id);
   revalidatePath("/admin/announcements");
+  return { ok: true };
 }
 
 export async function deleteAnnouncement(announcementId: string) {

@@ -4,9 +4,8 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 export async function GET() {
-  // PHASE 5: migrated off Clerk — identity now comes from the custom
-  // session via getCurrentActiveSessionUser (already checks
-  // isActive/isSuspended), role checked here as before.
+  // Identity comes from the custom session via getCurrentActiveSessionUser
+  // (already checks isActive/isSuspended); the role is checked here.
   const admin = await getCurrentActiveSessionUser();
   if (!admin || (admin.role !== "ADMIN" && admin.role !== "SUPER_ADMIN")) {
     return new NextResponse("Forbidden", { status: 403 });

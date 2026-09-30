@@ -4,8 +4,7 @@ import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 
 const f = createUploadthing();
 
-// PHASE 5: migrated off Clerk — both helpers below now resolve identity
-// via the custom session instead of Clerk auth() + a clerkId lookup.
+// Both helpers below resolve identity from the custom session.
 
 async function requireMentorForUpload() {
   const user = await getCurrentActiveSessionUser();

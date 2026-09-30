@@ -9,8 +9,6 @@ import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
  * Drive-storage connection). `returnTo` round-trips through Google via
  * the `state` param so the callback lands back on the exact assessment
  * editor the teacher started from, not a generic page.
- *
- * PHASE 5: migrated off Clerk.
  */
 export async function GET(req: NextRequest) {
   const user = await getCurrentActiveSessionUser();
