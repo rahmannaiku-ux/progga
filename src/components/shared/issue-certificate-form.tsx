@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, TriangleAlert } from "lucide-react";
 
 type IssueResult =
-  | { ok: true; alreadyIssued: boolean; issued: boolean; studentEmail: string; courseTitle: string }
+  | { ok: true; alreadyIssued: boolean; issued: boolean; studentLabel: string; courseTitle: string }
   | { ok: false; error: string };
 
 export function IssueCertificateForm({
@@ -32,12 +32,12 @@ export function IssueCertificateForm({
           return;
         }
         if (r.alreadyIssued) {
-          setSuccess(`${r.studentEmail} already has a medal for "${r.courseTitle}".`);
+          setSuccess(`${r.studentLabel} already has a medal for "${r.courseTitle}".`);
         } else if (r.issued) {
-          setSuccess(`Issued a medal to ${r.studentEmail} for "${r.courseTitle}".`);
+          setSuccess(`Issued a medal to ${r.studentLabel} for "${r.courseTitle}".`);
         } else {
           setError(
-            `The medal for ${r.studentEmail} was created but the PDF couldn't be generated. Try again shortly.`
+            `The medal for ${r.studentLabel} was created but the PDF couldn't be generated. Try again shortly.`
           );
         }
         if (r.issued) {
@@ -53,13 +53,13 @@ export function IssueCertificateForm({
   return (
     <form onSubmit={handleSubmit} className="glass-panel space-y-3 p-5">
       <div>
-        <label className="mb-1 block text-xs font-medium text-foreground">Student email</label>
+        <label className="mb-1 block text-xs font-medium text-foreground">Student phone or email</label>
         <input
-          type="email"
+          type="text"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="student@example.com"
+          placeholder="017XXXXXXXX or student@example.com"
           className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
         />
       </div>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { requireAdminUser } from "./require-user";
 import { logActivity } from "./admin-actions";
+import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { adjustCoinsAsAdmin as adjustCoinsCore } from "@/lib/gamification/coins";
 
 export async function createStoreItem(formData: FormData) {
@@ -74,12 +75,11 @@ export async function deleteStoreItem(itemId: string) {
 export async function adjustStudentCoins(formData: FormData) {
   const admin = await requireAdminUser();
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const identifier = String(formData.get("identifier") ?? "");
   const amount = Number(formData.get("amount") ?? 0);
   const reason = String(formData.get("reason") ?? "").trim();
 
-  const student = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (!student) throw new Error(`No user found with email "${email}".`);
+  const student = await findUserByIdentifier(identifier);
 
   await adjustCoinsCore(student.id, amount, reason);
 

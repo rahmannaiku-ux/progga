@@ -1,10 +1,12 @@
 import { db } from "@/lib/db/client";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
+import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
 import { logActivity } from "@/server/actions/admin-actions";
 
 export type GrantCourseAccessResult = {
   alreadyEnrolled: boolean;
-  studentEmail: string;
+  /** Masked phone or email, for confirmation messages. */
+  studentLabel: string;
   courseTitle: string;
 };
 
@@ -34,18 +36,8 @@ export async function grantCourseAccessCore({
   /** If set, the course must be taught by this user or the grant is refused. */
   requireCourseOwnerId?: string;
 }): Promise<GrantCourseAccessResult> {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail || !courseId) {
-    throw new Error("Enter a student email and select a mission.");
-  }
-
-  const student = await db.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true, email: true },
-  });
-  if (!student) {
-    throw new Error(`No user found with email "${normalizedEmail}".`);
-  }
+  if (!courseId) throw new Error("Select a mission.");
+  const student = await findUserByIdentifier(email);
 
   const course = await db.course.findUnique({
     where: { id: courseId },
@@ -82,21 +74,24 @@ export async function grantCourseAccessCore({
         method: requireCourseOwnerId ? "mentor_grant" : "admin_grant",
       });
 
-      await sendTemplatedEmail(
-        "enrollment-confirmed",
-        normalizedEmail,
-        { courseTitle: course.title },
-        {
-          subject: "You're enrolled!",
-          bodyHtml: "<p>You're in — {{courseTitle}} is now on your dashboard.</p>",
-        }
-      );
+      // Phone-only students have no email; the grant still succeeds.
+      if (student.email) {
+        await sendTemplatedEmail(
+          "enrollment-confirmed",
+          student.email,
+          { courseTitle: course.title },
+          {
+            subject: "You're enrolled!",
+            bodyHtml: "<p>You're in — {{courseTitle}} is now on your dashboard.</p>",
+          }
+        );
+      }
     }
   }
 
   return {
     alreadyEnrolled: Boolean(existing),
-    studentEmail: normalizedEmail,
+    studentLabel: userLabel(student),
     courseTitle: course.title,
   };
 }

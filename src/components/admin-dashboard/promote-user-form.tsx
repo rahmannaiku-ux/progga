@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { promoteUserByEmail } from "@/server/actions/admin-actions";
+import { promoteUserByIdentifier } from "@/server/actions/admin-actions";
 import type { Role } from "@prisma/client";
 
 export function PromoteUserForm({ canGrantAdmin }: { canGrantAdmin: boolean }) {
@@ -13,10 +13,10 @@ export function PromoteUserForm({ canGrantAdmin }: { canGrantAdmin: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <input
-        type="email"
+        type="text"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="user@example.com"
+        placeholder="Phone (017XXXXXXXX) or email"
         className="h-9 flex-1 rounded-lg border border-border/60 bg-surface px-3 text-sm text-foreground"
       />
       <select
@@ -35,7 +35,7 @@ export function PromoteUserForm({ canGrantAdmin }: { canGrantAdmin: boolean }) {
           setMessage(null);
           startTransition(async () => {
             try {
-              await promoteUserByEmail(email, role);
+              await promoteUserByIdentifier(email, role);
               setMessage({ type: "ok", text: "Role updated." });
               setEmail("");
             } catch (e) {

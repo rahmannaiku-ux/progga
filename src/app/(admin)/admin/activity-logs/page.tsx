@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { formatDhakaDateTime } from "@/lib/timezone";
+import { contactLabel } from "@/lib/contact-label";
 
 const CONFIG_ENTITY_TYPES = new Set(["PlatformSetting", "FeatureFlag", "Destination"]);
 
@@ -16,7 +17,7 @@ export default async function ActivityLogsPage() {
   const logs = await db.activityLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { user: { select: { firstName: true, lastName: true, email: true } } },
+    include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } },
   });
 
   return (
@@ -48,7 +49,7 @@ export default async function ActivityLogsPage() {
                       {formatDhakaDateTime(log.createdAt)}
                     </p>
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">{log.user.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{contactLabel(log.user)}</p>
                   <p className="text-xs text-muted-foreground">
                     {log.action.toLowerCase().replace("_", " ")}
                     {" · "}
@@ -95,7 +96,7 @@ export default async function ActivityLogsPage() {
                   <td className="p-4 text-foreground">
                     {log.user.firstName} {log.user.lastName}
                     <span className="ml-1 text-xs text-muted-foreground">
-                      ({log.user.email})
+                      ({contactLabel(log.user)})
                     </span>
                   </td>
                   <td className="p-4 text-muted-foreground">

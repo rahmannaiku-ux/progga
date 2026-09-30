@@ -8,6 +8,7 @@ import { formatDhakaDateTime } from "@/lib/timezone";
 import type { PaymentStatus, VerificationMethod, Prisma } from "@prisma/client";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { paymentCourseTitle } from "@/lib/payments/course-title";
+import { contactLabel } from "@/lib/contact-label";
 
 const STATUS_TABS: { key: string; label: string; status?: PaymentStatus }[] = [
   { key: "all", label: "All" },
@@ -47,7 +48,7 @@ export default async function AdminPaymentsPage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, phone: true } },
         course: { select: { title: true } },
       },
     }),
@@ -120,7 +121,7 @@ export default async function AdminPaymentsPage({
                     <p className="font-display font-bold text-foreground">
                       {p.user.firstName} {p.user.lastName}
                     </p>
-                    <p className="text-xs text-muted-foreground">{p.user.email}</p>
+                    <p className="text-xs text-muted-foreground">{contactLabel(p.user)}</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">{paymentCourseTitle(p)}</p>
                   </div>
                   <span className="font-display text-xl font-extrabold text-foreground">

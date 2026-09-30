@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation/admin";
 import type { Role } from "@prisma/client";
 import { requireAdminUser } from "./require-user";
+import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { isCourseDeleteConfirmed } from "@/lib/validation/course-delete";
 
 /** Shared P2002 check — every model here follows the same
@@ -99,14 +100,13 @@ export async function setUserSuspended(targetUserId: string, isSuspended: boolea
   revalidatePath("/admin/heroes");
 }
 
-export async function promoteUserByEmail(email: string, newRole: Role) {
+export async function promoteUserByIdentifier(identifier: string, newRole: Role) {
   const admin = await requireAdminUser();
   if (admin.role !== "SUPER_ADMIN" && (newRole === "ADMIN" || newRole === "SUPER_ADMIN")) {
     throw new Error("Only a super admin can grant admin access.");
   }
 
-  const target = await db.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-  if (!target) throw new Error("No user found with that email.");
+  const target = await findUserByIdentifier(identifier);
 
   await setUserRole(target.id, newRole);
 }

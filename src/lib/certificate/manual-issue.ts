@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db/client";
 import { issueCertificate } from "@/lib/certificate/issue-certificate";
+import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
 import { logActivity } from "@/server/actions/admin-actions";
 
 export type IssueCertificateActionResult =
@@ -11,7 +12,7 @@ export type ManualIssueResult = {
   alreadyIssued: boolean;
   /** False when the PDF/email step failed and the certificate is still PENDING. */
   issued: boolean;
-  studentEmail: string;
+  studentLabel: string;
   courseTitle: string;
 };
 
@@ -33,16 +34,8 @@ async function issueCore({
   courseId: string;
   requireCourseOwnerId?: string;
 }): Promise<ManualIssueResult> {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail || !courseId) {
-    throw new Error("Enter a student email and select a mission.");
-  }
-
-  const student = await db.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true },
-  });
-  if (!student) throw new Error(`No user found with email "${normalizedEmail}".`);
+  if (!courseId) throw new Error("Select a mission.");
+  const student = await findUserByIdentifier(email);
 
   const course = await db.course.findUnique({
     where: { id: courseId },
@@ -61,7 +54,7 @@ async function issueCore({
     throw new Error("That student isn't enrolled in this mission. Grant access first.");
   }
 
-  const base = { studentEmail: normalizedEmail, courseTitle: course.title };
+  const base = { studentLabel: userLabel(student), courseTitle: course.title };
 
   const existing = await db.certificate.findUnique({
     where: { userId_courseId: { userId: student.id, courseId } },

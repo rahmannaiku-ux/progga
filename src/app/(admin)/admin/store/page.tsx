@@ -8,6 +8,7 @@ import {
   adjustStudentCoins,
 } from "@/server/actions/coin-admin-actions";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
+import { contactLabel } from "@/lib/contact-label";
 
 export default async function AdminStorePage() {
   await requireRole("ADMIN");
@@ -17,12 +18,12 @@ export default async function AdminStorePage() {
     db.coinPurchase.findMany({
       orderBy: { createdAt: "desc" },
       take: 20,
-      include: { user: { select: { email: true } }, item: { select: { title: true } } },
+      include: { user: { select: { email: true, phone: true } }, item: { select: { title: true } } },
     }),
     db.proggyCoinTransaction.findMany({
       orderBy: { createdAt: "desc" },
       take: 20,
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { email: true, phone: true } } },
     }),
     db.coinPurchase.groupBy({
       by: ["itemId"],
@@ -166,10 +167,10 @@ export default async function AdminStorePage() {
         </p>
         <form action={adjustStudentCoins} className="mt-3 space-y-3">
           <input
-            type="email"
-            name="email"
+            type="text"
+            name="identifier"
             required
-            placeholder="student@example.com"
+            placeholder="Phone (017XXXXXXXX) or email"
             className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
           />
           <input
@@ -200,7 +201,7 @@ export default async function AdminStorePage() {
           {recentPurchases.map((p) => (
             <div key={p.id} className="glass-panel flex items-center justify-between p-3.5 text-sm">
               <span className="text-foreground">
-                {p.user.email} → {p.item.title}
+                {contactLabel(p.user)} → {p.item.title}
               </span>
               <span className="font-mono text-muted-foreground">🪙{p.coinsSpent}</span>
             </div>
@@ -217,7 +218,7 @@ export default async function AdminStorePage() {
           {recentTransactions.map((t) => (
             <div key={t.id} className="glass-panel flex items-center justify-between p-3.5 text-sm">
               <span className="text-foreground">
-                {t.user.email} — {t.reason}
+                {contactLabel(t.user)} — {t.reason}
               </span>
               <span
                 className={"font-mono font-bold " + (t.amount >= 0 ? "text-accent" : "text-danger")}

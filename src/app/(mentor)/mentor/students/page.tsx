@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { Pagination } from "@/components/admin-dashboard/pagination";
 
+import { contactLabel } from "@/lib/contact-label";
+
 const PAGE_SIZE = 25;
 
 export default async function MentorStudentsPage({
@@ -26,6 +28,7 @@ export default async function MentorStudentsPage({
               { firstName: { contains: q, mode: "insensitive" as const } },
               { lastName: { contains: q, mode: "insensitive" as const } },
               { email: { contains: q, mode: "insensitive" as const } },
+              { phone: { contains: q.replace(/[\s-]/g, "") } },
             ],
           },
         }
@@ -39,7 +42,7 @@ export default async function MentorStudentsPage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
-        user: { select: { firstName: true, lastName: true, email: true, heroStats: true } },
+        user: { select: { firstName: true, lastName: true, email: true, phone: true, heroStats: true } },
         course: { select: { title: true } },
       },
     }),
@@ -100,7 +103,7 @@ export default async function MentorStudentsPage({
                   <p className="truncate font-semibold text-foreground">
                     {e.user.firstName} {e.user.lastName}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{e.user.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{contactLabel(e.user)}</p>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{e.course.title}</p>
                 <div className="flex items-center gap-3">
@@ -140,7 +143,7 @@ export default async function MentorStudentsPage({
                   <p className="font-semibold text-foreground">
                     {e.user.firstName} {e.user.lastName}
                   </p>
-                  <p className="text-xs text-muted-foreground">{e.user.email}</p>
+                  <p className="text-xs text-muted-foreground">{contactLabel(e.user)}</p>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{e.course.title}</td>
                 <td className="px-4 py-3">

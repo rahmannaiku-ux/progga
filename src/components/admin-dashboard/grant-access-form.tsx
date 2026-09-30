@@ -20,8 +20,8 @@ export function GrantAccessForm({ courses }: { courses: { id: string; title: str
         const result = await grantCourseAccess(email, courseId);
         setSuccess(
           result.alreadyEnrolled
-            ? `${result.studentEmail} already had access to "${result.courseTitle}" — nothing to do.`
-            : `Granted ${result.studentEmail} access to "${result.courseTitle}".`
+            ? `${result.studentLabel} already had access to "${result.courseTitle}" — nothing to do.`
+            : `Granted ${result.studentLabel} access to "${result.courseTitle}".`
         );
         setEmail("");
         setCourseId("");
@@ -34,13 +34,13 @@ export function GrantAccessForm({ courses }: { courses: { id: string; title: str
   return (
     <form onSubmit={handleSubmit} className="glass-panel space-y-3 p-5">
       <div>
-        <label className="mb-1 block text-xs font-medium text-foreground">Student email</label>
+        <label className="mb-1 block text-xs font-medium text-foreground">Student phone or email</label>
         <input
-          type="email"
+          type="text"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="student@example.com"
+          placeholder="017XXXXXXXX or student@example.com"
           className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
         />
       </div>
