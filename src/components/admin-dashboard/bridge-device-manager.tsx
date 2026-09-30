@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { Smartphone, Plus, Ban, Copy, Check, TriangleAlert } from "lucide-react";
 import { createBridgeDevice, revokeBridgeDevice } from "@/server/actions/payment-actions";
 import { formatDhakaDateTime } from "@/lib/timezone";
@@ -44,9 +45,10 @@ export function BridgeDeviceManager({ devices }: { devices: Device[] }) {
             <button
               type="button"
               onClick={async () => {
-                await navigator.clipboard.writeText(freshToken.token);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
+                if (await copyToClipboard(freshToken.token)) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
               }}
               className="sticker flex shrink-0 items-center gap-1 bg-surface px-2.5 py-1 text-xs font-bold"
             >

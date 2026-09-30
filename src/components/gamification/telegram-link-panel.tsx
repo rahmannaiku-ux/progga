@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { Send, CheckCircle2, Clock, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,10 +89,11 @@ export function TelegramLinkPanel({ initialStatus }: { initialStatus: LinkStatus
             <button
               type="button"
               aria-label="Copy code"
-              onClick={() => {
-                navigator.clipboard.writeText(token);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
+              onClick={async () => {
+                if (await copyToClipboard(token)) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }
               }}
               className="rounded-lg p-2 text-muted-foreground hover:bg-surface"
             >

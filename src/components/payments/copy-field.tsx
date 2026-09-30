@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { Copy, Check } from "lucide-react";
 
 export function CopyField({
@@ -24,13 +25,10 @@ export function CopyField({
         <button
           type="button"
           onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(value);
+            // If copying is blocked the value is still visible and selectable.
+            if (await copyToClipboard(value)) {
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
-            } catch {
-              // Clipboard API can be blocked (permissions, insecure context);
-              // the value is still visible and selectable, so this fails quiet.
             }
           }}
           className="sticker flex min-h-11 shrink-0 items-center gap-1.5 bg-surface px-4 py-2 text-sm font-bold text-foreground transition-transform hover:-translate-y-0.5 active:translate-y-0"

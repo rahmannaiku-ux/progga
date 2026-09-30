@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { Smartphone, Plus, Ban, Copy, Check, TriangleAlert, Pencil } from "lucide-react";
 import { createPaymentDevice, revokePaymentDevice, renamePaymentDevice } from "@/server/actions/payment-device-actions";
 import { formatDhakaDateTime } from "@/lib/timezone";
@@ -53,9 +54,10 @@ export function PaymentDeviceManager({ devices }: { devices: Device[] }) {
             <button
               type="button"
               onClick={async () => {
-                await navigator.clipboard.writeText(issued.code);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
+                if (await copyToClipboard(issued.code)) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
               }}
               className="sticker flex shrink-0 items-center gap-1 bg-surface px-2.5 py-1 text-xs font-bold"
             >
