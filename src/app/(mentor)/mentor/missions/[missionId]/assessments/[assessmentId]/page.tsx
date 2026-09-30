@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Trash2, Library, ChevronUp, ChevronDown, UploadCloud } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
+import { toDhakaInputValue } from "@/lib/timezone";
 import { db } from "@/lib/db/client";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { Badge } from "@/components/ui/badge";
@@ -22,18 +23,6 @@ import {
 } from "@/server/actions/assessment-actions";
 import { getMentorAssessmentAnalytics } from "@/server/services/exam-analytics";
 import { searchQuestionBank } from "@/server/services/question-bank";
-
-/**
- * `<input type="datetime-local">` needs "YYYY-MM-DDTHH:mm" in the
- * viewer's *local* time — Date.toISOString() would silently shift the
- * displayed time to UTC, which is wrong to show a teacher setting a
- * monitoring window in their own timezone.
- */
-function toLocalInputValue(d: Date | null): string {
-  if (!d) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export default async function AssessmentEditorPage({
   params,
@@ -363,7 +352,7 @@ export default async function AssessmentEditorPage({
                 <input
                   type="datetime-local"
                   name="monitoringStartsAt"
-                  defaultValue={toLocalInputValue(assessment.monitoringStartsAt)}
+                  defaultValue={toDhakaInputValue(assessment.monitoringStartsAt)}
                   className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-sm"
                 />
               </div>
@@ -374,7 +363,7 @@ export default async function AssessmentEditorPage({
                 <input
                   type="datetime-local"
                   name="monitoringEndsAt"
-                  defaultValue={toLocalInputValue(assessment.monitoringEndsAt)}
+                  defaultValue={toDhakaInputValue(assessment.monitoringEndsAt)}
                   className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-sm"
                 />
               </div>
@@ -385,7 +374,7 @@ export default async function AssessmentEditorPage({
                 <input
                   type="datetime-local"
                   name="accessOpensAt"
-                  defaultValue={toLocalInputValue(assessment.accessOpensAt)}
+                  defaultValue={toDhakaInputValue(assessment.accessOpensAt)}
                   className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-sm"
                 />
               </div>
@@ -396,7 +385,7 @@ export default async function AssessmentEditorPage({
                 <input
                   type="datetime-local"
                   name="accessClosesAt"
-                  defaultValue={toLocalInputValue(assessment.accessClosesAt)}
+                  defaultValue={toDhakaInputValue(assessment.accessClosesAt)}
                   className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-sm"
                 />
               </div>
