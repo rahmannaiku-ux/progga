@@ -94,6 +94,7 @@ export const mentorNav: NavSection[] = [
       { label: "Calendar", href: "/mentor/calendar", icon: Calendar },
       { label: "Heroes", href: "/mentor/students", icon: Users },
       { label: "Grant Access", href: "/mentor/enrollments", icon: UserPlus },
+      { label: "Issue Medals", href: "/mentor/medals", icon: Award },
       {
         label: "Assignment Grading",
         href: "/mentor/grading/assignments",

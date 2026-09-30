@@ -7,6 +7,26 @@ import {
   grantCourseAccessCore,
   type GrantCourseAccessResult,
 } from "@/lib/enrollment/grant-access";
+import { issueCertificateManuallyCore, type IssueCertificateActionResult } from "@/lib/certificate/manual-issue";
+
+/**
+ * Mentor version of issueCertificateAsAdmin (certificate-actions.ts): a
+ * plain TEACHER can only issue medals for missions they teach.
+ */
+export async function issueCertificateAsMentor(
+  email: string,
+  courseId: string
+): Promise<IssueCertificateActionResult> {
+  const mentor = await requireMentorUser("Mentor access required.");
+  const result = await issueCertificateManuallyCore({
+    issuerId: mentor.id,
+    email,
+    courseId,
+    requireCourseOwnerId: mentor.role === "TEACHER" ? mentor.id : undefined,
+  });
+  revalidatePath("/mentor/medals");
+  return result;
+}
 
 /**
  * Posts an announcement scoped to one of the mentor's own missions and

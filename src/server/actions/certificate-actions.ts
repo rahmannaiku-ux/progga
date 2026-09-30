@@ -3,7 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { issueCertificate } from "@/lib/certificate/issue-certificate";
-import { requireActiveUser } from "@/server/actions/require-user";
+import {
+  issueCertificateManuallyCore,
+  type IssueCertificateActionResult,
+} from "@/lib/certificate/manual-issue";
+import { requireActiveUser, requireAdminUser } from "@/server/actions/require-user";
+
+/** Admin: issue (or re-issue) a certificate for any mission. */
+export async function issueCertificateAsAdmin(
+  email: string,
+  courseId: string
+): Promise<IssueCertificateActionResult> {
+  const admin = await requireAdminUser();
+  const result = await issueCertificateManuallyCore({ issuerId: admin.id, email, courseId });
+  revalidatePath("/admin/medals");
+  return result;
+}
 
 export async function retryCertificateIssuance(certificateId: string) {
   // PHASE 5: migrated off Clerk — requireActiveUser (require-user.ts)

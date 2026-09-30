@@ -2,6 +2,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { Badge } from "@/components/ui/badge";
 import { RevokeCertificateButton } from "@/components/admin-dashboard/revoke-certificate-button";
+import { IssueCertificateForm } from "@/components/shared/issue-certificate-form";
+import { issueCertificateAsAdmin } from "@/server/actions/certificate-actions";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
 const statusVariant = {
@@ -12,6 +14,11 @@ const statusVariant = {
 
 export default async function AdminMedalsPage() {
   await requireRole("ADMIN");
+
+  const courses = await db.course.findMany({
+    orderBy: { title: "asc" },
+    select: { id: true, title: true },
+  });
 
   const certificates = await db.certificate.findMany({
     orderBy: { createdAt: "desc" },
@@ -28,6 +35,15 @@ export default async function AdminMedalsPage() {
         <h1 className="font-display text-2xl font-extrabold text-foreground">
           Medals (Certificates)
         </h1>
+      </StaggerItem>
+
+      <StaggerItem className="mt-6 max-w-lg">
+        <h2 className="mb-1 font-display text-lg font-bold text-foreground">Issue a medal</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Award a certificate to an enrolled student without waiting for them to finish every
+          patrol. Also re-issues a revoked medal.
+        </p>
+        <IssueCertificateForm courses={courses} action={issueCertificateAsAdmin} />
       </StaggerItem>
 
       {/* Mobile: cards. Only 4 real fields, but "Certificate #" is a
