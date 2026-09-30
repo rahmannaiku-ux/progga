@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // available in this sandbox).
 
 const userFindUnique = vi.fn();
+const userFindFirst = vi.fn();
 const studentProfileUpsert = vi.fn();
 const studentProfileFindUnique = vi.fn();
 const studentProfileUpdate = vi.fn();
@@ -15,6 +16,7 @@ vi.mock("@/lib/db/client", () => ({
   db: {
     user: {
       findUnique: (...args: unknown[]) => userFindUnique(...args),
+      findFirst: (...args: unknown[]) => userFindFirst(...args),
       update: (...args: unknown[]) => userUpdate(...args),
     },
     studentProfile: {
@@ -30,6 +32,7 @@ const { completeStudentProfile, updateStudentProfile } = await import("./profile
 
 const VALID_INPUT = {
   name: "Fahim Rahman",
+  email: "fahim@example.com",
   district: "Dhaka",
   zipCode: "1207",
   collegeName: "Dhaka City College",
@@ -41,6 +44,7 @@ const VALID_INPUT = {
 };
 
 beforeEach(() => {
+  userFindFirst.mockReset().mockResolvedValue(null);
   userFindUnique.mockReset().mockResolvedValue({ id: "user_1" });
   studentProfileUpsert.mockReset().mockResolvedValue({});
   studentProfileFindUnique.mockReset().mockResolvedValue({ id: "sp_1" });
@@ -129,6 +133,36 @@ describe("completeStudentProfile — validation", () => {
   });
 });
 
+describe("completeStudentProfile — email", () => {
+  it("requires an email", async () => {
+    const result = await completeStudentProfile("user_1", { ...VALID_INPUT, email: "  " });
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.reason === "validation") expect(result.fieldErrors.email).toBeTruthy();
+  });
+
+  it("rejects a malformed email", async () => {
+    const result = await completeStudentProfile("user_1", { ...VALID_INPUT, email: "not-an-email" });
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.reason === "validation") expect(result.fieldErrors.email).toBeTruthy();
+  });
+
+  it("rejects an email that belongs to another account", async () => {
+    userFindFirst.mockResolvedValue({ id: "other_user" });
+    const result = await completeStudentProfile("user_1", VALID_INPUT);
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.reason === "validation") expect(result.fieldErrors.email).toMatch(/already/);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("stores the email lowercased on the User row", async () => {
+    await completeStudentProfile("user_1", { ...VALID_INPUT, email: " Fahim@Example.COM " });
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: "user_1" },
+      data: { profileCompleted: true, email: "fahim@example.com" },
+    });
+  });
+});
+
 describe("completeStudentProfile — persistence", () => {
   it("does not touch the database at all when validation fails", async () => {
     await completeStudentProfile("user_1", { ...VALID_INPUT, name: "" });
@@ -154,7 +188,7 @@ describe("completeStudentProfile — persistence", () => {
     const result = await completeStudentProfile("user_1", VALID_INPUT);
     expect(result).toEqual({ ok: true });
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(userUpdate).toHaveBeenCalledWith({ where: { id: "user_1" }, data: { profileCompleted: true } });
+    expect(userUpdate).toHaveBeenCalledWith({ where: { id: "user_1" }, data: { profileCompleted: true, email: "fahim@example.com" } });
   });
 
   it("normalizes parent phone numbers through the shared phone utility before persisting", async () => {
@@ -174,7 +208,7 @@ describe("completeStudentProfile — persistence", () => {
 });
 
 describe("updateStudentProfile", () => {
-  const { fatherPhone: _f, motherPhone: _m, ...EDITABLE } = VALID_INPUT;
+  const { fatherPhone: _f, motherPhone: _m, email: _e, ...EDITABLE } = VALID_INPUT;
 
   it("saves the editable fields, trimmed", async () => {
     const result = await updateStudentProfile("user_1", { ...EDITABLE, name: "  New Name  " });

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
 import { normalizeBangladeshPhone } from "@/lib/auth/phone";
-import type { StudyVersion } from "@prisma/client";
+import { Prisma, type StudyVersion } from "@prisma/client";
 
 /**
  * Phase 4 profile-completion service. Deliberately takes `userId` as a
@@ -14,6 +14,8 @@ import type { StudyVersion } from "@prisma/client";
 
 export type CompleteStudentProfileInput = {
   name: string;
+  /** Required login/contact email, saved on the User row (not the profile). */
+  email: string;
   district: string;
   zipCode: string;
   collegeName: string;
@@ -30,6 +32,7 @@ export type CompleteStudentProfileResult =
   | { ok: false; reason: "not_found" };
 
 const MAX_TEXT_LENGTH = 200;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const HSC_BATCH_PATTERN = /^(19|20)\d{2}$/; // a 4-digit year, e.g. "2024"
 
 function requiredText(value: string | undefined, label: string): string | null {
@@ -44,7 +47,7 @@ function requiredText(value: string | undefined, label: string): string | null {
  * captured at completion except the parent phones, which are fixed once
  * set (shown on /profile, never editable there).
  */
-export type EditableStudentProfileInput = Omit<CompleteStudentProfileInput, "fatherPhone" | "motherPhone">;
+export type EditableStudentProfileInput = Omit<CompleteStudentProfileInput, "email" | "fatherPhone" | "motherPhone">;
 
 type EditableStudentProfileData = {
   name: string;
@@ -113,10 +116,16 @@ function validateEditable(input: EditableStudentProfileInput): {
  * normalized, ready-to-persist data or a field-keyed error map.
  */
 function validate(input: CompleteStudentProfileInput):
-  | { ok: true; data: EditableStudentProfileData & { fatherPhone: string | null; motherPhone: string | null } }
+  | { ok: true; email: string; data: EditableStudentProfileData & { fatherPhone: string | null; motherPhone: string | null } }
   | { ok: false; fieldErrors: FieldErrors<CompleteStudentProfileInput> } {
   const editable = validateEditable(input);
   const fieldErrors: FieldErrors<CompleteStudentProfileInput> = { ...editable.fieldErrors };
+
+  const email = (input.email ?? "").trim().toLowerCase();
+  if (email.length === 0) fieldErrors.email = "Email is required.";
+  else if (email.length > MAX_TEXT_LENGTH || !EMAIL_PATTERN.test(email)) {
+    fieldErrors.email = "Enter a valid email address.";
+  }
 
   // Parent phones: each, if provided, must be a valid Bangladeshi
   // number (through the one shared normalization utility — never
@@ -144,7 +153,15 @@ function validate(input: CompleteStudentProfileInput):
 
   if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
 
-  return { ok: true, data: { ...editable.data, fatherPhone, motherPhone } };
+  return { ok: true, email, data: { ...editable.data, fatherPhone, motherPhone } };
+}
+
+function emailInUse(): CompleteStudentProfileResult {
+  return {
+    ok: false,
+    reason: "validation",
+    fieldErrors: { email: "That email is already used by another account." },
+  };
 }
 
 /**
@@ -166,14 +183,26 @@ export async function completeStudentProfile(userId: string, input: CompleteStud
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!user) return { ok: false, reason: "not_found" };
 
-  await db.$transaction([
+  const emailTaken = await db.user.findFirst({
+    where: { email: validated.email, NOT: { id: userId } },
+    select: { id: true },
+  });
+  if (emailTaken) return emailInUse();
+
+  try {
+    await db.$transaction([
     db.studentProfile.upsert({
       where: { userId },
       create: { userId, ...validated.data },
       update: { ...validated.data },
     }),
-    db.user.update({ where: { id: userId }, data: { profileCompleted: true } }),
+    db.user.update({ where: { id: userId }, data: { profileCompleted: true, email: validated.email } }),
   ]);
+  } catch (err) {
+    // Lost a race with another account claiming the same email.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return emailInUse();
+    throw err;
+  }
 
   return { ok: true };
 }

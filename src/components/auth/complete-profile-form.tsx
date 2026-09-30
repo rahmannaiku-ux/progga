@@ -12,6 +12,7 @@ type FieldErrors = Partial<Record<keyof CompleteStudentProfileInput, string>>;
 
 const EMPTY: CompleteStudentProfileInput = {
   name: "",
+  email: "",
   district: "",
   zipCode: "",
   collegeName: "",
@@ -31,6 +32,7 @@ function TextField({
   required,
   disabled,
   placeholder,
+  type = "text",
 }: {
   id: string;
   label: string;
@@ -40,6 +42,7 @@ function TextField({
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  type?: string;
 }) {
   return (
     <div>
@@ -48,6 +51,8 @@ function TextField({
       </label>
       <input
         id={id}
+        type={type}
+        autoComplete={type === "email" ? "email" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -111,6 +116,18 @@ export function CompleteProfileForm() {
         onChange={(v) => set("name", v)}
         error={fieldErrors.name}
         required
+        disabled={isPending}
+      />
+
+      <TextField
+        id="email"
+        label="Email"
+        type="email"
+        value={values.email}
+        onChange={(v) => set("email", v)}
+        error={fieldErrors.email}
+        required
+        placeholder="you@example.com"
         disabled={isPending}
       />
 
