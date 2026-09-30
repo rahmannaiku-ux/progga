@@ -15,6 +15,7 @@ import { awardXp } from "@/lib/gamification/award-xp";
 import { checkEncounterAchievements } from "@/lib/gamification/check-achievements";
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
 import { isPassing, summarizeAttemptScore } from "@/lib/grading";
+import { createNotificationOnce } from "@/lib/notifications/dedupe";
 import { requireMentorUser } from "./require-user";
 import { parseOptionalDhakaInput } from "@/lib/timezone";
 
@@ -660,9 +661,18 @@ async function recomputeAttemptIfFullyGraded(attemptId: string) {
 
   const attemptWithUser = await db.assessmentAttempt.findUnique({
     where: { id: attemptId },
-    select: { userId: true, assessment: { select: { kind: true } } },
+    select: { userId: true, assessment: { select: { kind: true, title: true } } },
   });
   if (attemptWithUser) {
+    // The result only now exists for the student (it was waiting on
+    // manual grading). Once per attempt — re-grading an answer must not
+    // notify again.
+    await createNotificationOnce("GRADE_POSTED", {
+      userId: attemptWithUser.userId,
+      title: "Exam graded",
+      body: `Your result for "${attemptWithUser.assessment.title}" is ready: ${Math.round(percentage)}%.`,
+      linkUrl: `/results/${attemptId}`,
+    });
     if (isPassed) {
       await awardXp(
         attemptWithUser.userId,

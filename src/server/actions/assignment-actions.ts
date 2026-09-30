@@ -10,6 +10,7 @@ import { awardCoins } from "@/lib/gamification/coins";
 import { checkAssignmentAchievements } from "@/lib/gamification/check-achievements";
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
+import { createNotificationOnce } from "@/lib/notifications/dedupe";
 import { requireMentorUser } from "./require-user";
 import { parseOptionalDhakaInput } from "@/lib/timezone";
 
@@ -164,14 +165,12 @@ export async function gradeSubmission(input: {
     },
   });
 
-  await db.notification.create({
-    data: {
-      userId: submission.userId,
-      type: "GRADE_POSTED",
-      title: "Challenge graded",
-      body: `You scored ${clamped}/${submission.assignment.maxPoints}.`,
-      linkUrl: `/challenges/${submission.assignmentId}`,
-    },
+  // Once per student per challenge — regrading must not notify again.
+  await createNotificationOnce("GRADE_POSTED", {
+    userId: submission.userId,
+    title: "Challenge graded",
+    body: `You scored ${clamped}/${submission.assignment.maxPoints}.`,
+    linkUrl: `/challenges/${submission.assignmentId}`,
   });
 
   if (submission.user.email) {

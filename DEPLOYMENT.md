@@ -57,6 +57,7 @@ There is **no `vercel.json` in the repo**, so schedule these in Vercel (add a `v
 |---|---|---|
 | `/api/cron/expire-payments` | `PENDING` payments past expiry → `EXPIRED` | daily/hourly, e.g. `0 20 * * *` |
 | `/api/cron/live-class-reminders` | Notify enrolled students ~20 min before a live class | every 5 min |
+| `/api/cron/notification-reminders` | In-app reminders: live exam opening within 2 h, challenge due within 24 h, streak at risk (from 8 PM Dhaka). Deduplicated, safe to run often | every 15–30 min (a single daily run at `0 14 * * *` = 8 PM Dhaka still sends streak reminders, but exam/challenge reminders then only catch items due within the next window) |
 | `/api/cron/live-class-sweep` | Sync `LiveClass` states with their schedule (start/end stragglers) | every 15–30 min |
 | `/api/cron/deliver-webhooks` | Deliver the outgoing payment-webhook outbox (only if `PAYMENT_WEBHOOK_URLS` is set) | every few minutes |
 | `/api/cron/prune-device-nonces` | Delete old payment-device replay-ledger rows | daily |
@@ -68,6 +69,7 @@ Example `vercel.json`. The Hobby plan allows only daily crons, so the 5-minute j
   "crons": [
     { "path": "/api/cron/expire-payments", "schedule": "0 20 * * *" },
     { "path": "/api/cron/live-class-reminders", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/notification-reminders", "schedule": "*/30 * * * *" },
     { "path": "/api/cron/live-class-sweep", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/deliver-webhooks", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/prune-device-nonces", "schedule": "30 20 * * *" }
