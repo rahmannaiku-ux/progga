@@ -124,7 +124,13 @@ const nextConfig = {
     //      ... abi=...".
     serverComponentsExternalPackages: ["argon2"],
     outputFileTracingIncludes: {
-      "/*": ["node_modules/argon2/prebuilds/**/*"],
+      // Certificate PDFs read these fonts and the logo from disk at runtime,
+      // which tracing cannot see either.
+      "/*": [
+        "node_modules/argon2/prebuilds/**/*",
+        "src/lib/certificate/fonts/*.ttf",
+        "public/branding/proggaa-logo-512.png",
+      ],
     },
   },
 };

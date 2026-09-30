@@ -5,7 +5,9 @@ import { formatDhakaDate } from "@/lib/timezone";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
 import { uploadUserFile } from "@/lib/storage";
 
-export async function issueCertificate(certificateId: string) {
+export type IssueCertificateResult = { ok: true } | { ok: false; error: string };
+
+export async function issueCertificate(certificateId: string): Promise<IssueCertificateResult> {
   const certificate = await db.certificate.findUnique({
     where: { id: certificateId },
     include: {
@@ -13,7 +15,8 @@ export async function issueCertificate(certificateId: string) {
       course: { select: { title: true, teacher: { select: { firstName: true, lastName: true } } } },
     },
   });
-  if (!certificate || certificate.status === "ISSUED") return;
+  if (!certificate) return { ok: false, error: "Certificate not found." };
+  if (certificate.status === "ISSUED") return { ok: true };
 
   // Atomically claim this issuance before doing any of the expensive
   // (PDF render, file upload, email) work below. The status check above
@@ -37,7 +40,7 @@ export async function issueCertificate(certificateId: string) {
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return; // another request already claimed this issuance
+      return { ok: true }; // another request already claimed this issuance
     }
     throw err;
   }
@@ -50,11 +53,18 @@ export async function issueCertificate(certificateId: string) {
     // *neither* provider is usable (see storeViaUploadThing's own
     // "storage unavailable" error, thrown when Drive isn't connected
     // and UPLOADTHING_SECRET is also missing).
+    const issuedAt = new Date();
+    // Staff can issue without the student finishing every lesson, so there
+    // may be no completion date: fall back to the issue date.
+    const enrollment = await db.enrollment.findUnique({
+      where: { userId_courseId: { userId: certificate.userId, courseId: certificate.courseId } },
+      select: { completedAt: true },
+    });
     const pdfBuffer = await renderCertificatePdf({
       studentName: `${certificate.user.firstName} ${certificate.user.lastName}`.trim(),
       courseTitle: certificate.course.title,
       mentorName: `${certificate.course.teacher.firstName} ${certificate.course.teacher.lastName}`.trim(),
-      issuedDate: formatDhakaDate(new Date()),
+      completedDate: formatDhakaDate(enrollment?.completedAt ?? issuedAt),
       certificateNo: certificate.certificateNo,
     });
 
@@ -68,7 +78,7 @@ export async function issueCertificate(certificateId: string) {
 
     await db.certificate.update({
       where: { id: certificateId },
-      data: { status: "ISSUED", issuedAt: new Date(), pdfUrl: result.url },
+      data: { status: "ISSUED", issuedAt, pdfUrl: result.url },
     });
 
     if (certificate.user.email) {
@@ -99,5 +109,7 @@ export async function issueCertificate(certificateId: string) {
         },
       })
       .catch((releaseErr) => console.error(`Certificate ${certificateId} claim release failed:`, releaseErr));
+    return { ok: false, error: "We couldn't generate your certificate just now. Please try again in a moment." };
   }
+  return { ok: true };
 }

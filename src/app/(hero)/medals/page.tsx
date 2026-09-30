@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Award, Download, Clock3, Sparkles, Trophy } from "lucide-react";
+import { Award, CheckCircle2, Download, Clock3, Eye, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
@@ -8,6 +8,7 @@ import { AnimatedProgressBar } from "@/components/gamification/animated-progress
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { formatDhakaDate } from "@/lib/timezone";
+import { certificateVerifyPath } from "@/lib/certificate/certificate-no";
 
 const TABS = [
   { key: "all", label: "All Certificates" },
@@ -88,34 +89,47 @@ export default async function MedalsPage({
                     </p>
                     <p className="mt-0.5 font-mono text-xs text-muted-foreground">{c.certificateNo}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Earned {formatDhakaDate(c.createdAt, { dateStyle: "medium" })}
+                      {c.status === "ISSUED"
+                        ? `Earned ${formatDhakaDate(c.issuedAt ?? c.createdAt, { dateStyle: "medium" })}`
+                        : `Started ${formatDhakaDate(c.createdAt, { dateStyle: "medium" })}`}
                     </p>
+                    {c.status === "ISSUED" && (
+                      <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-primary">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Mission complete, certificate earned
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="mt-4">
                   {c.status === "ISSUED" && c.pdfUrl ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <a
                         href={c.pdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="comic-btn flex w-fit items-center gap-1.5 bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
                       >
-                        View Certificate
+                        <Eye className="h-3.5 w-3.5" /> View Certificate
                       </a>
                       <a
                         href={c.pdfUrl}
-                        download
+                        download={`${c.certificateNo}.pdf`}
                         className="comic-btn flex w-fit items-center gap-1.5 bg-xp px-4 py-2 text-xs font-bold text-xp-foreground"
                       >
-                        <Download className="h-3.5 w-3.5" /> Download
+                        <Download className="h-3.5 w-3.5" /> Download Certificate
                       </a>
+                      <Link
+                        href={certificateVerifyPath(c.certificateNo)}
+                        className="flex items-center gap-1 px-2 py-2 text-xs font-bold text-primary hover:underline"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" /> Verification page
+                      </Link>
                     </div>
                   ) : c.status === "PENDING" ? (
                     <div className="flex items-center gap-2">
                       <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-                        <Clock3 className="h-3.5 w-3.5" /> Generating...
+                        <Clock3 className="h-3.5 w-3.5" /> Your certificate is being prepared...
                       </span>
                       <RetryCertificateButton certificateId={c.id} />
                     </div>

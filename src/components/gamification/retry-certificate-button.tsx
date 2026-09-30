@@ -17,16 +17,17 @@ export function RetryCertificateButton({ certificateId }: { certificateId: strin
           setError(null);
           startTransition(async () => {
             try {
-              await retryCertificateIssuance(certificateId);
-            } catch (e) {
-              setError(e instanceof Error ? e.message : "Retry failed.");
+              const result = await retryCertificateIssuance(certificateId);
+              if (!result.ok) setError(result.error);
+            } catch {
+              setError("Something went wrong. Please try again.");
             }
           });
         }}
         className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary/50 disabled:opacity-50"
       >
         <RefreshCw className={`h-3.5 w-3.5 ${isPending ? "animate-spin" : ""}`} />
-        {isPending ? "Generating..." : "Retry"}
+        {isPending ? "Generating..." : "Try again"}
       </button>
       {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { issueCertificate } from "@/lib/certificate/issue-certificate";
+import { issueCertificate, type IssueCertificateResult } from "@/lib/certificate/issue-certificate";
 import {
   issueCertificateManuallyCore,
   type IssueCertificateActionResult,
@@ -20,7 +20,7 @@ export async function issueCertificateAsAdmin(
   return result;
 }
 
-export async function retryCertificateIssuance(certificateId: string) {
+export async function retryCertificateIssuance(certificateId: string): Promise<IssueCertificateResult> {
   // PHASE 5: migrated off Clerk — requireActiveUser (require-user.ts)
   // already throws the same "Your session has expired..." message this
   // file used to construct inline, via the custom session.
@@ -31,9 +31,10 @@ export async function retryCertificateIssuance(certificateId: string) {
 
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
   if (!certificate || (certificate.userId !== user.id && !isAdmin)) {
-    throw new Error("Certificate not found.");
+    return { ok: false, error: "Certificate not found." };
   }
 
-  await issueCertificate(certificateId);
+  const result = await issueCertificate(certificateId);
   revalidatePath("/medals");
+  return result;
 }

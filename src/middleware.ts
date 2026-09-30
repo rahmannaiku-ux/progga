@@ -45,6 +45,8 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/privacy$/,
   /^\/terms$/,
   /^\/cookies$/,
+  // Certificate verification: anyone holding a certificate ID can check it.
+  /^\/certificates\/verify(\/.*)?$/,
   // New Proggaa auth pages + the legacy Clerk routes kept only as
   // redirect targets (src/app/(auth)/sign-in|sign-up), all public by
   // definition — nobody has a session yet while using them.

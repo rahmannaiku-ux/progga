@@ -1,6 +1,6 @@
-import { nanoid } from "nanoid";
 import { db } from "@/lib/db/client";
 import { issueCertificate } from "@/lib/certificate/issue-certificate";
+import { generateCertificateNo } from "@/lib/certificate/certificate-no";
 import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
 import { logActivity } from "@/server/actions/admin-actions";
 
@@ -72,7 +72,7 @@ async function issueCore({
         data: {
           userId: student.id,
           courseId,
-          certificateNo: `HLMS-${nanoid(10).toUpperCase()}`,
+          certificateNo: generateCertificateNo(),
           status: "PENDING",
         },
       });

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
-import { nanoid } from "nanoid";
 import { issueCertificate } from "@/lib/certificate/issue-certificate";
+import { generateCertificateNo } from "@/lib/certificate/certificate-no";
 import { awardXp } from "@/lib/gamification/award-xp";
 import { checkMissionCompletionAchievements } from "@/lib/gamification/check-achievements";
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
@@ -52,7 +52,7 @@ export async function recalcEnrollmentProgress(userId: string, courseId: string)
       create: {
         userId,
         courseId,
-        certificateNo: `HLMS-${nanoid(10).toUpperCase()}`,
+        certificateNo: generateCertificateNo(),
         status: "PENDING",
       },
       update: {},
