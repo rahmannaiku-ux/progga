@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { requireAdminUser } from "./require-user";
 import {
   grantCourseAccessCore,
-  type GrantCourseAccessResult,
+  type GrantCourseAccessActionResult,
 } from "@/lib/enrollment/grant-access";
 
-export type { GrantCourseAccessResult };
+export type { GrantCourseAccessActionResult };
 
 /**
  * Admin-only bypass of the normal purchase flow — see
@@ -18,7 +18,7 @@ export type { GrantCourseAccessResult };
 export async function grantCourseAccess(
   email: string,
   courseId: string
-): Promise<GrantCourseAccessResult> {
+): Promise<GrantCourseAccessActionResult> {
   const admin = await requireAdminUser();
 
   const result = await grantCourseAccessCore({

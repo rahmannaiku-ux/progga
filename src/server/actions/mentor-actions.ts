@@ -5,7 +5,7 @@ import { db } from "@/lib/db/client";
 import { requireMentorUser } from "./require-user";
 import {
   grantCourseAccessCore,
-  type GrantCourseAccessResult,
+  type GrantCourseAccessActionResult,
 } from "@/lib/enrollment/grant-access";
 import { issueCertificateManuallyCore, type IssueCertificateActionResult } from "@/lib/certificate/manual-issue";
 
@@ -93,7 +93,7 @@ export async function deleteMentorAnnouncement(announcementId: string) {
 export async function grantCourseAccessAsMentor(
   email: string,
   courseId: string
-): Promise<GrantCourseAccessResult> {
+): Promise<GrantCourseAccessActionResult> {
   const mentor = await requireMentorUser("Mentor access required.");
 
   const result = await grantCourseAccessCore({

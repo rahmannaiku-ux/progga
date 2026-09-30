@@ -46,11 +46,15 @@ export function AssignmentSubmissionForm({ assignmentId }: { assignmentId: strin
     }
     startTransition(async () => {
       try {
-        await submitAssignment({
+        const result = await submitAssignment({
           assignmentId,
           fileUrls: files.map((f) => f.url),
           comment,
         });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         setDone(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Submission failed.");

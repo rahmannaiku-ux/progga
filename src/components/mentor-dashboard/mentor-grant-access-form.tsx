@@ -18,6 +18,10 @@ export function MentorGrantAccessForm({ courses }: { courses: { id: string; titl
     startTransition(async () => {
       try {
         const result = await grantCourseAccessAsMentor(email, courseId);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         setSuccess(
           result.alreadyEnrolled
             ? `${result.studentLabel} already had access to "${result.courseTitle}" — nothing to do.`

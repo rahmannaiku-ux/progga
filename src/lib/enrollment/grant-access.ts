@@ -24,7 +24,7 @@ export type GrantCourseAccessResult = {
  * mentor who granted it, not the student) — the recipient is recorded
  * in the log's metadata instead.
  */
-export async function grantCourseAccessCore({
+async function grantCore({
   granterId,
   email,
   courseId,
@@ -94,4 +94,19 @@ export async function grantCourseAccessCore({
     studentLabel: userLabel(student),
     courseTitle: course.title,
   };
+}
+
+export type GrantCourseAccessActionResult =
+  | ({ ok: true } & GrantCourseAccessResult)
+  | { ok: false; error: string };
+
+/** Returns `{ ok: false, error }` instead of throwing: production hides thrown Server Action messages. */
+export async function grantCourseAccessCore(
+  args: Parameters<typeof grantCore>[0]
+): Promise<GrantCourseAccessActionResult> {
+  try {
+    return { ok: true, ...(await grantCore(args)) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to grant access." };
+  }
 }

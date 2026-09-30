@@ -4,7 +4,26 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { requireCompletedProfile } from "@/lib/auth/require-auth";
 
+/** Validation failures the student can act on; returned, not thrown, because production hides thrown messages. */
+class SubmissionError extends Error {}
+
+export type SubmitAssignmentResult = { ok: true } | { ok: false; error: string };
+
 export async function submitAssignment(input: {
+  assignmentId: string;
+  fileUrls: string[];
+  comment: string;
+}): Promise<SubmitAssignmentResult> {
+  try {
+    await submitAssignmentOrThrow(input);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof SubmissionError) return { ok: false, error: err.message };
+    throw err;
+  }
+}
+
+async function submitAssignmentOrThrow(input: {
   assignmentId: string;
   fileUrls: string[];
   comment: string;
@@ -19,16 +38,16 @@ export async function submitAssignment(input: {
       lesson: { select: { group: { select: { chapter: { select: { module: { select: { courseId: true } } } } } } } },
     },
   });
-  if (!assignment?.lesson) throw new Error("Challenge not found.");
+  if (!assignment?.lesson) throw new SubmissionError("Challenge not found.");
   const courseId = assignment.lesson.group.chapter.module.courseId;
 
   const enrollment = await db.enrollment.findUnique({
     where: { userId_courseId: { userId: user.id, courseId } },
   });
-  if (!enrollment) throw new Error("You need to enroll in this mission first.");
+  if (!enrollment) throw new SubmissionError("You need to enroll in this mission first.");
 
   if (input.fileUrls.length === 0) {
-    throw new Error("Attach at least one file before submitting.");
+    throw new SubmissionError("Attach at least one file before submitting.");
   }
 
   // Never trust submitted file URLs directly — each one must be a real
@@ -38,18 +57,18 @@ export async function submitAssignment(input: {
   // work that was never actually done or uploaded by them.
   const uploads = await db.upload.findMany({ where: { url: { in: input.fileUrls } } });
   if (uploads.length !== input.fileUrls.length) {
-    throw new Error("One or more files weren't recognized — try re-uploading them.");
+    throw new SubmissionError("One or more files weren't recognized — try re-uploading them.");
   }
   for (const upload of uploads) {
     if (upload.uploaderId !== user.id || upload.context !== "ASSIGNMENT_SUBMISSION") {
-      throw new Error("You can only submit files you uploaded yourself.");
+      throw new SubmissionError("You can only submit files you uploaded yourself.");
     }
   }
 
   const now = new Date();
   const isLate = Boolean(assignment.dueAt && now > assignment.dueAt);
   if (isLate && !assignment.allowLateSubmission) {
-    throw new Error("The deadline has passed and late submissions aren't allowed.");
+    throw new SubmissionError("The deadline has passed and late submissions aren't allowed.");
   }
 
   // Resubmitting before grading overwrites the previous submission;
@@ -58,7 +77,7 @@ export async function submitAssignment(input: {
     where: { assignmentId_userId: { assignmentId: input.assignmentId, userId: user.id } },
   });
   if (existing?.status === "GRADED") {
-    throw new Error("This challenge has already been graded and can't be resubmitted.");
+    throw new SubmissionError("This challenge has already been graded and can't be resubmitted.");
   }
 
   await db.assignmentSubmission.upsert({

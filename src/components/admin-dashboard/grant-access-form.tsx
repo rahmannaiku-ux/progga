@@ -18,6 +18,10 @@ export function GrantAccessForm({ courses }: { courses: { id: string; title: str
     startTransition(async () => {
       try {
         const result = await grantCourseAccess(email, courseId);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         setSuccess(
           result.alreadyEnrolled
             ? `${result.studentLabel} already had access to "${result.courseTitle}" — nothing to do.`
