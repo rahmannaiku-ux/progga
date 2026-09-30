@@ -927,3 +927,45 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Landing page progress motion. FadeIn sets data-shown="true" on its
+ * wrapper the first time it scrolls into view; these bars/lines then
+ * grow to their --fill target. Reduced motion (and print) shows the
+ * final state immediately.
+ * ------------------------------------------------------------------ */
+.lp-fill {
+  width: 0;
+  transition: width 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s;
+}
+[data-shown="true"] .lp-fill {
+  width: var(--fill, 100%);
+}
+.lp-line {
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.9s ease-out 0.2s;
+}
+[data-shown="true"] .lp-line {
+  transform: scaleY(1);
+}
+@media (min-width: 768px) {
+  .lp-line-x {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  [data-shown="true"] .lp-line-x {
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-fill {
+    width: var(--fill, 100%);
+    transition: none;
+  }
+  .lp-line,
+  .lp-line-x {
+    transform: none;
+    transition: none;
+  }
+}

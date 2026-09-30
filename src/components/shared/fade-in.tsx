@@ -44,6 +44,7 @@ export function FadeIn({
   return (
     <div
       ref={ref}
+      data-shown={shown ? "true" : "false"}
       style={delay ? { transitionDelay: `${delay}s` } : undefined}
       className={cn(
         "transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
