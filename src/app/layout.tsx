@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/shared/theme-provider";
 import { getSiteBranding, hexToHslTriplet } from "@/lib/site-branding";
 import "./globals.css";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
+import { CookieConsentBanner } from "@/components/shared/cookie-consent-banner";
 
 // Display face: bold, bouncy, comic-poster energy — the Proggaa brand
 // voice. Loaded once here and used everywhere via the --font-display
@@ -147,6 +148,7 @@ export default async function RootLayout({
           >
             {children}
           </div>
+          <CookieConsentBanner />
         </ThemeProvider>
       </body>
     </html>

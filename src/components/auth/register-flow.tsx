@@ -162,6 +162,17 @@ export function RegisterFlow() {
             <Button type="submit" variant="primary" className="w-full" disabled={isPending}>
               {isPending ? "Creating account..." : "Create account"}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              By creating an account you agree to our{" "}
+              <Link href="/terms" className="font-semibold text-accent hover:text-accent/80">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="font-semibold text-accent hover:text-accent/80">
+                Privacy policy
+              </Link>
+              .
+            </p>
           </form>
         )}
 

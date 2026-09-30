@@ -5,6 +5,7 @@ import Image from "next/image";
 import YouTube, { type YouTubeEvent, type YouTubePlayer } from "react-youtube";
 import { PlayCircle, Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { youtubeEmbedHost } from "@/lib/cookie-consent";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
 
@@ -142,6 +143,7 @@ export function LiveClassPlayer({
             className="h-full w-full"
             iframeClassName="absolute inset-0 m-0 block h-full w-full max-w-none border-0"
             opts={{
+              host: youtubeEmbedHost(),
               width: "100%",
               height: "100%",
               playerVars: {

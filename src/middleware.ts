@@ -44,6 +44,7 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/testimonials$/,
   /^\/privacy$/,
   /^\/terms$/,
+  /^\/cookies$/,
   // New Proggaa auth pages + the legacy Clerk routes kept only as
   // redirect targets (src/app/(auth)/sign-in|sign-up), all public by
   // definition — nobody has a session yet while using them.

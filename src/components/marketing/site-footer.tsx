@@ -4,6 +4,7 @@ import { SiteLogo } from "@/components/marketing/site-logo";
 import { getDestinations } from "@/lib/config/destinations";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { dhakaYear } from "@/lib/timezone";
+import { CookieSettingsLink } from "@/components/shared/cookie-settings-link";
 
 const columns = [
   {
@@ -33,6 +34,7 @@ const columns = [
     links: [
       { href: "/privacy", label: "Privacy policy" },
       { href: "/terms", label: "Terms of service" },
+      { href: "/cookies", label: "Cookie policy" },
     ],
   },
 ];
@@ -98,6 +100,11 @@ export async function SiteFooter() {
                   </Link>
                 </li>
               ))}
+              {col.title === "Legal" && (
+                <li>
+                  <CookieSettingsLink className="text-sm text-muted-foreground hover:text-foreground" />
+                </li>
+              )}
             </ul>
           </div>
         ))}
