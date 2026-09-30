@@ -235,7 +235,7 @@ export function SearchCommand() {
             (e.currentTarget as HTMLElement).querySelector<HTMLInputElement>("input")?.focus();
           }}
           className={cn(
-            "fixed left-1/2 top-[10vh] z-50 flex max-h-[75vh] w-[calc(100vw-2rem)] max-w-xl -translate-x-1/2 flex-col overflow-hidden",
+            "fixed left-1/2 top-[8dvh] z-50 flex max-h-[70dvh] w-[calc(100vw-2rem)] max-w-xl -translate-x-1/2 flex-col overflow-hidden",
             "comic-panel bg-surface p-0 shadow-2xl",
             "data-[state=closed]:scale-95 data-[state=closed]:opacity-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 motion-safe:transition-[opacity,transform] motion-safe:duration-150"
           )}

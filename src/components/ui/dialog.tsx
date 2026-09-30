@@ -89,7 +89,7 @@ export function DialogContent({
           // margin on each side on narrow screens rather than touching
           // the viewport edges; max-w-* (from call sites, or the
           // default below) caps it on wider screens.
-          "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden",
+          "fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden",
           "comic-panel bg-surface p-0 shadow-2xl",
           "opacity-0 scale-95 transition-[opacity,transform] duration-200 ease-out",
           "data-[state=open]:opacity-100 data-[state=open]:scale-100",

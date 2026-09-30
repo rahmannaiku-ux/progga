@@ -65,7 +65,7 @@ export default async function LiveRoomPage({ params }: { params: { liveClassId: 
       <AttendanceTracker liveClassId={liveClass.id} />
 
       <div>
-        <h1 className="font-display text-lg font-bold text-foreground">{lesson.title}</h1>
+        <h1 className="break-words font-display text-lg font-bold text-foreground">{lesson.title}</h1>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span>{lesson.group.chapter.module.course.title}</span>
           <span aria-hidden>·</span>
@@ -82,7 +82,7 @@ export default async function LiveRoomPage({ params }: { params: { liveClassId: 
           title={lesson.title}
           scheduledStart={schedule.scheduledStart}
         />
-        <div className="h-[420px] lg:h-auto">
+        <div className="h-[min(26rem,60dvh)] lg:h-auto">
           <LiveChatPanel liveClassId={liveClass.id} state={state} />
         </div>
       </div>

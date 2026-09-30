@@ -541,14 +541,16 @@ export function ExamRunner({
           same confirm step as the bottom button rather than submitting
           immediately — a single mis-tap while scrolling on a phone
           must never instantly end the exam. */}
-      <div className="glass-panel sticky top-16 z-10 mb-3 p-3 sm:top-20 sm:p-4">
+      {/* top-2, not top-16: the top bar is not sticky, so a larger offset
+          left a 64px gap above the timer where questions scrolled past. */}
+      <div className="glass-panel sticky top-2 z-10 mb-3 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-3">
           {remaining !== null ? (
             <span
               role="timer"
               aria-label="Time remaining"
               className={cn(
-                "flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 font-mono text-lg font-extrabold tabular-nums",
+                "flex shrink-0 items-center gap-2 rounded-xl border-2 px-3 py-1.5 font-mono text-lg font-extrabold tabular-nums",
                 remaining < 60 ? "border-danger bg-danger/10 text-danger" : "border-border/60 bg-surface text-foreground"
               )}
             >
@@ -560,8 +562,9 @@ export function ExamRunner({
               Untimed
             </span>
           )}
-          <span className="text-xs font-semibold text-muted-foreground">
-            {answeredCount}/{questions.length} answered
+          <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+            {answeredCount}/{questions.length}
+            <span className="hidden min-[400px]:inline"> answered</span>
           </span>
           <Button
             type="button"
@@ -674,7 +677,7 @@ export function ExamRunner({
                 detectScreenshotAttempts && "select-none"
               )}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <span className="sticker-badge bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
                   Question {i + 1} of {questions.length} · {q.points} pt{q.points === 1 ? "" : "s"}
                   {isLocked && " · 🔒 Locked"}
@@ -684,7 +687,7 @@ export function ExamRunner({
                   onClick={() => toggleMark(q.id)}
                   aria-pressed={marked.has(q.id)}
                   className={cn(
-                    "flex min-h-[36px] items-center gap-1 rounded-full border-[2px] px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                    "flex min-h-11 shrink-0 items-center gap-1 rounded-full border-[2px] px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                     marked.has(q.id)
                       ? "border-xp bg-xp/20 text-foreground"
                       : "border-border/60 text-muted-foreground hover:text-foreground"
@@ -693,7 +696,7 @@ export function ExamRunner({
                   {marked.has(q.id) ? "★ Marked" : "☆ Mark for review"}
                 </button>
               </div>
-              <p className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.prompt}</p>
+              <p className="mt-3 break-words text-lg font-semibold leading-snug text-foreground">{q.prompt}</p>
 
               <div className="mt-4 space-y-2">
                 {(q.type === "MCQ" || q.type === "TRUE_FALSE") &&

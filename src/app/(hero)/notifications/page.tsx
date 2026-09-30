@@ -57,7 +57,7 @@ export default async function NotificationsPage({
           <Link
             key={t.key}
             href={`/notifications?tab=${t.key}`}
-            className={`sticker-badge px-4 py-1.5 text-xs font-bold ${
+            className={`sticker-badge inline-flex min-h-11 items-center px-4 text-sm font-bold ${
               t.key === tab ? "bg-primary text-primary-foreground" : "bg-surface text-foreground"
             }`}
           >
@@ -87,11 +87,11 @@ export default async function NotificationsPage({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="truncate font-display text-sm font-bold text-foreground">{n.title}</span>
+                      <span className="min-w-0 truncate font-display text-sm font-bold text-foreground">{n.title}</span>
                       {!n.isRead && <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />}
                     </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">{n.body}</span>
-                    <span className="mt-1 block text-[10px] font-medium text-muted-foreground">
+                    <span className="mt-0.5 block break-words text-sm text-muted-foreground">{n.body}</span>
+                    <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
                       {notificationTimeAgo(n.createdAt)}
                     </span>
                   </span>

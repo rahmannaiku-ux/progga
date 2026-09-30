@@ -106,7 +106,7 @@ export function MobileGroupSheet({
                 </button>
               </div>
 
-              <div className="overflow-y-auto px-3 pb-4">
+              <div className="overflow-y-auto overscroll-contain px-3 pb-4">
                 <GroupLessonList
                   basePath={basePath}
                   lessons={lessons}

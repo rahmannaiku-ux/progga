@@ -2,24 +2,44 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Rocket, Trophy, User } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Rocket, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ITEMS = [
-  { label: "Home", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Learn", href: "/my-courses", icon: Rocket },
-  { label: "Progress", href: "/missions", icon: Trophy },
-  { label: "Profile", href: "/profile", icon: User },
-] as const;
+// `match` lists the route prefixes that light a tab up. "Learn" owns the
+// mission pages (/missions/<id>/...), which are the student's courses;
+// "Progress" is only the daily/weekly missions tracker at exactly /missions.
+const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(base + "/");
+
+const ITEMS: { label: string; href: string; icon: typeof Rocket; match: (pathname: string) => boolean }[] = [
+  { label: "Home", href: "/dashboard", icon: LayoutDashboard, match: (p) => p === "/dashboard" },
+  {
+    label: "Learn",
+    href: "/my-courses",
+    icon: Rocket,
+    match: (p) => under(p, "/my-courses") || (under(p, "/missions") && p !== "/missions") || under(p, "/challenges"),
+  },
+  { label: "Progress", href: "/missions", icon: Trophy, match: (p) => p === "/missions" },
+  {
+    label: "Exams",
+    href: "/exams",
+    icon: GraduationCap,
+    match: (p) => under(p, "/exams") || under(p, "/results"),
+  },
+  { label: "Profile", href: "/profile", icon: User, match: (p) => under(p, "/profile") },
+];
+
+/** Label of the bottom-nav tab a pathname belongs to, or null (e.g. /notifications). */
+export function activeBottomTab(pathname: string): string | null {
+  return ITEMS.find((item) => item.match(pathname))?.label ?? null;
+}
 
 /**
- * The 4 most-used student destinations, always one tap away — this is
- * what most mobile LMS/gamification apps use a bottom bar for, and it's
- * what item #1 of the mobile spec asks for by name. Deliberately only
- * 4 items (not the full ~9-item hero nav) — a bottom bar with more than
- * ~5 items stops being fast to scan/tap on a real phone. Everything
- * else (Leaderboard, Medals, Community, Payments, Notifications, etc.)
- * is still one tap away via the hamburger drawer (MobileNavDrawer).
+ * The 5 most-used student destinations, always one tap away. Deliberately
+ * not the full hero nav — a bottom bar with more than 5 items stops being
+ * fast to scan/tap on a real phone. Everything else (Live Classes,
+ * Leaderboard, Medals, Community, Payments, Notifications, etc.) is one
+ * tap away via the hamburger drawer (MobileNavDrawer); notifications also
+ * have the bell in the top HUD.
  */
 export function MobileBottomNav() {
   const pathname = usePathname();
@@ -29,9 +49,9 @@ export function MobileBottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden print:hidden"
       aria-label="Primary"
     >
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+          const isActive = item.match(pathname ?? "");
           const Icon = item.icon;
           return (
             <li key={item.href}>

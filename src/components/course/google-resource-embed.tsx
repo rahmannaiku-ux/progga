@@ -52,7 +52,7 @@ export function GoogleResourceEmbed({ title, url }: { title: string; url: string
         title={title}
         badge={GOOGLE_EMBED_LABEL[embed.kind]}
         closeLabel="Close preview"
-        className="h-[85vh] max-w-4xl"
+        className="h-[85dvh] max-w-4xl"
       >
         <iframe
           src={embed.embedUrl}

@@ -276,7 +276,7 @@ export default async function LessonPlayerPage({
         {/* Mission Control header */}
         <StaggerItem className="comic-panel bg-surface p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h1 className="font-display text-xl font-bold text-foreground">
+            <h1 className="min-w-0 break-words font-display text-xl font-bold text-foreground">
               {lesson.title}
             </h1>
             <div className="flex shrink-0 items-center gap-2">
@@ -328,7 +328,7 @@ export default async function LessonPlayerPage({
 
         {lesson.description && (
           <StaggerItem className="comic-panel bg-surface p-5">
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+            <p className="whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground sm:text-sm">
               {lesson.description}
             </p>
           </StaggerItem>
@@ -346,13 +346,13 @@ export default async function LessonPlayerPage({
                     href={o.href}
                     className="hover-glow-card comic-panel flex items-center justify-between gap-3 bg-surface p-3.5"
                   >
-                    <span className="flex items-center gap-3">
+                    <span className="flex min-w-0 flex-1 items-center gap-3">
                       {o.kind === "Challenge" ? (
                         <Swords className="h-4 w-4 shrink-0 text-accent" />
                       ) : (
                         <Target className="h-4 w-4 shrink-0 text-accent" />
                       )}
-                      <span className="text-sm font-medium text-foreground">{o.title}</span>
+                      <span className="min-w-0 break-words text-sm font-medium text-foreground">{o.title}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       {o.dueAt && (
@@ -384,10 +384,11 @@ export default async function LessonPlayerPage({
                     href={r.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="comic-panel flex items-center gap-2 bg-surface p-3.5 text-sm font-medium text-foreground hover:text-primary"
+                    className="comic-panel flex min-h-11 items-center gap-2 bg-surface p-3.5 text-sm font-medium text-foreground hover:text-primary"
                   >
-                    <FileText className="h-4 w-4 text-accent" /> {r.title}
-                    <Download className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                    <FileText className="h-4 w-4 shrink-0 text-accent" />
+                    <span className="min-w-0 break-words">{r.title}</span>
+                    <Download className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   </a>
                 )
               )}

@@ -124,7 +124,7 @@ export default async function HeroLayout({
             inset) so the last card/button on a page is never hidden
             under it — lg:pb-6 restores the plain desktop padding once
             the bottom nav is gone. */}
-        <main className="relative flex-1 p-4 pb-24 sm:p-6 lg:pb-6 print:p-0">
+        <main className="relative flex-1 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 lg:pb-6 print:p-0">
           {/* The one place the anti-DevTools monitor is mounted for the app. */}
           <AntiDevToolsProvider enabled={devtoolsGuard}>
             <PageTransition>{children}</PageTransition>

@@ -172,7 +172,7 @@ export default async function HeroDashboardPage() {
               >
                 <div className="halftone-dots pointer-events-none absolute inset-0 opacity-20" />
                 <div className="relative flex items-center justify-between">
-                  <span className="rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-xp-foreground">
+                  <span className="rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-xp-foreground">
                     Continue Learning
                   </span>
                   <span className="sticker bg-primary px-2 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
@@ -235,7 +235,7 @@ export default async function HeroDashboardPage() {
               <h2 className="font-display text-sm font-bold text-foreground">
                 Today&apos;s Missions
               </h2>
-              <Link href="/missions" className="text-xs font-bold text-primary">
+              <Link href="/missions" className="inline-flex min-h-11 items-center text-xs font-bold text-primary">
                 View All
               </Link>
             </div>
@@ -279,7 +279,7 @@ export default async function HeroDashboardPage() {
               <h2 className="font-display text-sm font-bold text-foreground">
                 Your Progress
               </h2>
-              <Link href="/profile" className="text-xs font-bold text-primary">
+              <Link href="/profile" className="inline-flex min-h-11 items-center text-xs font-bold text-primary">
                 View Full
               </Link>
             </div>
@@ -296,7 +296,7 @@ export default async function HeroDashboardPage() {
                 <p className="font-display text-base font-extrabold text-foreground">
                   {lessonsCompletedTotal}
                 </p>
-                <p className="text-[9px] font-semibold uppercase text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase text-muted-foreground">
                   Lessons
                 </p>
               </div>
@@ -304,7 +304,7 @@ export default async function HeroDashboardPage() {
                 <p className="font-display text-base font-extrabold text-foreground">
                   {completedCount}
                 </p>
-                <p className="text-[9px] font-semibold uppercase text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase text-muted-foreground">
                   Missions
                 </p>
               </div>
@@ -312,7 +312,7 @@ export default async function HeroDashboardPage() {
                 <p className="font-display text-base font-extrabold text-foreground">
                   {certificatesEarned}
                 </p>
-                <p className="text-[9px] font-semibold uppercase text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase text-muted-foreground">
                   Certificates
                 </p>
               </div>
@@ -326,7 +326,7 @@ export default async function HeroDashboardPage() {
                 <h2 className="font-display text-sm font-bold text-foreground">
                   Recommended for You
                 </h2>
-                <Link href="/courses" className="text-xs font-bold text-primary">
+                <Link href="/courses" className="inline-flex min-h-11 items-center text-xs font-bold text-primary">
                   View All
                 </Link>
               </div>
