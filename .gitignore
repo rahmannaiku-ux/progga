@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Claude Code local session/config (machine-specific, never shared)
 .claude/
+
+# Telegram bot (separate project, its own repo: rahmannaiku-ux/proggaa).
+# Kept here for reference only and never committed to this repo unless the owner explicitly says so.
+/telegram-bot/

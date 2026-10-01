@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import {
   consumeLinkToken,
   getLinkedAccountByTelegramId,
+  getLinkStatusForUser,
   unlinkByTelegramId,
   TelegramLinkError,
 } from "@/server/actions/telegram-link-actions";
@@ -66,7 +67,16 @@ export async function GET(req: Request) {
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 
-  const telegramId = new URL(req.url).searchParams.get("telegramId");
+  const params = new URL(req.url).searchParams;
+
+  // Reverse lookup for outbound pushes: Proggaa user id -> Telegram id.
+  const proggaaUserId = params.get("proggaaUserId");
+  if (proggaaUserId) {
+    const status = await getLinkStatusForUser(proggaaUserId);
+    return NextResponse.json(status.linked ? { telegramId: status.telegramId } : null);
+  }
+
+  const telegramId = params.get("telegramId");
   if (!telegramId || !/^\d{1,32}$/.test(telegramId)) {
     return NextResponse.json({ error: "Missing or invalid telegramId." }, { status: 400 });
   }

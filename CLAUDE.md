@@ -20,4 +20,5 @@ Working notes for AI coding assistants. The README covers how to set up and run 
 - New public page: add it to `PUBLIC_ROUTE_PATTERNS` in `src/middleware.ts`. New admin, mentor or student page: add it to `src/lib/nav-config.ts`.
 - Styling: comic design classes (`comic-panel`, `comic-btn`, `sticker`, `glass-panel`) and tokens `primary / accent / xp / danger / muted / surface / border`. There's no `success` colour. Pages must work at phone width.
 - Line endings: many files are CRLF. Keep each file's existing style.
+- **`telegram-bot/` is a separate project and must never be committed or pushed to this repo.** It lives in its own repo (`rahmannaiku-ux/proggaa`) and is git-ignored here (`/telegram-bot/`). Never `git add -f` it, never remove it from `.gitignore`, never include it in a commit or PR, and keep its repo and this one separate. Only do so if the owner explicitly says to in that message. The root `tsconfig.json` and `.eslintrc.json` exclude it on purpose.
 - Commits: short imperative subject describing the user-visible effect (see `git log`).

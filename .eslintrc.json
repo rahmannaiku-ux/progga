@@ -8,7 +8,8 @@
     "coverage/",
     "public/",
     "next-env.d.ts",
-    "prisma/migrations/"
+    "prisma/migrations/",
+    "telegram-bot/"
   ],
   "rules": {
     // Real bugs — keep these as errors.

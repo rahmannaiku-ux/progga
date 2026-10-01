@@ -17,6 +17,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { user, error } = await requireLinkedUser(params.id);
   if (error) return error;
 
-  const full = await db.user.findUnique({ where: { id: user!.id }, select: botUserSelect });
-  return NextResponse.json(full);
+  const full = await db.user.findUnique({
+    where: { id: user!.id },
+    select: { ...botUserSelect, heroStats: { select: { xp: true, currentStreak: true } } },
+  });
+  if (!full) return NextResponse.json(null, { status: 404 });
+  const { heroStats, ...rest } = full;
+  return NextResponse.json({ ...rest, xp: heroStats?.xp ?? 0, streakDays: heroStats?.currentStreak ?? 0 });
 }
