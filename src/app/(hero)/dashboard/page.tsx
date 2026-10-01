@@ -157,7 +157,7 @@ export default async function HeroDashboardPage() {
           {/* 1 · Compact greeting */}
           <StaggerItem>
             <p className="font-display text-lg font-extrabold text-foreground">
-              {greetingWord}, {user.firstName || "Hero"}! 👋
+              {greetingWord}, {user.firstName || "Hero"}.
             </p>
           </StaggerItem>
 
@@ -172,9 +172,7 @@ export default async function HeroDashboardPage() {
               >
                 <div className="halftone-dots pointer-events-none absolute inset-0 opacity-20" />
                 <div className="relative flex items-center justify-between">
-                  <span className="rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-xp-foreground">
-                    Continue Learning
-                  </span>
+                  <span className="text-sm font-bold text-xp-foreground">Pick up where you stopped</span>
                   <span className="sticker bg-primary px-2 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
                     {currentCourse.progressPct}%
                   </span>
@@ -291,12 +289,12 @@ export default async function HeroDashboardPage() {
               </span>
             </div>
             <AnimatedProgressBar percent={percent} className="mt-1.5" />
-            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border/10 pt-3 text-center">
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border/20 pt-3">
               <div>
                 <p className="font-display text-base font-extrabold text-foreground">
                   {lessonsCompletedTotal}
                 </p>
-                <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+                <p className="text-[11px] font-semibold text-muted-foreground">
                   Lessons
                 </p>
               </div>
@@ -304,7 +302,7 @@ export default async function HeroDashboardPage() {
                 <p className="font-display text-base font-extrabold text-foreground">
                   {completedCount}
                 </p>
-                <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+                <p className="text-[11px] font-semibold text-muted-foreground">
                   Missions
                 </p>
               </div>
@@ -312,8 +310,8 @@ export default async function HeroDashboardPage() {
                 <p className="font-display text-base font-extrabold text-foreground">
                   {certificatesEarned}
                 </p>
-                <p className="text-[11px] font-semibold uppercase text-muted-foreground">
-                  Certificates
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  Medals
                 </p>
               </div>
             </div>
@@ -324,7 +322,7 @@ export default async function HeroDashboardPage() {
             <StaggerItem>
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-sm font-bold text-foreground">
-                  Recommended for You
+                  More Missions for you
                 </h2>
                 <Link href="/courses" className="inline-flex min-h-11 items-center text-xs font-bold text-primary">
                   View All
@@ -358,16 +356,16 @@ export default async function HeroDashboardPage() {
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-md">
             <h1 className="font-display text-3xl font-extrabold leading-tight text-xp-foreground sm:text-4xl">
-              Let&apos;s continue
-              <br />
-              <span className="text-primary">your journey!</span>
+              {greetingWord}, {user.firstName || "Hero"}.
             </h1>
             <p className="mt-3 text-sm font-medium text-xp-foreground/80 sm:text-base">
-              Every lesson brings you closer to your heroic future.
+              {currentCourse
+                ? `${currentCourse.course.title} is ${currentCourse.progressPct}% done, about ${remainingMinutes} min to go.`
+                : "You have no Mission running. Pick one and open its first Patrol."}
             </p>
             <Button asChild variant="primary" className="mt-5">
               <Link href={resumeHref}>
-                Continue Learning <ArrowRight className="h-4 w-4" />
+                {currentCourse ? "Resume your Patrol" : "Find a Mission"} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -378,8 +376,10 @@ export default async function HeroDashboardPage() {
               className="h-48 w-48 sm:h-56 sm:w-56"
               groundShadow
             />
-            <div className="speech-bubble absolute -right-2 -top-2 max-w-[9.5rem] animate-cartoon-pop text-center text-xs font-extrabold uppercase leading-snug text-foreground sm:-right-6 sm:top-0">
-              You can <span className="text-primary">achieve</span> anything!
+            <div className="speech-bubble absolute -right-2 -top-2 max-w-[9.5rem] animate-cartoon-pop text-sm font-extrabold leading-snug text-foreground sm:-right-6 sm:top-0">
+              {stats.currentStreak >= 3
+                ? `${stats.currentStreak}-day streak. Don't break it.`
+                : "One Patrol today is enough."}
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ export default async function HeroDashboardPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-display text-base font-bold text-foreground">Continue Learning</h2>
               <Link href="/my-courses" className="text-xs font-bold text-primary hover:text-primary/80">
-                View All →
+                View All
               </Link>
             </div>
 
@@ -450,9 +450,9 @@ export default async function HeroDashboardPage() {
           {recommended.length > 0 && (
             <StaggerItem as="section">
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-base font-bold text-foreground">Recommended for You</h2>
+                <h2 className="font-display text-base font-bold text-foreground">More Missions for you</h2>
                 <Link href="/courses" className="text-xs font-bold text-primary hover:text-primary/80">
-                  View All →
+                  View All
                 </Link>
               </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -494,18 +494,18 @@ export default async function HeroDashboardPage() {
               <AnimatedProgressBar percent={percent} className="mt-1.5" />
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/10 pt-4 text-center">
+            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/20 pt-4">
               <div>
                 <p className="font-display text-lg font-extrabold text-foreground">{lessonsCompletedTotal}</p>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Lessons</p>
+                <p className="text-xs font-semibold text-muted-foreground">Lessons</p>
               </div>
               <div>
                 <p className="font-display text-lg font-extrabold text-foreground">{completedCount}</p>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Missions</p>
+                <p className="text-xs font-semibold text-muted-foreground">Missions</p>
               </div>
               <div>
                 <p className="font-display text-lg font-extrabold text-foreground">{certificatesEarned}</p>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Certificates</p>
+                <p className="text-xs font-semibold text-muted-foreground">Medals</p>
               </div>
             </div>
           </StaggerItem>

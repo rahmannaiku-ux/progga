@@ -51,13 +51,13 @@ export default async function AchievementsPage() {
                 "comic-panel relative flex items-start gap-3 border-2 bg-surface p-4 transition-transform duration-200",
                 isUnlocked ? rarity.ring : "border-border",
                 isUnlocked && rarity.glow,
-                isUnlocked && "hover:-translate-y-1",
+                isUnlocked && "",
                 !isUnlocked && "opacity-60"
               )}
             >
               <span
                 className={cn(
-                  "sticker absolute -right-2 -top-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide",
+                  "sticker absolute -right-2 -top-2 px-1.5 py-0.5 font-mono text-[9px] font-bold",
                   isUnlocked ? rarity.badgeBg : "bg-muted",
                   isUnlocked ? rarity.badgeText : "text-muted-foreground"
                 )}

@@ -159,7 +159,7 @@ export function MonthCalendar({
       </div>
 
       {/* Weekday header */}
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-muted-foreground">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div key={d} className="py-1">
             {d}
@@ -245,7 +245,7 @@ export function MonthCalendar({
       {/* Selected day detail — scheduled items + what was actually earned */}
       {selectedDay && (
         <div className="mt-4 border-t border-border/40 pt-3">
-          <h3 className="mb-2 font-display text-xs font-bold uppercase tracking-wide text-foreground">
+          <h3 className="mb-2 font-display text-xs font-bold text-foreground">
             {formatDhakaDate(`${selectedKey}T00:00:00+06:00`, { weekday: "long", month: "long", day: "numeric" })}
           </h3>
 

@@ -129,11 +129,11 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
             )}
             <div className="relative">
               {course.category && (
-                <span className="w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                <span className="w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold text-primary-foreground">
                   {course.category.name}
                 </span>
               )}
-              <h1 className="mt-3 font-display text-2xl font-extrabold uppercase leading-tight text-primary-foreground sm:text-3xl">
+              <h1 className="mt-3 font-display text-2xl font-extrabold leading-tight text-primary-foreground sm:text-3xl">
                 {course.title}
               </h1>
               {course.subtitle && (

@@ -17,7 +17,7 @@ export function CopyField({
 
   return (
     <div className="comic-panel bg-surface p-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs font-bold text-muted-foreground">{label}</p>
       <div className="mt-1.5 flex items-center justify-between gap-3">
         <span className={mono ? "font-mono text-lg font-bold text-foreground" : "text-lg font-bold text-foreground"}>
           {value}
@@ -31,7 +31,7 @@ export function CopyField({
               setTimeout(() => setCopied(false), 1500);
             }
           }}
-          className="sticker flex min-h-11 shrink-0 items-center gap-1.5 bg-surface px-4 py-2 text-sm font-bold text-foreground transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          className="sticker flex min-h-11 shrink-0 items-center gap-1.5 bg-surface px-4 py-2 text-sm font-bold text-foreground transition-transform active:translate-y-0"
         >
           {copied ? (
             <>

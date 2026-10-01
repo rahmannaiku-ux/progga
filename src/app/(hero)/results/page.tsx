@@ -54,7 +54,7 @@ export default async function ResultsPage() {
   return (
     <StaggerContainer className="mx-auto max-w-3xl space-y-6">
       <StaggerItem className="comic-panel-bold bg-primary p-5 text-primary-foreground sm:p-6">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-primary-foreground/70">
+        <p className="flex items-center gap-1.5 text-xs font-bold text-primary-foreground/70">
           <ClipboardList className="h-4 w-4" aria-hidden="true" /> Result Center
         </p>
         <h1 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Your Results</h1>
@@ -65,7 +65,7 @@ export default async function ResultsPage() {
           {summary.map((s) => (
             <div key={s.label} className="rounded-xl bg-primary-foreground/10 px-3 py-2.5">
               <dd className="font-mono text-xl font-extrabold leading-none">{s.value}</dd>
-              <dt className="mt-1 text-[11px] uppercase tracking-wide text-primary-foreground/70">{s.label}</dt>
+              <dt className="mt-1 text-[11px] text-primary-foreground/70">{s.label}</dt>
             </div>
           ))}
         </dl>

@@ -78,12 +78,12 @@ export function CourseCard({
         <Cpu className={`pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 ${theme.iconTint}`} />
         {course.categoryName && (
           <span
-            className={`relative w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${theme.text}`}
+            className={`relative w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold ${theme.text}`}
           >
             {course.categoryName}
           </span>
         )}
-        <h3 className={`relative font-display text-lg font-extrabold uppercase leading-tight ${theme.text}`}>
+        <h3 className={`relative font-display text-lg font-extrabold leading-tight ${theme.text}`}>
           {course.title}
         </h3>
         <DoodleStar className="pointer-events-none absolute -bottom-2 -left-2 h-9 w-9 -rotate-12 opacity-70" />

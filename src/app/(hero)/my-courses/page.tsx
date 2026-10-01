@@ -207,7 +207,7 @@ function Stat({
       </span>
       <div>
         <p className="font-display text-lg font-extrabold leading-none text-foreground">{value}</p>
-        <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
+        <p className="text-[10px] font-semibold text-muted-foreground">{label}</p>
       </div>
     </div>
   );

@@ -148,14 +148,22 @@
    marked `.comic-panel-bold` (hero banner, community banner). */
 .theme-cartoon :where(.glass-panel),
 .theme-cartoon :where(.comic-panel) {
-  @apply rounded-2xl border border-border/10 bg-surface shadow-card backdrop-blur-0;
+  /* A printed card: a visible ink edge and a flat "paper thickness" under
+     it, instead of the blurred grey drop-shadow every SaaS card has. The
+     corner is tighter than the bold panel's so the two read as a hierarchy. */
+  @apply rounded-[0.875rem] border border-border/25 bg-surface backdrop-blur-0;
+  box-shadow: 0 2px 0 hsl(var(--border) / 0.16);
 }
 
+/* Interactive cards answer a hover by darkening their edge — they don't
+   float up. The press moves the card onto its own shadow. */
 .theme-cartoon .hover-glow-card {
-  @apply hover:shadow-card-hover;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .theme-cartoon .hover-glow-card:hover {
-  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: 0 3px 0 hsl(var(--primary) / 0.35);
+  transform: none;
 }
 
 /* Bold comic panel — thick ink border + hard offset shadow. Used only
@@ -166,25 +174,30 @@
   box-shadow: 4px 4px 0 hsl(var(--border) / 0.85);
 }
 .theme-cartoon .comic-panel-bold.hover-glow-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 hsl(var(--border) / 0.85);
+  border-color: hsl(var(--border));
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 hsl(var(--border) / 0.85);
 }
 
 .theme-cartoon :where(.comic-btn) {
-  @apply rounded-full transition-transform duration-150;
-  box-shadow: 0 2px 0 hsl(var(--border) / 0.4);
+  /* A chunky key-cap, not a pill: squarer corners, a solid ink base, and a
+     press that actually travels down onto it. Pills are kept for tiny
+     stickers/badges, so buttons and tags stop looking alike. */
+  @apply rounded-[0.8rem] transition-[transform,box-shadow] duration-100;
+  box-shadow: 0 3px 0 hsl(var(--border) / 0.75);
 }
 .theme-cartoon .comic-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 0 hsl(var(--border) / 0.4), 0 6px 12px hsl(var(--border) / 0.1);
+  transform: none;
+  filter: brightness(1.06);
 }
 .theme-cartoon .comic-btn:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 0 hsl(var(--border) / 0.4);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 hsl(var(--border) / 0.75);
 }
 
 .theme-cartoon :where(.sticker) {
-  @apply rounded-full bg-surface shadow-card;
+  @apply rounded-full bg-surface;
+  box-shadow: 0 1px 0 hsl(var(--border) / 0.3);
 }
 
 .theme-cartoon .halftone-dots {
@@ -225,7 +238,7 @@
 
 .theme-cartoon :where(.sticker-badge) {
   @apply rounded-full;
-  box-shadow: 0 1px 4px hsl(var(--border) / 0.18);
+  box-shadow: 0 1px 0 hsl(var(--border) / 0.3);
 }
 
 .theme-cartoon .comic-outline-text {
@@ -490,17 +503,20 @@
 .animate-streak-pulse {
   animation: streak-pulse 1.8s ease-in-out infinite;
 }
+/* Decorative doodles used to loop forever (wiggle / bob / twinkle). They
+   now sit still at a fixed tilt: motion is reserved for things that carry
+   state (streak flame, XP bars, Proggy). */
 .theme-cartoon .animate-cartoon-wiggle {
-  animation: cartoon-wiggle 3.2s ease-in-out infinite;
+  transform: rotate(-8deg);
 }
 .theme-cartoon .animate-cartoon-bob {
-  animation: cartoon-bob 4.5s ease-in-out infinite;
+  transform: rotate(6deg);
 }
 .theme-cartoon .animate-cartoon-pop {
   animation: cartoon-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .theme-cartoon .animate-cartoon-twinkle {
-  animation: cartoon-twinkle 2.4s ease-in-out infinite;
+  transform: rotate(10deg);
 }
 } /* end @layer components (.theme-cartoon design system) */
 
@@ -644,23 +660,16 @@
  * ------------------------------------------------------------------ */
 /* Stagger / StaggerItem (components/shared/stagger.tsx): delay by sibling
    position, capped so a long list doesn't take seconds to appear. */
+/* Every page already fades in via .page-enter, so a second cascade of
+   sliding cards on top was pure "wow effect". The group now simply fades
+   together; the class stays so existing call sites keep working. */
 @keyframes stagger-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .stagger-item {
-  animation: stagger-in 0.3s cubic-bezier(0.21, 0.47, 0.32, 0.98) backwards;
-  animation-delay: 0.6s;
+  animation: stagger-in 0.2s ease-out backwards;
 }
-.stagger-item:nth-child(1) { animation-delay: 0.04s; }
-.stagger-item:nth-child(2) { animation-delay: 0.10s; }
-.stagger-item:nth-child(3) { animation-delay: 0.16s; }
-.stagger-item:nth-child(4) { animation-delay: 0.22s; }
-.stagger-item:nth-child(5) { animation-delay: 0.28s; }
-.stagger-item:nth-child(6) { animation-delay: 0.34s; }
-.stagger-item:nth-child(7) { animation-delay: 0.40s; }
-.stagger-item:nth-child(8) { animation-delay: 0.46s; }
-.stagger-item:nth-child(9) { animation-delay: 0.52s; }
 
 /* Small "pop" for a button/banner that just appeared (purchase, lesson done). */
 @keyframes pop-in {

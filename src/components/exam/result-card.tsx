@@ -55,7 +55,7 @@ export function ResultCard({ result }: { result: ResultCardData }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="truncate text-xs font-semibold text-muted-foreground">
           {result.kind === "EXAM" ? "Exam" : "Quiz"}
           {result.courseTitle && ` · ${result.courseTitle}`}
         </p>

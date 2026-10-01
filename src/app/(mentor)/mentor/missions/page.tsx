@@ -47,7 +47,7 @@ export default async function MentorMissionsPage() {
             >
               <Link
                 href={`/mentor/missions/${c.id}/builder`}
-                className="min-w-0 flex-1 transition-transform hover:-translate-y-0.5"
+                className="min-w-0 flex-1 transition-transform"
               >
                 <div className="flex items-center gap-3">
                   <p className="font-display font-semibold text-foreground">

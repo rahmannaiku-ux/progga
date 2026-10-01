@@ -86,7 +86,7 @@ export default async function CourseExamsPage({ params }: { params: { missionId:
           <StaggerItem key={a.id} className="comic-panel bg-surface p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   {a.kind === "EXAM" ? "Exam" : "Quiz"}
                   {a.lesson && ` · ${a.lesson.title}`}
                 </p>

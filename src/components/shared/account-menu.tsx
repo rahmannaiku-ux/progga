@@ -48,7 +48,7 @@ export function AccountMenu({
           type="button"
           aria-label="Account menu"
           disabled={isPending}
-          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border/15 bg-surface text-muted-foreground transition-transform hover:-translate-y-0.5 hover:text-foreground disabled:opacity-50"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border/15 bg-surface text-muted-foreground transition-transform hover:text-foreground disabled:opacity-50"
         >
           {avatarUrl || name ? (
             <Avatar

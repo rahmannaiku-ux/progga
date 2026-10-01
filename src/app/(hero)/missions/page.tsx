@@ -238,7 +238,7 @@ export default async function MissionsPage({
 
         <div className="space-y-6">
           <StaggerItem className="comic-panel-bold bg-primary p-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-wide text-primary-foreground/70">
+            <p className="text-xs font-bold text-primary-foreground/70">
               Mission Streak
             </p>
             <Flame className="mx-auto mt-2 h-14 w-14 fill-xp text-xp animate-streak-pulse" />
@@ -251,7 +251,7 @@ export default async function MissionsPage({
           </StaggerItem>
 
           <StaggerItem className="comic-panel bg-surface p-5 text-center">
-            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-bold text-muted-foreground">
               XP Earned Today
             </p>
             <p className="mt-2 font-display text-3xl font-extrabold text-xp">{xpEarnedToday} XP</p>

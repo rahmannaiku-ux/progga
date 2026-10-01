@@ -192,7 +192,7 @@ export function MobileNavDrawer({
                 {sections.map((section, i) => (
                   <div key={section.title ?? i}>
                     {section.title && (
-                      <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
+                      <p className="mb-2 px-3 text-xs font-semibold text-sidebar-muted">
                         {section.title}
                       </p>
                     )}

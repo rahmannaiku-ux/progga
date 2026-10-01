@@ -64,7 +64,7 @@ export function NotificationBell({
           className={cn(
             "relative flex items-center justify-center text-foreground outline-none transition-transform focus-visible:ring-2 focus-visible:ring-accent",
             variant === "default"
-              ? "sticker h-10 w-10 bg-surface hover:-translate-y-0.5"
+              ? "sticker h-10 w-10 bg-surface"
               : "h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground",
             open && variant === "default" && "-translate-y-0.5",
             className
@@ -152,7 +152,7 @@ export function NotificationBell({
                           </span>
                         </span>
                         <span className="mt-1 flex items-center gap-1.5">
-                          <span className="rounded-full border border-border/15 bg-background px-2 py-px text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <span className="rounded-full border border-border/15 bg-background px-2 py-px text-[10px] font-bold text-muted-foreground">
                             {meta.tag}
                           </span>
                           {!n.isRead && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="Unread" />}

@@ -78,7 +78,7 @@ export default async function CalendarPage() {
 
       {grouped.size > 0 && (
         <StaggerItem>
-          <h2 className="font-display text-sm font-extrabold uppercase tracking-wide text-foreground">
+          <h2 className="font-display text-sm font-extrabold text-foreground">
             Upcoming
           </h2>
         </StaggerItem>
@@ -95,7 +95,7 @@ export default async function CalendarPage() {
 
       {Array.from(grouped.entries()).map(([dateKey, items]) => (
         <StaggerItem key={dateKey}>
-          <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <h2 className="mb-2 font-display text-xs font-bold text-muted-foreground">
             {formatDhakaDate(`${dateKey}T00:00:00+06:00`, { weekday: "long", month: "long", day: "numeric" })}
           </h2>
           <div className="space-y-2">

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { SiteLogo } from "@/components/marketing/site-logo";
 import { getDestinations } from "@/lib/config/destinations";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
@@ -56,7 +55,6 @@ export async function SiteFooter() {
 
   return (
     <footer className="relative border-t border-border/10 bg-surface/60">
-      <DoodleSparkle className="pointer-events-none absolute -top-4 right-8 hidden h-8 w-8 opacity-60 sm:block" />
       <div className="container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2">
@@ -66,7 +64,7 @@ export async function SiteFooter() {
             </span>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Turn skills into missions. Turn progress into levels.
+            Courses, exams and live classes, studied one Patrol at a time.
           </p>
           {connectLinks.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-3">

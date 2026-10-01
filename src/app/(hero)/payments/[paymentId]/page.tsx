@@ -51,7 +51,7 @@ export default async function PaymentPage({
       {/* Mission summary header — always visible regardless of state */}
       <div className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
         <Sparkles className="absolute right-5 top-5 h-6 w-6 text-xp animate-cartoon-wiggle" />
-        <p className="text-xs font-bold uppercase tracking-wide text-accent">Unlocking mission</p>
+        <p className="text-xs font-bold text-accent">Unlocking mission</p>
         <h1 className="mt-1 font-display text-2xl font-extrabold text-foreground">{paymentCourseTitle(payment)}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <span className="sticker bg-primary px-4 py-1.5 font-display text-xl font-extrabold text-primary-foreground">

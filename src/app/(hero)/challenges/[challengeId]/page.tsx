@@ -96,7 +96,7 @@ export default async function ChallengePage({
 
         {rubric.length > 0 && (
           <div className="mt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-semibold text-muted-foreground">
               Rubric
             </p>
             <ul className="mt-2 space-y-1">

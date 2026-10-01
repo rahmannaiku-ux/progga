@@ -55,7 +55,7 @@ export default async function ResultPage({ params }: { params: { resultId: strin
         </Link>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="truncate text-xs font-semibold text-muted-foreground">
               {assessment.kind === "EXAM" ? "Exam" : "Quiz"}
               {courseTitle && ` · ${courseTitle}`}
             </p>

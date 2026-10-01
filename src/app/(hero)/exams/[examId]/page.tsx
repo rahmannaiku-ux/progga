@@ -269,7 +269,7 @@ export default async function EncounterPage({
       </StaggerItem>
 
       <StaggerItem className="comic-panel bg-surface p-5 sm:p-7">
-        <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="truncate text-xs font-semibold text-muted-foreground">
           {assessment.kind === "EXAM" ? "Exam" : "Quiz"}
           {courseTitle && ` · ${courseTitle}`}
         </p>
@@ -280,7 +280,7 @@ export default async function EncounterPage({
             <div key={f.label} className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-3 py-2.5">
               <f.icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
               <div className="min-w-0">
-                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{f.label}</dt>
+                <dt className="text-[11px] text-muted-foreground">{f.label}</dt>
                 <dd className="text-sm font-bold text-foreground">{f.value}</dd>
               </div>
             </div>

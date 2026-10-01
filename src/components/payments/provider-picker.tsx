@@ -27,7 +27,7 @@ export function ProviderPicker({
 
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Pay with</p>
+      <p className="text-xs font-bold text-muted-foreground">Pay with</p>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {ALL.map((p) => {
           const meta = MFS_PROVIDER_META[p];
@@ -51,7 +51,7 @@ export function ProviderPicker({
                 });
               }}
               className={`sticker flex min-h-11 flex-col items-center justify-center gap-0.5 px-3 py-2.5 text-sm font-bold transition-transform ${
-                isCurrent ? "bg-primary text-primary-foreground" : "bg-surface text-foreground hover:-translate-y-0.5"
+                isCurrent ? "bg-primary text-primary-foreground" : "bg-surface text-foreground"
               } disabled:opacity-40 disabled:hover:translate-y-0`}
             >
               {meta.displayName}

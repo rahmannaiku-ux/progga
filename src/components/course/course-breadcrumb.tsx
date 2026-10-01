@@ -26,7 +26,7 @@ export function CourseBreadcrumb({ steps }: { steps: BreadcrumbStep[] }) {
           <ChevronLeft className="h-3.5 w-3.5" /> Back
         </Link>
       )}
-      <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] font-semibold text-muted-foreground">
         {steps.map((step, i) => (
           <span key={i} className="flex items-center gap-1">
             {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />}

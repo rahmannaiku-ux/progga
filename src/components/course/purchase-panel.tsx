@@ -188,7 +188,7 @@ export function PurchasePanel({
 
       {!isFree && !applied && (
         <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <label className="mb-1.5 block text-xs font-bold text-muted-foreground">
             Have a coupon?
           </label>
           <div className="flex gap-2">
@@ -198,7 +198,7 @@ export function PurchasePanel({
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApply())}
               placeholder="Enter coupon code"
-              className="h-11 min-w-0 flex-1 rounded-xl border border-border/60 bg-surface px-4 text-base uppercase text-foreground placeholder:normal-case focus:outline-none focus:ring-2 focus:ring-accent"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-border/60 bg-surface px-4 text-base text-foreground placeholder:normal-case focus:outline-none focus:ring-2 focus:ring-accent"
               disabled={applying}
             />
             <Button type="button" variant="outline" onClick={handleApply} disabled={applying}>

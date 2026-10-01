@@ -26,7 +26,7 @@ export function TxidForm({ paymentId, providerLabel = "bKash" }: { paymentId: st
         });
       }}
     >
-      <label htmlFor="transactionId" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+      <label htmlFor="transactionId" className="text-xs font-bold text-muted-foreground">
         {providerLabel} Transaction ID (TXID)
       </label>
       <input
@@ -36,14 +36,14 @@ export function TxidForm({ paymentId, providerLabel = "bKash" }: { paymentId: st
         minLength={6}
         maxLength={20}
         placeholder="e.g. 8A7BC92XYZ"
-        className="mt-1.5 w-full bg-surface px-4 py-3 font-mono text-base uppercase tracking-wide text-foreground placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground"
+        className="mt-1.5 w-full bg-surface px-4 py-3 font-mono text-base text-foreground placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground"
         autoComplete="off"
       />
       <p className="mt-1 text-xs text-muted-foreground">
         Find this in the "Payment Confirmation" SMS from {providerLabel}, right after you send the money.
       </p>
 
-      <label htmlFor="payerPhone" className="mt-4 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
+      <label htmlFor="payerPhone" className="mt-4 block text-xs font-bold text-muted-foreground">
         Your {providerLabel} number (optional)
       </label>
       <input
@@ -63,7 +63,7 @@ export function TxidForm({ paymentId, providerLabel = "bKash" }: { paymentId: st
       <button
         type="submit"
         disabled={isPending}
-        className="comic-btn mt-4 flex w-full items-center justify-center gap-2 bg-primary px-6 py-3 font-display text-base font-bold text-primary-foreground transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+        className="comic-btn mt-4 flex w-full items-center justify-center gap-2 bg-primary px-6 py-3 font-display text-base font-bold text-primary-foreground transition-transform active:translate-y-0 disabled:opacity-50"
       >
         <Send className="h-4 w-4" />
         {isPending ? "Submitting..." : "Submit payment"}

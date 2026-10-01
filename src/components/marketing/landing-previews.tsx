@@ -5,7 +5,6 @@ import {
   Clock,
   Coins,
   Flame,
-  Lock,
   MessageCircle,
   PlayCircle,
   Radio,
@@ -29,7 +28,7 @@ import { XP_REWARDS } from "@/lib/gamification/xp-curve";
 
 function PreviewTag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+    <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
       {children}
     </span>
   );
@@ -100,60 +99,6 @@ export function HeroMissionPreview() {
   );
 }
 
-/** How it works: one level of the Mission → Operation → Patrol hierarchy. */
-export function HierarchyExample({ level }: { level: "mission" | "operation" | "patrol" }) {
-  if (level === "mission") {
-    return (
-      <div aria-hidden="true" className="mt-4 rounded-xl border-2 border-border/40 bg-muted/40 p-3">
-        <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-          <span>Overall progress</span>
-          <span className="font-mono">60%</span>
-        </div>
-        <Bar fill={60} className="mt-2 h-2.5" />
-      </div>
-    );
-  }
-  if (level === "operation") {
-    return (
-      <ul aria-hidden="true" className="mt-4 space-y-2">
-        {[
-          { t: "Operation 1", state: "done" },
-          { t: "Operation 2", state: "active" },
-          { t: "Operation 3", state: "locked" },
-        ].map((o) => (
-          <li
-            key={o.t}
-            className={cn(
-              "flex min-h-11 items-center gap-2 rounded-xl border-2 px-3 text-sm font-semibold",
-              o.state === "active" ? "border-accent bg-accent/10 text-foreground" : "border-border/40 bg-muted/40 text-muted-foreground"
-            )}
-          >
-            {o.state === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />}
-            {o.state === "active" && <PlayCircle className="h-4 w-4 shrink-0 text-accent" />}
-            {o.state === "locked" && <Lock className="h-4 w-4 shrink-0" />}
-            {o.t}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  return (
-    <ul aria-hidden="true" className="mt-4 space-y-2">
-      {["Watch the lesson", "Read the notes", "Mark it complete"].map((t, i) => (
-        <li
-          key={t}
-          className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-border/40 bg-muted/40 px-3 text-sm font-semibold text-foreground"
-        >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary font-mono text-xs font-bold text-primary-foreground">
-            {i + 1}
-          </span>
-          {t}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** The Patrol (lesson) viewer: video, completion and the XP it pays. */
 export function PatrolViewerPreview() {
   return (
@@ -173,9 +118,9 @@ export function PatrolViewerPreview() {
           <span className="sticker px-2.5 py-0.5 font-mono text-xs font-bold text-foreground">3/5</span>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
-          <span className="rounded-full bg-muted px-2.5 py-1">Notes</span>
-          <span className="rounded-full bg-muted px-2.5 py-1">Resources</span>
-          <span className="rounded-full bg-muted px-2.5 py-1">Discussion</span>
+          <span className="rounded-md bg-muted px-2.5 py-1">Notes</span>
+          <span className="rounded-md bg-muted px-2.5 py-1">Resources</span>
+          <span className="rounded-md bg-muted px-2.5 py-1">Discussion</span>
         </div>
         <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">
           <span className="flex items-center gap-2">
@@ -288,7 +233,7 @@ export function LiveRoomPreview() {
         <Users className="relative h-12 w-12 text-white/85" strokeWidth={1.5} />
       </div>
       <div className="space-y-2 p-3">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
           <MessageCircle className="h-3.5 w-3.5" /> Live chat
         </p>
         {messages.map((m, i) => (

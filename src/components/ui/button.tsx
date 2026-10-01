@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-y-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -14,9 +14,9 @@ const buttonVariants = cva(
         // visually compete with primary ones. See .theme-cartoon .comic-btn
         // in globals.css for the chunky-shadow styling this activates.
         primary:
-          "comic-btn bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20",
+          "comic-btn bg-primary text-primary-foreground",
         accent:
-          "comic-btn bg-accent text-accent-foreground hover:bg-accent/90 shadow-glow hover:shadow-lg",
+          "comic-btn bg-accent text-accent-foreground",
         outline:
           "comic-btn border border-border/60 text-foreground hover:bg-surface hover:border-primary/50",
         ghost: "text-foreground hover:bg-surface",

@@ -44,7 +44,7 @@ export default async function BlogPage({
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="glass-panel block overflow-hidden p-6 transition-transform hover:-translate-y-0.5"
+              className="glass-panel block overflow-hidden p-6 transition-transform"
             >
               {post.coverImageUrl && isSafeDestinationUrl(post.coverImageUrl) && (
                 <div className="relative -mx-6 -mt-6 mb-4 aspect-[16/7] w-[calc(100%+3rem)] overflow-hidden bg-muted">

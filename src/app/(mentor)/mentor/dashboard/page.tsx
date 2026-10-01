@@ -74,7 +74,7 @@ export default async function MentorDashboardPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {pendingSubmissions > 0
               ? `${pendingSubmissions} submission${pendingSubmissions === 1 ? "" : "s"} waiting on your review.`
-              : "No submissions waiting — you're all caught up."}
+              : "Nothing waiting for review."}
           </p>
         </div>
         <ProggyMascot state="welcoming" className="h-24 w-24 shrink-0" />

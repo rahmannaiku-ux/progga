@@ -179,7 +179,7 @@ export default async function MedalsPage({
 
         <StaggerItem className="comic-panel-bold h-fit bg-primary p-6 text-center">
           <Trophy className="mx-auto h-10 w-10 fill-xp text-xp" />
-          <p className="mt-2 text-xs font-bold uppercase tracking-wide text-primary-foreground/70">
+          <p className="mt-2 text-xs font-bold text-primary-foreground/70">
             Total Certificates
           </p>
           <p className="mt-1 font-display text-4xl font-extrabold text-primary-foreground">

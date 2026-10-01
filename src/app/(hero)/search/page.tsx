@@ -38,7 +38,7 @@ function ResultList({
   if (hits.length === 0) return null;
   return (
     <section>
-      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-bold text-muted-foreground">
         {title} ({hits.length})
       </p>
       <div className="mt-2 space-y-2">
