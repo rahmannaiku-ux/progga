@@ -6,6 +6,7 @@ import YouTube, { type YouTubeEvent, type YouTubePlayer } from "react-youtube";
 import { PlayCircle, Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { youtubeEmbedHost } from "@/lib/cookie-consent";
+import { YOUTUBE_CLEAN_PLAYER_VARS } from "@/lib/youtube";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
 
@@ -150,13 +151,10 @@ export function LiveClassPlayer({
                 autoplay: 1,
                 controls: 0,
                 disablekb: 1,
-                rel: 0,
-                modestbranding: 1,
                 fs: 0,
-                iv_load_policy: 3,
-                // Captions off by default; same as the lesson player.
-                cc_load_policy: 0,
-                playsinline: 1,
+                // rel 0, cc_load_policy 0 (captions off unless the student turns
+                // them on), iv_load_policy 3, modestbranding, playsinline.
+                ...YOUTUBE_CLEAN_PLAYER_VARS,
                 origin: typeof window !== "undefined" ? window.location.origin : undefined,
               },
             }}

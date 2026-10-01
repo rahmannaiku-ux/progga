@@ -41,6 +41,25 @@ export function youtubeThumbnailUrl(videoId: string) {
 }
 
 /**
+ * Player parameters every Proggaa YouTube embed (lesson and live class) shares.
+ *
+ * - cc_load_policy 0: captions are not forced on. A student can still turn
+ *   them on with YouTube's own CC control, and YouTube remembers that choice.
+ *   Never set this to 1 or add cc_lang_pref, which would switch captions on.
+ * - rel 0: related videos at the end come from the same channel instead of
+ *   anywhere on YouTube. YouTube does NOT let an embed remove its end-of-video
+ *   suggestions or end screen entirely, and we deliberately do not cover or
+ *   hide them with overlays or DOM tricks, which YouTube's terms forbid.
+ */
+export const YOUTUBE_CLEAN_PLAYER_VARS = {
+  rel: 0,
+  cc_load_policy: 0,
+  iv_load_policy: 3,
+  modestbranding: 1,
+  playsinline: 1,
+} as const;
+
+/**
  * Embed URL for a live class's YouTube stream. Deliberately separate
  * from the lesson player's embed setup (video-player.tsx uses the
  * react-youtube IFrame Player API wrapper for custom controls/progress
@@ -48,10 +67,12 @@ export function youtubeThumbnailUrl(videoId: string) {
  * that, just a plain, responsive iframe. `autoplay=1` only takes effect
  * once the student has explicitly chosen to join (see
  * live-class-player.tsx, which doesn't mount this iframe until then),
- * so this never autoplays on page load. `cc_load_policy=0` keeps
- * captions off by default, matching every other YouTube embed in the
- * app — see video-player.tsx and live-class-player.tsx.
+ * so this never autoplays on page load. Captions off and reduced
+ * recommendations come from YOUTUBE_CLEAN_PLAYER_VARS, shared with the
+ * players in video-player.tsx and live-class-player.tsx.
  */
 export function liveEmbedUrl(videoId: string) {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&cc_load_policy=0`;
+  const params = new URLSearchParams({ autoplay: "1" });
+  for (const [key, value] of Object.entries(YOUTUBE_CLEAN_PLAYER_VARS)) params.set(key, String(value));
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }
