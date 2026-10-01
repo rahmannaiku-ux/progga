@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { planTransition, resolveLiveClassState, type LiveSchedule } from "@/lib/live/state";
 import { resolveLiveApiUser } from "@/server/live/route-auth";
 import { isLiveRoomEnabled } from "@/lib/live/flag";
+import { canViewLiveClass } from "@/server/live/live-access";
 
 /**
  * GET /api/live/[id]/state
@@ -33,6 +34,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     include: { lesson: { select: { scheduledStart: true, scheduledEnd: true, title: true } } },
   });
   if (!liveClass) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  // Same enrollment/ownership rule as joining: don't leak another course's schedule or title.
+  if (!(await canViewLiveClass(liveClass, user))) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const schedule: LiveSchedule = {
     scheduledStart: liveClass.lesson.scheduledStart!,

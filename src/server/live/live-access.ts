@@ -33,6 +33,23 @@ export type LiveAccessResult =
   | { ok: false; reason: "NOT_FOUND" | "CANCELLED" | "NOT_ENROLLED" | "BANNED" | "RATE_LIMITED" };
 
 /**
+ * Enrollment/ownership check on its own (no rate limit, no ban check) for
+ * read-only endpoints such as the waiting-room state poll.
+ */
+export async function canViewLiveClass(
+  liveClass: Pick<LiveClass, "courseId">,
+  user: { id: string; role: Role }
+): Promise<boolean> {
+  if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") return true;
+  if (await isOwnerOrCoTeacher(liveClass.courseId, user.id)) return true;
+  const enrollment = await db.enrollment.findUnique({
+    where: { userId_courseId: { userId: user.id, courseId: liveClass.courseId } },
+    select: { status: true },
+  });
+  return Boolean(enrollment && ENROLLED_STATUSES.has(enrollment.status));
+}
+
+/**
  * Student/anyone-with-a-role join check. `role` is only used to let a
  * course's own teacher(s) and admins into the room without an
  * enrollment row (matching how they can already view every other course
@@ -46,19 +63,7 @@ export async function assertCanJoinLiveRoom(
   if (!liveClass) return { ok: false, reason: "NOT_FOUND" };
   if (liveClass.state === "CANCELLED") return { ok: false, reason: "CANCELLED" };
 
-  const isStaff = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isStaff) {
-    const isTeacherOfCourse = await isOwnerOrCoTeacher(liveClass.courseId, user.id);
-    if (!isTeacherOfCourse) {
-      const enrollment = await db.enrollment.findUnique({
-        where: { userId_courseId: { userId: user.id, courseId: liveClass.courseId } },
-        select: { status: true },
-      });
-      if (!enrollment || !ENROLLED_STATUSES.has(enrollment.status)) {
-        return { ok: false, reason: "NOT_ENROLLED" };
-      }
-    }
-  }
+  if (!(await canViewLiveClass(liveClass, user))) return { ok: false, reason: "NOT_ENROLLED" };
 
   const banned = await isBannedFromLiveClass(liveClassId, user.id);
   if (banned) return { ok: false, reason: "BANNED" };
