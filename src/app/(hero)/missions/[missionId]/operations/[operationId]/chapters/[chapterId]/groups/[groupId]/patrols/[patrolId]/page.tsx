@@ -18,8 +18,7 @@ import { db } from "@/lib/db/client";
 import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { GroupSidebar } from "@/components/course/curriculum-sidebar";
 import { MobileGroupSheet } from "@/components/course/mobile-group-sheet";
-import { LessonVideoFloat } from "@/components/course/lesson-video-float";
-import { mediaSrc } from "@/lib/media-url";
+import { LessonPlayer } from "@/components/course/lesson-player";
 import { LiveLessonSection } from "@/components/course/live-lesson-section";
 import { BookmarkButton } from "@/components/course/bookmark-button";
 import { NotesPanel } from "@/components/course/notes-panel";
@@ -315,11 +314,9 @@ export default async function LessonPlayerPage({
             isCompleted={progress?.isCompleted ?? false}
           />
         ) : lesson.youtubeVideoId ? (
-          <LessonVideoFloat
+          <LessonPlayer
             lessonId={lesson.id}
-            title={lesson.title}
             youtubeVideoId={lesson.youtubeVideoId}
-            thumbnailUrl={mediaSrc(lesson.thumbnailUrl, 1280)}
             resumeAtSeconds={progress?.lastPositionSec ?? 0}
             isCompleted={progress?.isCompleted ?? false}
           />
