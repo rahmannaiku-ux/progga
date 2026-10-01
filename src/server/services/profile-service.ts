@@ -207,6 +207,46 @@ export async function completeStudentProfile(userId: string, input: CompleteStud
   return { ok: true };
 }
 
+export type AddStudentEmailResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid" | "in_use" | "already_set" | "not_found"; message: string };
+
+/**
+ * One-time email for a student who finished their profile before email was
+ * required. Only works while the account has no email; once saved it can't be
+ * changed from here, the same rule as the parent phones.
+ */
+export async function addStudentEmail(userId: string, rawEmail: string): Promise<AddStudentEmailResult> {
+  const email = (rawEmail ?? "").trim().toLowerCase();
+  if (email.length === 0) return { ok: false, reason: "invalid", message: "Email is required." };
+  if (email.length > MAX_TEXT_LENGTH || !EMAIL_PATTERN.test(email)) {
+    return { ok: false, reason: "invalid", message: "Enter a valid email address." };
+  }
+
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true } });
+  if (!user) return { ok: false, reason: "not_found", message: "We couldn't find your account." };
+  if (user.email) {
+    return { ok: false, reason: "already_set", message: "Your email is already saved and can't be changed here." };
+  }
+
+  const taken = await db.user.findFirst({ where: { email, NOT: { id: userId } }, select: { id: true } });
+  if (taken) return { ok: false, reason: "in_use", message: "That email is already used by another account." };
+
+  try {
+    // Guarded on `email: null` so two quick submissions can't overwrite each other.
+    const res = await db.user.updateMany({ where: { id: userId, email: null }, data: { email } });
+    if (res.count === 0) {
+      return { ok: false, reason: "already_set", message: "Your email is already saved and can't be changed here." };
+    }
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return { ok: false, reason: "in_use", message: "That email is already used by another account." };
+    }
+    throw err;
+  }
+  return { ok: true };
+}
+
 export type UpdateStudentProfileResult =
   | { ok: true }
   | { ok: false; reason: "validation"; fieldErrors: FieldErrors<EditableStudentProfileInput> }

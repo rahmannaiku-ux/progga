@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { CompleteProfileForm } from "@/components/auth/complete-profile-form";
+import { AddEmailForm } from "@/components/auth/add-email-form";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 
 export const metadata = { title: "Complete your profile — Proggaa" };
@@ -17,7 +18,23 @@ export default async function CompleteProfilePage() {
   const user = await getCurrentSessionUser();
   if (!user) redirect("/login?returnTo=/complete-profile");
   if (!user.isActive || user.isSuspended) redirect("/login?error=account_inactive");
-  if (user.profileCompleted) redirect("/dashboard");
+  if (user.profileCompleted && user.email) redirect("/dashboard");
+
+  // Finished the profile before email was required: only the email is missing.
+  if (user.profileCompleted) {
+    return (
+      <div>
+        <div className="mb-6 text-center">
+          <ProggyMascot state="thinking" className="mx-auto h-24 w-24" groundShadow priority />
+          <h1 className="mt-2 font-display text-2xl font-extrabold text-foreground">Add your email</h1>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            Every student account now needs an email. Add yours once to keep using Proggaa.
+          </p>
+        </div>
+        <AddEmailForm />
+      </div>
+    );
+  }
 
   return (
     <div>

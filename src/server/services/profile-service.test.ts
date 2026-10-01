@@ -10,6 +10,7 @@ const studentProfileUpsert = vi.fn();
 const studentProfileFindUnique = vi.fn();
 const studentProfileUpdate = vi.fn();
 const userUpdate = vi.fn();
+const userUpdateMany = vi.fn();
 const transaction = vi.fn();
 
 vi.mock("@/lib/db/client", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/lib/db/client", () => ({
       findUnique: (...args: unknown[]) => userFindUnique(...args),
       findFirst: (...args: unknown[]) => userFindFirst(...args),
       update: (...args: unknown[]) => userUpdate(...args),
+      updateMany: (...args: unknown[]) => userUpdateMany(...args),
     },
     studentProfile: {
       upsert: (...args: unknown[]) => studentProfileUpsert(...args),
@@ -28,7 +30,7 @@ vi.mock("@/lib/db/client", () => ({
   },
 }));
 
-const { completeStudentProfile, updateStudentProfile } = await import("./profile-service");
+const { completeStudentProfile, updateStudentProfile, addStudentEmail } = await import("./profile-service");
 
 const VALID_INPUT = {
   name: "Fahim Rahman",
@@ -238,5 +240,45 @@ describe("updateStudentProfile", () => {
   it("returns not_found when the user has no profile row", async () => {
     studentProfileFindUnique.mockResolvedValue(null);
     expect(await updateStudentProfile("user_1", EDITABLE)).toEqual({ ok: false, reason: "not_found" });
+  });
+});
+
+describe("addStudentEmail", () => {
+  beforeEach(() => {
+    userFindUnique.mockReset().mockResolvedValue({ id: "user_1", email: null });
+    userFindFirst.mockReset().mockResolvedValue(null);
+    userUpdateMany.mockReset().mockResolvedValue({ count: 1 });
+  });
+
+  it("saves a valid email, lower-cased, for a student who has none", async () => {
+    const res = await addStudentEmail("user_1", "  Fahim@Example.COM ");
+    expect(res).toEqual({ ok: true });
+    expect(userUpdateMany).toHaveBeenCalledWith({
+      where: { id: "user_1", email: null },
+      data: { email: "fahim@example.com" },
+    });
+  });
+
+  it("rejects an empty or malformed email without touching the database", async () => {
+    expect(await addStudentEmail("user_1", "")).toMatchObject({ ok: false, reason: "invalid" });
+    expect(await addStudentEmail("user_1", "not-an-email")).toMatchObject({ ok: false, reason: "invalid" });
+    expect(userUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to change an email that is already saved", async () => {
+    userFindUnique.mockResolvedValue({ id: "user_1", email: "old@example.com" });
+    expect(await addStudentEmail("user_1", "new@example.com")).toMatchObject({ ok: false, reason: "already_set" });
+    expect(userUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses an email another account already uses", async () => {
+    userFindFirst.mockResolvedValue({ id: "user_2" });
+    expect(await addStudentEmail("user_1", "taken@example.com")).toMatchObject({ ok: false, reason: "in_use" });
+    expect(userUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite when a second submission wins the race", async () => {
+    userUpdateMany.mockResolvedValue({ count: 0 });
+    expect(await addStudentEmail("user_1", "a@example.com")).toMatchObject({ ok: false, reason: "already_set" });
   });
 });

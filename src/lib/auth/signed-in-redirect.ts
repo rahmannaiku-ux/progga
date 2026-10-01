@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
+import { studentNeedsProfileStep } from "@/lib/auth/profile-gate";
 
 /** Role-appropriate landing page ("Command Center"). */
 export function dashboardHrefForRole(role: string) {
@@ -18,6 +19,6 @@ export function dashboardHrefForRole(role: string) {
 export async function redirectIfSignedIn(returnTo?: string) {
   const user = await getCurrentSessionUser();
   if (!user || !user.isActive || user.isSuspended) return;
-  if (user.role === "STUDENT" && !user.profileCompleted) redirect("/complete-profile");
+  if (studentNeedsProfileStep(user)) redirect("/complete-profile");
   redirect(returnTo ?? dashboardHrefForRole(user.role));
 }

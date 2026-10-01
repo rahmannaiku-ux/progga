@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
+import { studentNeedsProfileStep } from "@/lib/auth/profile-gate";
 import type { Role } from "@prisma/client";
 
 /**
@@ -33,7 +34,7 @@ export async function resolveLiveApiUser(): Promise<LiveApiAuthResult> {
   const user = await getCurrentActiveSessionUser();
   if (!user) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
 
-  if (user.role === "STUDENT" && !user.profileCompleted) {
+  if (studentNeedsProfileStep(user)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "PROFILE_INCOMPLETE" }, { status: 403 }),

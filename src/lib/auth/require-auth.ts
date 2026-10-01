@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Role, User } from "@prisma/client";
 import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
+import { studentNeedsProfileStep } from "@/lib/auth/profile-gate";
 
 /**
  * Session-based guards for route handlers and Server Actions. Page
@@ -91,7 +92,7 @@ export function isMultiSessionRole(role: Role): boolean {
  */
 export async function requireCompletedProfile(): Promise<User> {
   const user = await requireAuth();
-  if (user.role === "STUDENT" && !user.profileCompleted) {
+  if (studentNeedsProfileStep(user)) {
     throw new Error("Please complete your profile before continuing.");
   }
   return user;
@@ -116,7 +117,7 @@ export async function requireCompletedProfileForPage(returnTo?: string): Promise
   if (!user!.isActive || user!.isSuspended) {
     redirect("/login?error=account_inactive");
   }
-  if (!user!.profileCompleted) {
+  if (studentNeedsProfileStep(user!)) {
     redirect("/complete-profile");
   }
   return user!;

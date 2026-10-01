@@ -16,6 +16,7 @@ import { MaintenancePage } from "@/components/shared/maintenance-page";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 import { AntiDevToolsProvider } from "@/components/security/anti-devtools-provider";
 import { isAntiDevToolsEnabledFor } from "@/lib/security/anti-devtools-config";
+import { studentNeedsProfileStep } from "@/lib/auth/profile-gate";
 
 export default async function HeroLayout({
   children,
@@ -39,7 +40,7 @@ export default async function HeroLayout({
   // Teachers/admins reaching this layout (if that ever happens) are
   // deliberately NOT bounced to /complete-profile — that page and its
   // StudentProfile fields are student-only by design.
-  if (user.role === "STUDENT" && !user.profileCompleted) {
+  if (studentNeedsProfileStep(user)) {
     redirect("/complete-profile");
   }
 

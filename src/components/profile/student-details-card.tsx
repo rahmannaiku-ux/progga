@@ -91,11 +91,13 @@ function TextField({
 
 export function StudentDetailsCard({
   phone,
+  email,
   details,
   fatherPhone,
   motherPhone,
 }: {
   phone: string | null;
+  email: string | null;
   details: EditableStudentProfileInput;
   fatherPhone: string | null;
   motherPhone: string | null;
@@ -232,11 +234,12 @@ export function StudentDetailsCard({
 
       <div className="mt-3 border-t border-border/10 pt-3">
         <dl className="divide-y divide-border/10">
+          <Row label="Email" value={email ?? ""} locked />
           <Row label="Father's phone" value={localPhone(fatherPhone)} locked />
           <Row label="Mother's phone" value={localPhone(motherPhone)} locked />
         </dl>
         <p className="mt-2 text-xs text-muted-foreground">
-          Parent phone numbers can't be changed here. Contact support if one needs updating.
+          Parent phone numbers and your email can't be changed here. Contact support if one needs updating.
         </p>
       </div>
     </div>

@@ -102,6 +102,7 @@ export default async function ProfilePage() {
         <StaggerItem>
           <StudentDetailsCard
             phone={user.phone}
+            email={user.email}
             fatherPhone={studentProfile.fatherPhone}
             motherPhone={studentProfile.motherPhone}
             details={{

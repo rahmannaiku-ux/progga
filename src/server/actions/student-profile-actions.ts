@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import {
   completeStudentProfile,
   updateStudentProfile,
+  addStudentEmail,
   type CompleteStudentProfileInput,
   type EditableStudentProfileInput,
 } from "@/server/services/profile-service";
@@ -44,6 +45,14 @@ export async function updateStudentProfileAction(input: EditableStudentProfileIn
     hscBatch: input.hscBatch,
     studyVersion: input.studyVersion,
   });
+  if (result.ok) revalidatePath("/profile");
+  return result;
+}
+
+/** One-time email for a student who has none yet. Same userId rule as above. */
+export async function addStudentEmailAction(input: { email: string }) {
+  const user = await requireAuth();
+  const result = await addStudentEmail(user.id, input.email);
   if (result.ok) revalidatePath("/profile");
   return result;
 }

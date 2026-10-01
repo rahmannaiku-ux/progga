@@ -13,8 +13,8 @@ vi.mock("@/lib/auth/require-auth", () => ({
 
 const { resolveLiveApiUser } = await import("./route-auth");
 
-function user(overrides: Partial<{ id: string; role: string; profileCompleted: boolean }>) {
-  return { id: "user_1", role: "STUDENT", profileCompleted: true, ...overrides };
+function user(overrides: Partial<{ id: string; role: string; profileCompleted: boolean; email: string | null }>) {
+  return { id: "user_1", role: "STUDENT", profileCompleted: true, email: "student@example.com", ...overrides };
 }
 
 beforeEach(() => {
@@ -54,4 +54,10 @@ describe("resolveLiveApiUser", () => {
       expect(result).toEqual({ ok: true, user: { id: "user_1", role } });
     }
   );
+
+  it("blocks a STUDENT who finished the profile but has no email yet", async () => {
+    getCurrentActiveSessionUser.mockResolvedValue(user({ role: "STUDENT", email: null }));
+    const res = await resolveLiveApiUser();
+    expect(res.ok).toBe(false);
+  });
 });
