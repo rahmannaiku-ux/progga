@@ -1,6 +1,7 @@
 import { CalendarDays } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { createMissionCalendarEvent, deleteCalendarEvent } from "@/server/actions/calendar-actions";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
@@ -11,12 +12,12 @@ export default async function MentorCalendarPage() {
 
   const [events, myCourses] = await Promise.all([
     db.calendarEvent.findMany({
-      where: isAdmin ? { isGlobal: false } : { course: { teacherId: mentor.id } },
+      where: isAdmin ? { isGlobal: false } : { course: courseAccessFilter(mentor.id) },
       orderBy: { startAt: "desc" },
       include: { course: { select: { title: true } } },
     }),
     db.course.findMany({
-      where: isAdmin ? {} : { teacherId: mentor.id },
+      where: isAdmin ? {} : courseAccessFilter(mentor.id),
       select: { id: true, title: true },
       orderBy: { title: "asc" },
     }),

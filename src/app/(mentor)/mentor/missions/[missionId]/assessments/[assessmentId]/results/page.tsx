@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { RISK_LEVEL_LABEL } from "@/lib/exam-integrity";
 
@@ -31,8 +32,8 @@ export default async function AssessmentResultsPage({
     },
   });
   if (!assessment) notFound();
-  const ownerTeacherId = assessment.course?.teacherId ?? assessment.lesson?.group.chapter.module.course.teacherId;
-  if (!isAdmin && ownerTeacherId !== user.id) notFound();
+  const ownerCourseId = assessment.course?.id ?? assessment.lesson?.group.chapter.module.courseId;
+  if (!isAdmin && !(ownerCourseId && (await isCourseMentor(ownerCourseId, user.id)))) notFound();
 
   const attempts = await db.assessmentAttempt.findMany({
     where: { assessmentId: assessment.id, status: { in: ["SUBMITTED", "GRADED", "DISQUALIFIED"] } },

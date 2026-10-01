@@ -4,6 +4,7 @@ import { Trash2, Library, ChevronUp, ChevronDown, UploadCloud } from "lucide-rea
 import { requireRole } from "@/lib/auth/require-role";
 import { toDhakaInputValue } from "@/lib/timezone";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { Badge } from "@/components/ui/badge";
 import { QuestionForm } from "@/components/mentor-dashboard/question-form";
@@ -56,11 +57,9 @@ export default async function AssessmentEditorPage({
   });
   if (!assessment) notFound();
   const courseId = assessment.course?.id ?? assessment.lesson?.group.chapter.module.courseId;
-  const ownerTeacherId =
-    assessment.course?.teacherId ?? assessment.lesson?.group.chapter.module.course.teacherId;
   if (!courseId) notFound();
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isAdmin && ownerTeacherId !== user.id) notFound();
+  if (!isAdmin && !(await isCourseMentor(courseId, user.id))) notFound();
 
   const chapterOptionsRaw = await db.module.findMany({
     where: { courseId },

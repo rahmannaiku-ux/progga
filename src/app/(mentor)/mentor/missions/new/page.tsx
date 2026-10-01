@@ -121,7 +121,7 @@ export default async function NewMissionPage() {
         {otherTeachers.length > 0 && (
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">
-              Co-teachers <span className="text-muted-foreground">(optional)</span>
+              Co-mentors <span className="text-muted-foreground">(optional, needs admin approval)</span>
             </label>
             <select
               name="coTeacherIds"
@@ -136,7 +136,7 @@ export default async function NewMissionPage() {
               ))}
             </select>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ctrl/Cmd-click to select more than one. You can also manage the team later.
+              Ctrl/Cmd-click to select more than one. An admin approves each request before they get access. You can also manage the team later.
             </p>
           </div>
         )}

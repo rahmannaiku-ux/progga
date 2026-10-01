@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { issueCertificate } from "@/lib/certificate/issue-certificate";
 import { generateCertificateNo } from "@/lib/certificate/certificate-no";
 import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
@@ -42,7 +43,7 @@ async function issueCore({
     select: { id: true, title: true, teacherId: true },
   });
   if (!course) throw new Error("That mission doesn't exist.");
-  if (requireCourseOwnerId && course.teacherId !== requireCourseOwnerId) {
+  if (requireCourseOwnerId && !(await isCourseMentor(course.id, requireCourseOwnerId))) {
     throw new Error("You can only issue medals for your own missions.");
   }
 

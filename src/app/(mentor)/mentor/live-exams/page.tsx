@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Radio, History } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { getLiveExamStatus } from "@/lib/live-exam";
 import { formatDhakaTime } from "@/lib/timezone";
 
@@ -20,7 +21,7 @@ export default async function LiveExamsPage() {
       isLiveExam: true,
       publishedAt: { not: null },
       archivedAt: null,
-      ...(isAdmin ? {} : { course: { teacherId: user.id } }),
+      ...(isAdmin ? {} : { course: courseAccessFilter(user.id) }),
     },
     include: {
       course: { select: { id: true, title: true } },

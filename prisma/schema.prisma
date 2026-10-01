@@ -291,6 +291,36 @@ model CourseTeacher {
   @@index([teacherId])
 }
 
+enum CourseTeacherRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A mentor asking for another mentor to share a mission. Nothing is shared
+// until an admin approves it; approving creates the CourseTeacher row.
+model CourseTeacherRequest {
+  id              String                     @id @default(cuid())
+  courseId        String
+  course          Course                     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // The mentor being asked to join the mission.
+  teacherId       String
+  teacher         User                       @relation("CourseTeacherRequestTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  roleLabel       String?
+  requestedById   String
+  requestedBy     User                       @relation("CourseTeacherRequestedBy", fields: [requestedById], references: [id])
+  status          CourseTeacherRequestStatus @default(PENDING)
+  reviewedById    String?
+  reviewedBy      User?                      @relation("CourseTeacherRequestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@unique([courseId, teacherId])
+  @@index([status])
+}
+
 // A teacher-created, code-based discount for one specific course — a
 // separate, additive layer from CourseDiscount above (admin-managed,
 // codeless, automatic). The two are deliberately never combined in one
@@ -534,6 +564,9 @@ model User {
   discountsCreated  CourseDiscount[]    @relation("DiscountCreatedBy")
   courseTeacherOf   CourseTeacher[]     @relation("CourseTeacherAssignment")
   courseTeachersAdded CourseTeacher[]   @relation("CourseTeacherAddedBy")
+  coMentorRequestsForMe CourseTeacherRequest[] @relation("CourseTeacherRequestTeacher")
+  coMentorRequestsMade  CourseTeacherRequest[] @relation("CourseTeacherRequestedBy")
+  coMentorRequestsReviewed CourseTeacherRequest[] @relation("CourseTeacherRequestReviewedBy")
   couponsCreated    CourseCoupon[]      @relation("CouponCreatedBy")
   couponRedemptions CouponRedemption[]
   rewardEvents      RewardEvent[]
@@ -748,6 +781,7 @@ model Course {
   // CourseTeacher's own comment for why this is additive rather than
   // a replacement for teacherId).
   courseTeachers   CourseTeacher[]
+  teacherRequests  CourseTeacherRequest[]
   coupons          CourseCoupon[]
   liveClasses      LiveClass[]
 

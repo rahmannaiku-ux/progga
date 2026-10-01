@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardCheck } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { formatMoney } from "@/lib/payments/format";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
@@ -17,27 +18,27 @@ export default async function MentorDashboardPage() {
     pendingSubmissions,
     recentSubmissions,
   ] = await Promise.all([
-    db.course.findMany({ where: { teacherId: user.id }, select: { id: true, title: true } }),
-    db.enrollment.count({ where: { course: { teacherId: user.id } } }),
+    db.course.findMany({ where: courseAccessFilter(user.id), select: { id: true, title: true } }),
+    db.enrollment.count({ where: { course: courseAccessFilter(user.id) } }),
     db.payment.aggregate({
       _sum: { amountCents: true },
-      where: { status: "PAID", course: { teacherId: user.id } },
+      where: { status: "PAID", course: courseAccessFilter(user.id) },
     }),
     db.courseReview.aggregate({
       _avg: { rating: true },
       _count: true,
-      where: { course: { teacherId: user.id } },
+      where: { course: courseAccessFilter(user.id) },
     }),
     db.assignmentSubmission.count({
       where: {
         status: { in: ["SUBMITTED", "LATE"] },
-        assignment: { lesson: { group: { chapter: { module: { course: { teacherId: user.id } } } } } },
+        assignment: { lesson: { group: { chapter: { module: { course: courseAccessFilter(user.id) } } } } },
       },
     }),
     db.assignmentSubmission.findMany({
       where: {
         status: { in: ["SUBMITTED", "LATE"] },
-        assignment: { lesson: { group: { chapter: { module: { course: { teacherId: user.id } } } } } },
+        assignment: { lesson: { group: { chapter: { module: { course: courseAccessFilter(user.id) } } } } },
       },
       orderBy: { submittedAt: "desc" },
       take: 5,

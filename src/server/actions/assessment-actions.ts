@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getMissionsBase, revalidateMissionPage } from "@/lib/mission-paths";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import {
   assessmentCreateSchema,
   assessmentUpdateSchema,
@@ -22,11 +23,11 @@ import { parseOptionalDhakaInput } from "@/lib/timezone";
 async function assertOwnsCourse(courseId: string, userId: string, role: string) {
   const course = await db.course.findUnique({
     where: { id: courseId },
-    select: { teacherId: true },
+    select: { id: true },
   });
   if (!course) throw new Error("Mission not found.");
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
-  if (!isAdmin && course.teacherId !== userId) {
+  if (!isAdmin && !(await isCourseMentor(courseId, userId))) {
     throw new Error("You don't have access to this mission.");
   }
 }

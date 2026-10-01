@@ -26,13 +26,30 @@ export default async function MentorTeamPage({ params }: { params: { missionId: 
           teacher: { select: { id: true, firstName: true, lastName: true, avatarUrl: true, headline: true } },
         },
       },
+      teacherRequests: {
+        where: { status: { in: ["PENDING", "REJECTED"] } },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          status: true,
+          roleLabel: true,
+          rejectionReason: true,
+          teacher: { select: { id: true, firstName: true, lastName: true, avatarUrl: true, headline: true } },
+        },
+      },
     },
   });
   if (!course) notFound();
 
   await assertOwnsCourse(course.id, user.id, user.role);
 
-  const assignedIds = new Set([course.teacher.id, ...course.courseTeachers.map((ct) => ct.teacher.id)]);
+  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+  const canManage = isAdmin || course.teacher.id === user.id;
+  const assignedIds = new Set([
+    course.teacher.id,
+    ...course.courseTeachers.map((ct) => ct.teacher.id),
+    ...course.teacherRequests.filter((r) => r.status === "PENDING").map((r) => r.teacher.id),
+  ]);
   const [eligibleTeachers, currentUser] = await Promise.all([
     db.user.findMany({
       where: { role: "TEACHER", isActive: true, isSuspended: false, id: { notIn: Array.from(assignedIds) } },
@@ -55,7 +72,8 @@ export default async function MentorTeamPage({ params }: { params: { missionId: 
         Team — {course.title}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Everyone assigned here shows up in the "Course Teachers" section on the buying page.
+        Everyone assigned here shows up in the "Course Teachers" section on the buying page and can manage
+        this mission. Adding a mentor needs an admin's approval.
       </p>
 
       <div className="mt-8 glass-panel p-5">
@@ -73,7 +91,11 @@ export default async function MentorTeamPage({ params }: { params: { missionId: 
           courseId={course.id}
           primaryTeacher={course.teacher}
           coTeachers={course.courseTeachers}
+          requests={course.teacherRequests}
           eligibleTeachers={eligibleTeachers}
+          canManage={canManage}
+          isAdmin={isAdmin}
+          currentUserId={user.id}
         />
       </div>
     </div>

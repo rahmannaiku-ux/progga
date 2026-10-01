@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { requireMentorUser, requireAdminUser } from "./require-user";
 import { logActivity } from "./admin-actions";
 import { parseDhakaInput } from "@/lib/timezone";
@@ -39,8 +40,8 @@ export async function createMissionCalendarEvent(formData: FormData) {
     throw new Error("Mission, title, and start date/time are all required.");
   }
 
-  const course = await db.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
-  if (!course || (course.teacherId !== mentor.id && mentor.role === "TEACHER")) {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true } });
+  if (!course || (mentor.role === "TEACHER" && !(await isCourseMentor(courseId, mentor.id)))) {
     throw new Error("You can only add events to your own missions.");
   }
 
@@ -98,7 +99,7 @@ export async function deleteCalendarEvent(eventId: string) {
 
   const event = await db.calendarEvent.findUnique({
     where: { id: eventId },
-    select: { id: true, course: { select: { teacherId: true } } },
+    select: { id: true, courseId: true },
   });
   if (!event) return;
 
@@ -106,7 +107,7 @@ export async function deleteCalendarEvent(eventId: string) {
   // global event (no course, so `event.course` is null) always fails
   // this for a TEACHER, same as it should. ADMIN/SUPER_ADMIN skip the
   // check entirely, same pattern as deleteMentorAnnouncement.
-  if (user.role === "TEACHER" && event.course?.teacherId !== user.id) {
+  if (user.role === "TEACHER" && !(event.courseId && (await isCourseMentor(event.courseId, user.id)))) {
     throw new Error("You can only delete events from your own missions.");
   }
 

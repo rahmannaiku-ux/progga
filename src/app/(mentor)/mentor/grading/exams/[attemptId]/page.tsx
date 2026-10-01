@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { GradeAnswerForm } from "@/components/mentor-dashboard/grade-answer-form";
 import { CheckCircle2, XCircle } from "lucide-react";
 
@@ -20,7 +21,7 @@ export default async function GradeAttemptPage({
         select: {
           title: true,
           passPercentage: true,
-          course: { select: { teacherId: true } },
+          course: { select: { id: true } },
         },
       },
       answers: {
@@ -31,7 +32,7 @@ export default async function GradeAttemptPage({
   if (!attempt) notFound();
 
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isAdmin && attempt.assessment.course?.teacherId !== user.id) notFound();
+  if (!isAdmin && !(attempt.assessment.course && (await isCourseMentor(attempt.assessment.course.id, user.id)))) notFound();
 
   const ordered = attempt.selectedQuestionIds
     .map((qid) => attempt.answers.find((a) => a.questionId === qid))

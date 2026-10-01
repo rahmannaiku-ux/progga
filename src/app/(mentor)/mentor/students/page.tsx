@@ -1,6 +1,7 @@
 import { Users, Flame } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { Pagination } from "@/components/admin-dashboard/pagination";
 
 import { contactLabel } from "@/lib/contact-label";
@@ -17,7 +18,7 @@ export default async function MentorStudentsPage({
   const q = searchParams.q?.trim() ?? "";
   const page = Math.max(1, Number(searchParams.page ?? 1) || 1);
 
-  const courseFilter = isAdmin ? {} : { course: { teacherId: mentor.id } };
+  const courseFilter = isAdmin ? {} : { course: courseAccessFilter(mentor.id) };
 
   const where = {
     ...courseFilter,

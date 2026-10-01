@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { Badge } from "@/components/ui/badge";
 
 export default async function AssignmentGradingQueuePage() {
@@ -12,7 +13,7 @@ export default async function AssignmentGradingQueuePage() {
       status: { in: ["SUBMITTED", "LATE"] },
       assignment: isAdmin
         ? {}
-        : { lesson: { group: { chapter: { module: { course: { teacherId: user.id } } } } } },
+        : { lesson: { group: { chapter: { module: { course: courseAccessFilter(user.id) } } } } },
     },
     orderBy: { submittedAt: "asc" },
     include: {

@@ -8,6 +8,7 @@ import { slugify } from "@/lib/slugify";
 import { extractYoutubeId } from "@/lib/youtube";
 import { googleDownloadUrl } from "@/lib/google-embed";
 import { deleteUserFile } from "@/lib/storage";
+import { notifyAdminsOfCoMentorRequest } from "@/lib/course-team/notify";
 import { refreshCourseProgress } from "@/lib/progress";
 import {
   courseCreateSchema,
@@ -220,10 +221,19 @@ export async function createCourse(formData: FormData) {
       select: { id: true },
     });
     if (validTeachers.length > 0) {
-      await db.courseTeacher.createMany({
-        data: validTeachers.map((t) => ({ courseId: course.id, teacherId: t.id, addedById: user.id })),
-        skipDuplicates: true,
-      });
+      if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+        await db.courseTeacher.createMany({
+          data: validTeachers.map((t) => ({ courseId: course.id, teacherId: t.id, addedById: user.id })),
+          skipDuplicates: true,
+        });
+      } else {
+        // Sharing a mission needs an admin's approval.
+        await db.courseTeacherRequest.createMany({
+          data: validTeachers.map((t) => ({ courseId: course.id, teacherId: t.id, requestedById: user.id })),
+          skipDuplicates: true,
+        });
+        await notifyAdminsOfCoMentorRequest({ courseTitle: course.title, count: validTeachers.length });
+      }
     }
   }
 

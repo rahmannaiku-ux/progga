@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { formatDhakaDate } from "@/lib/timezone";
 
 export default async function GradingQueuePage() {
@@ -12,7 +13,7 @@ export default async function GradingQueuePage() {
       status: "SUBMITTED",
       assessment: isAdmin
         ? {}
-        : { course: { teacherId: user.id } },
+        : { course: courseAccessFilter(user.id) },
     },
     orderBy: { submittedAt: "asc" },
     include: {

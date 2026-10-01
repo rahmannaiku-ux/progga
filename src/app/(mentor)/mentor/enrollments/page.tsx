@@ -1,6 +1,7 @@
 import { UserPlus } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { MentorGrantAccessForm } from "@/components/mentor-dashboard/mentor-grant-access-form";
 
 export default async function MentorEnrollmentsPage() {
@@ -11,7 +12,7 @@ export default async function MentorEnrollmentsPage() {
   // sees/can grant their own missions; ADMIN/SUPER_ADMIN visiting this
   // page see every mission, same as elsewhere in the mentor section.
   const courses = await db.course.findMany({
-    where: user.role === "TEACHER" ? { teacherId: user.id } : undefined,
+    where: user.role === "TEACHER" ? courseAccessFilter(user.id) : undefined,
     orderBy: { title: "asc" },
     select: { id: true, title: true },
   });

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Radio, Clock3 } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { RISK_LEVEL_LABEL } from "@/lib/exam-integrity";
 import { getAntiCollusionAnalysis } from "@/server/services/exam-analytics";
 
@@ -44,7 +45,7 @@ export default async function MonitorLiveExamPage({
     include: { course: { select: { id: true, title: true, teacherId: true } } },
   });
   if (!assessment || !assessment.course) notFound();
-  if (!isAdmin && assessment.course.teacherId !== user.id) notFound();
+  if (!isAdmin && !(await isCourseMentor(assessment.course.id, user.id))) notFound();
 
   const [roster, attempts, collusionPairs] = await Promise.all([
     db.enrollment.findMany({

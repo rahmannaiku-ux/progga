@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { FileText } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { AssignmentGradingForm } from "@/components/mentor-dashboard/assignment-grading-form";
 
 type Rubric = { criterion: string; points: number }[];
@@ -21,7 +22,7 @@ export default async function GradeSubmissionPage({
         include: {
           lesson: {
             select: {
-              group: { select: { chapter: { select: { module: { select: { course: { select: { teacherId: true } } } } } } } },
+              group: { select: { chapter: { select: { module: { select: { course: { select: { id: true } } } } } } } },
             },
           },
         },
@@ -31,8 +32,8 @@ export default async function GradeSubmissionPage({
   if (!submission) notFound();
 
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  const ownerId = submission.assignment.lesson?.group.chapter.module.course?.teacherId;
-  if (!isAdmin && ownerId !== user.id) notFound();
+  const courseId = submission.assignment.lesson?.group.chapter.module.course?.id;
+  if (!isAdmin && !(courseId && (await isCourseMentor(courseId, user.id)))) notFound();
 
   const rubric = (submission.assignment.rubric as Rubric | null) ?? [];
 

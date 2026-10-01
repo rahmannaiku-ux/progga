@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
 import { botCourseSummarySelect } from "@/lib/bot-api/selectors";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 
 const TEACHER_ROLES = ["TEACHER", "ADMIN", "SUPER_ADMIN"];
 
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   }
 
   const courses = await db.course.findMany({
-    where: { teacherId: user!.id },
+    where: courseAccessFilter(user!.id),
     select: { ...botCourseSummarySelect, _count: { select: { enrollments: true } } },
     orderBy: { updatedAt: "desc" },
   });

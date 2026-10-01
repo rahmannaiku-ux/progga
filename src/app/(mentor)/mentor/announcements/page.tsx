@@ -1,6 +1,7 @@
 import { Megaphone } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { createMissionAnnouncement, deleteMentorAnnouncement } from "@/server/actions/mentor-actions";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
@@ -11,12 +12,12 @@ export default async function MentorAnnouncementsPage() {
 
   const [announcements, myCourses] = await Promise.all([
     db.announcement.findMany({
-      where: isAdmin ? { isGlobal: false } : { course: { teacherId: mentor.id } },
+      where: isAdmin ? { isGlobal: false } : { course: courseAccessFilter(mentor.id) },
       orderBy: { createdAt: "desc" },
       include: { course: { select: { title: true } } },
     }),
     db.course.findMany({
-      where: isAdmin ? {} : { teacherId: mentor.id },
+      where: isAdmin ? {} : courseAccessFilter(mentor.id),
       select: { id: true, title: true },
       orderBy: { title: "asc" },
     }),

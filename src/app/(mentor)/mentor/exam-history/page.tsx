@@ -2,6 +2,7 @@ import Link from "next/link";
 import { History, Radio, Archive } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { getLiveExamStatus } from "@/lib/live-exam";
 import { RISK_LEVEL_LABEL } from "@/lib/exam-integrity";
 import { archiveAssessment, unarchiveAssessment, duplicateAssessment } from "@/server/actions/assessment-actions";
@@ -52,7 +53,7 @@ export default async function ExamsHubPage({
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
   const page = parsePageParam(searchParams.page);
-  const where = isAdmin ? {} : { course: { teacherId: user.id } };
+  const where = isAdmin ? {} : { course: courseAccessFilter(user.id) };
 
   const [assessments, total, courses] = await Promise.all([
     db.assessment.findMany({
@@ -69,7 +70,7 @@ export default async function ExamsHubPage({
     }),
     db.assessment.count({ where }),
     db.course.findMany({
-      where: isAdmin ? {} : { teacherId: user.id },
+      where: isAdmin ? {} : courseAccessFilter(user.id),
       select: { id: true, title: true },
       orderBy: { title: "asc" },
     }),

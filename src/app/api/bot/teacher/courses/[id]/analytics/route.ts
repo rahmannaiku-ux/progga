@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 
 /**
  * GET /api/bot/teacher/courses/:id/analytics?teacherId=...
@@ -18,9 +19,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { user, error } = await requireLinkedUser(teacherId);
   if (error) return error;
 
-  const course = await db.course.findUnique({ where: { id: params.id }, select: { teacherId: true, title: true } });
+  const course = await db.course.findUnique({ where: { id: params.id }, select: { id: true, title: true } });
   if (!course) return NextResponse.json(null, { status: 404 });
-  if (course.teacherId !== user!.id && !["ADMIN", "SUPER_ADMIN"].includes(user!.role)) {
+  if (!["ADMIN", "SUPER_ADMIN"].includes(user!.role) && !(await isCourseMentor(params.id, user!.id))) {
     return NextResponse.json({ error: "You don't own this course." }, { status: 403 });
   }
 

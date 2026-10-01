@@ -1,11 +1,12 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 
 export default async function MentorAnalyticsPage() {
   const user = await requireRole("TEACHER");
 
   const courses = await db.course.findMany({
-    where: { teacherId: user.id },
+    where: courseAccessFilter(user.id),
     orderBy: { createdAt: "desc" },
     include: {
       enrollments: { select: { status: true, progressPct: true } },

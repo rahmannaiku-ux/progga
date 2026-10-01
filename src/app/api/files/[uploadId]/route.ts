@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Readable } from "stream";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { streamFromDrive } from "@/lib/storage/google-drive";
 
@@ -163,7 +164,7 @@ async function isTeacherForSubmission(
   if (!courseId) return false;
 
   const teaches = await db.course.findFirst({
-    where: { id: courseId, teacherId: teacherCandidateId },
+    where: { id: courseId, ...courseAccessFilter(teacherCandidateId) },
     select: { id: true },
   });
   return Boolean(teaches);

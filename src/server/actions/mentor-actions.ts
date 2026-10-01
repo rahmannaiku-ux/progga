@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { requireMentorUser } from "./require-user";
 import {
   grantCourseAccessCore,
@@ -42,8 +43,8 @@ export async function createMissionAnnouncement(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!courseId || !title || !body) throw new Error("Mission, title, and message are all required.");
 
-  const course = await db.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
-  if (!course || (course.teacherId !== mentor.id && mentor.role === "TEACHER")) {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true } });
+  if (!course || (mentor.role === "TEACHER" && !(await isCourseMentor(courseId, mentor.id)))) {
     throw new Error("You can only announce to your own missions.");
   }
 
@@ -71,10 +72,9 @@ export async function deleteMentorAnnouncement(announcementId: string) {
   const mentor = await requireMentorUser("Mentor access required.");
   const announcement = await db.announcement.findUnique({
     where: { id: announcementId },
-    include: { course: { select: { teacherId: true } } },
   });
   if (!announcement) return;
-  if (mentor.role === "TEACHER" && announcement.course?.teacherId !== mentor.id) {
+  if (mentor.role === "TEACHER" && !(announcement.courseId && (await isCourseMentor(announcement.courseId, mentor.id)))) {
     throw new Error("You can only delete your own announcements.");
   }
 

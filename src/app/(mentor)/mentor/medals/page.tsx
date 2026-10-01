@@ -1,6 +1,7 @@
 import { Award } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
+import { courseAccessFilter } from "@/lib/auth/course-access";
 import { Badge } from "@/components/ui/badge";
 import { IssueCertificateForm } from "@/components/shared/issue-certificate-form";
 import { issueCertificateAsMentor } from "@/server/actions/mentor-actions";
@@ -16,7 +17,7 @@ export default async function MentorMedalsPage() {
 
   // Same scoping as the action: a TEACHER only sees their own missions;
   // ADMIN/SUPER_ADMIN visiting the mentor section see every mission.
-  const courseFilter = user.role === "TEACHER" ? { teacherId: user.id } : undefined;
+  const courseFilter = user.role === "TEACHER" ? courseAccessFilter(user.id) : undefined;
   const [courses, certificates] = await Promise.all([
     db.course.findMany({
       where: courseFilter,

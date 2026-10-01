@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
 import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
 import { logActivity } from "@/server/actions/admin-actions";
@@ -46,7 +47,7 @@ async function grantCore({
   if (!course) {
     throw new Error("That mission doesn't exist.");
   }
-  if (requireCourseOwnerId && course.teacherId !== requireCourseOwnerId) {
+  if (requireCourseOwnerId && !(await isCourseMentor(course.id, requireCourseOwnerId))) {
     throw new Error("You can only grant access to your own missions.");
   }
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Library, Tag } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { searchQuestionBank, getQuestionBankTopics } from "@/server/services/question-bank";
 import { deleteBankQuestion } from "@/server/actions/assessment-actions";
@@ -47,7 +48,7 @@ export default async function QuestionBankPage({
   });
   if (!course) notFound();
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isAdmin && course.teacherId !== user.id) notFound();
+  if (!isAdmin && !(await isCourseMentor(course.id, user.id))) notFound();
 
   const [questions, topics] = await Promise.all([
     searchQuestionBank(course.id, {

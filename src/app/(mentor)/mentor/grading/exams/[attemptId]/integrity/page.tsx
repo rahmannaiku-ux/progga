@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import {
   getAttemptTimeline,
   getQuestionHistory,
@@ -26,13 +27,13 @@ export default async function InvestigateAttemptPage({
     where: { id: params.attemptId },
     include: {
       user: { select: { firstName: true, lastName: true } },
-      assessment: { select: { title: true, course: { select: { teacherId: true } } } },
+      assessment: { select: { title: true, course: { select: { id: true } } } },
     },
   });
   if (!attempt) notFound();
 
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isAdmin && attempt.assessment.course?.teacherId !== user.id) notFound();
+  if (!isAdmin && !(attempt.assessment.course && (await isCourseMentor(attempt.assessment.course.id, user.id)))) notFound();
 
   const [summary, timeline, questionHistory, eventCounts] = await Promise.all([
     getAttemptIntegritySummary(attempt.id),

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { CourseStatusBadge } from "@/components/mentor-dashboard/course-status-badge";
 import { PublishToggle } from "@/components/mentor-dashboard/publish-toggle";
@@ -77,7 +78,7 @@ export default async function MissionBuilderPage({
 
   if (!course) notFound();
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isAdmin && course.teacherId !== user.id) notFound();
+  if (!isAdmin && !(await isCourseMentor(course.id, user.id))) notFound();
 
   const boundUpdateCourse = updateCourse.bind(null, course.id);
 

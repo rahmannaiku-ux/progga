@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { createAssessment } from "@/server/actions/assessment-actions";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,7 @@ export default async function AssessmentsListPage({
   });
   if (!course) notFound();
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (!isAdmin && course.teacherId !== user.id) notFound();
+  if (!isAdmin && !(await isCourseMentor(course.id, user.id))) notFound();
 
   const lessonOptions = course.modules.flatMap((m) =>
     m.chapters.flatMap((c) =>

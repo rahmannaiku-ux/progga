@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { revalidateMissionPage } from "@/lib/mission-paths";
 import { db } from "@/lib/db/client";
+import { isCourseMentor } from "@/lib/auth/course-access";
 import { parsePastedQuestions } from "@/lib/question-import/paste-parser";
 import { parseCsvQuestions, type CsvParseResult } from "@/lib/question-import/csv-parser";
 import { extractQuestionsFromPdf, type PdfExtractResult } from "@/lib/question-import/pdf-parser";
@@ -24,10 +25,10 @@ import type { AiGenerationRequest } from "@/lib/ai/types";
 import { requireMentorUser } from "./require-user";
 
 async function assertOwnsCourse(courseId: string, userId: string, role: string) {
-  const course = await db.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true } });
   if (!course) throw new Error("Mission not found.");
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
-  if (!isAdmin && course.teacherId !== userId) throw new Error("You don't have access to this mission.");
+  if (!isAdmin && !(await isCourseMentor(courseId, userId))) throw new Error("You don't have access to this mission.");
 }
 
 // ---------------------------------------------------------------------
