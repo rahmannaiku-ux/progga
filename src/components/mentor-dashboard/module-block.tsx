@@ -101,14 +101,14 @@ export function ModuleBlock({
           </div>
         ) : (
           <>
-            <div className="divide-y divide-border/30">
+            <div className="ml-3 divide-y divide-border/30 border-l-2 border-primary/30 pl-2 sm:ml-4 sm:pl-3">
               {module.chapters.map((chapter) => (
                 <div key={chapter.id} className="py-1 first:pt-0">
                   <ChapterBlock courseId={courseId} chapter={chapter} />
                 </div>
               ))}
             </div>
-            <AddAction label="Add chapter" className="mt-1">
+            <AddAction label="Add chapter" className="ml-3 mt-1 sm:ml-4">
               {addChapter}
             </AddAction>
           </>
