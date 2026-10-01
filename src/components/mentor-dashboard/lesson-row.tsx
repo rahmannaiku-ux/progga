@@ -1,6 +1,6 @@
 import { Youtube, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatDhakaDateTime, toDhakaInputValue } from "@/lib/timezone";
+import { formatDhakaDateTime } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { ResourceUploader } from "@/components/mentor-dashboard/resource-uploader";
@@ -13,9 +13,6 @@ import {
   deleteLesson,
   deleteLessonResource,
 } from "@/server/actions/mission-actions";
-
-/** datetime-local value in Bangladesh time — the server parses it back the same way. */
-const toLocalInputValue = toDhakaInputValue;
 
 type LessonWithResources = {
   id: string;
@@ -128,25 +125,6 @@ export function LessonRow({
                 />
                 Free preview lesson
               </label>
-              <div>
-                <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                  Live class schedule, Bangladesh time (leave blank for a recorded lesson)
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="datetime-local"
-                    name="scheduledStart"
-                    defaultValue={toLocalInputValue(lesson.scheduledStart)}
-                    className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-xs"
-                  />
-                  <input
-                    type="datetime-local"
-                    name="scheduledEnd"
-                    defaultValue={toLocalInputValue(lesson.scheduledEnd)}
-                    className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-xs"
-                  />
-                </div>
-              </div>
               <Button type="submit" size="sm" variant="accent" className="w-full">
                 Save changes
               </Button>

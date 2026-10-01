@@ -62,7 +62,7 @@ export default async function AssessmentEditorPage({
   if (!isAdmin && !(await isCourseMentor(courseId, user.id))) notFound();
 
   const chapterOptionsRaw = await db.module.findMany({
-    where: { courseId },
+    where: { courseId, isLiveContainer: false },
     orderBy: { order: "asc" },
     select: { title: true, chapters: { orderBy: { order: "asc" }, select: { id: true, title: true } } },
   });

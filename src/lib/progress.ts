@@ -15,7 +15,7 @@ import { missionProgressPct } from "@/lib/progress-math";
  */
 export async function recalcEnrollmentProgress(userId: string, courseId: string) {
   const totalLessons = await db.lesson.count({
-    where: { group: { chapter: { module: { courseId } } }, isPublished: true },
+    where: { group: { chapter: { module: { courseId, isLiveContainer: false } } }, isPublished: true },
   });
 
   if (totalLessons === 0) return;
@@ -24,7 +24,7 @@ export async function recalcEnrollmentProgress(userId: string, courseId: string)
     where: {
       userId,
       isCompleted: true,
-      lesson: { group: { chapter: { module: { courseId } } }, isPublished: true },
+      lesson: { group: { chapter: { module: { courseId, isLiveContainer: false } } }, isPublished: true },
     },
   });
 
@@ -98,7 +98,7 @@ export async function recalcEnrollmentProgress(userId: string, courseId: string)
 export async function refreshCourseProgress(courseId: string): Promise<void> {
   try {
     const lessons = await db.lesson.findMany({
-      where: { group: { chapter: { module: { courseId } } }, isPublished: true },
+      where: { group: { chapter: { module: { courseId, isLiveContainer: false } } }, isPublished: true },
       select: { id: true },
     });
     const enrollments = await db.enrollment.findMany({

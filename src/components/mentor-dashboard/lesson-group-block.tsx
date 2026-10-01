@@ -135,29 +135,6 @@ export function LessonGroupBlock({
               <input type="checkbox" name="isPreview" /> Free preview
             </label>
           </div>
-          <details>
-            <summary className="cursor-pointer list-none text-xs font-medium text-muted-foreground hover:text-foreground">
-              Live class? (optional)
-            </summary>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Set a start time to make this a live class instead of a recorded lesson — put it in
-              a "Live" class type so it sits alongside your recorded ones. Leave blank for an
-              ordinary recorded patrol. Times are Bangladesh time (UTC+6).
-            </p>
-            <div className="mt-1.5 grid grid-cols-2 gap-2">
-              <input
-                type="datetime-local"
-                name="scheduledStart"
-                className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-xs"
-              />
-              <input
-                type="datetime-local"
-                name="scheduledEnd"
-                placeholder="End (optional)"
-                className="h-9 w-full rounded-lg border border-border/60 bg-surface px-2 text-base text-foreground md:text-xs"
-              />
-            </div>
-          </details>
           <SubmitButton
             pendingLabel="Adding patrol…"
             className="h-9 w-full rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"

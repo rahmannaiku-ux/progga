@@ -297,7 +297,7 @@ export async function setCoursePublishState(courseId: string, publish: boolean) 
   await assertOwnsCourse(courseId, user.id, user.role);
 
   if (publish) {
-    const moduleCount = await db.module.count({ where: { courseId } });
+    const moduleCount = await db.module.count({ where: { courseId, isLiveContainer: false } });
     if (moduleCount === 0) {
       throw new Error("Add at least one operation before publishing.");
     }
@@ -391,7 +391,7 @@ export async function reorderModule(
   await assertOwnsCourse(courseId, user.id, user.role);
 
   const modules = await db.module.findMany({
-    where: { courseId },
+    where: { courseId, isLiveContainer: false },
     orderBy: { order: "asc" },
   });
   const idx = modules.findIndex((m) => m.id === moduleId);
@@ -641,7 +641,6 @@ export async function updateLesson(courseId: string, formData: FormData) {
   const previousThumbnail =
     (await db.lesson.findUnique({ where: { id: data.lessonId }, select: { thumbnailUrl: true } }))?.thumbnailUrl ?? null;
   const thumbnailUrl = await checkedImageUrl(data.thumbnailUrl, "LESSON_THUMBNAIL", user, previousThumbnail);
-  const { scheduledStart, scheduledEnd } = parseScheduleFields(data.scheduledStart, data.scheduledEnd);
 
   await db.lesson.update({
     where: { id: data.lessonId },
@@ -652,8 +651,6 @@ export async function updateLesson(courseId: string, formData: FormData) {
       thumbnailUrl,
       durationSeconds: data.durationSeconds,
       isPreview: data.isPreview,
-      scheduledStart,
-      scheduledEnd,
     },
   });
   await discardReplacedImage(previousThumbnail, thumbnailUrl, "LESSON_THUMBNAIL");

@@ -42,6 +42,7 @@ export default async function MyCoursesPage({
             title: true,
             category: { select: { name: true } },
             modules: {
+              where: { isLiveContainer: false },
               select: { title: true, chapters: { select: { title: true }, take: 1 } },
               take: 1,
               orderBy: { order: "asc" },

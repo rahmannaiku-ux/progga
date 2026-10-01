@@ -27,7 +27,7 @@ export default async function LiveManageDashboardPage() {
           <Video className="h-6 w-6 text-danger" /> Live Room — Manage
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Live classes across the missions you teach. Schedule new ones from a mission's builder.
+          Live classes across the missions you teach. Schedule new ones from the Live Classes page.
         </p>
       </div>
 

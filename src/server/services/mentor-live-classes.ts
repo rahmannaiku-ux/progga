@@ -3,11 +3,16 @@ import { getLiveClassStatus } from "@/lib/live-classes";
 import { isLiveRoomEnabled } from "@/lib/live/flag";
 
 export type MentorLiveClass = {
+  /** The live class's lesson id (what the schedule actions take). */
   id: string;
   title: string;
+  description: string | null;
   youtubeVideoId: string | null;
   scheduledStart: Date;
   scheduledEnd: Date | null;
+  status: "UPCOMING" | "LIVE" | "ENDED";
+  /** True once a chapter lesson was made from this class. */
+  addedAsLesson: boolean;
   href: string;
   course: { id: string; title: string };
 };
@@ -55,10 +60,11 @@ export async function getMentorLiveClasses(teacher: { id: string; role: string }
     select: {
       id: true,
       title: true,
+      description: true,
       youtubeVideoId: true,
       scheduledStart: true,
       scheduledEnd: true,
-      liveClass: { select: { id: true } },
+      liveClass: { select: { id: true, recordedLesson: { select: { id: true } } } },
       group: {
         select: {
           id: true,
@@ -95,9 +101,12 @@ export async function getMentorLiveClasses(teacher: { id: string; role: string }
     const entry: MentorLiveClass = {
       id: l.id,
       title: l.title,
+      description: l.description,
       youtubeVideoId: l.youtubeVideoId,
       scheduledStart: l.scheduledStart,
       scheduledEnd: l.scheduledEnd,
+      status,
+      addedAsLesson: Boolean(l.liveClass?.recordedLesson),
       href,
       course,
     };
@@ -106,5 +115,5 @@ export async function getMentorLiveClasses(teacher: { id: string; role: string }
   }
 
   ended.reverse();
-  return { live, upcoming, ended: ended.slice(0, 10) };
+  return { live, upcoming, ended: ended.slice(0, 15) };
 }

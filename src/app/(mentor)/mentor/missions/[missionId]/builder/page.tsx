@@ -37,6 +37,7 @@ export default async function MissionBuilderPage({
       examsEnabled: true,
       teacherId: true,
       modules: {
+        where: { isLiveContainer: false },
         orderBy: { order: "asc" },
         select: {
           id: true,

@@ -16,7 +16,7 @@ export default async function MentorMissionsPage() {
     where: { OR: [{ teacherId: user.id }, { courseTeachers: { some: { teacherId: user.id } } }] },
     orderBy: { updatedAt: "desc" },
     include: {
-      _count: { select: { enrollments: true, modules: true } },
+      _count: { select: { enrollments: true, modules: { where: { isLiveContainer: false } } } },
     },
   });
 

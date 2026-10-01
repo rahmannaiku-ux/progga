@@ -821,6 +821,9 @@ model Module {
   title     String
   summary   String?   @db.Text
   order     Int
+  // Holds the hidden "Live classes" chapter/class type where scheduled live
+  // classes live. Students and the mission builder never list it as a subject.
+  isLiveContainer Boolean @default(false)
   chapters  Chapter[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -885,6 +888,11 @@ model Lesson {
   // recorded VideoPlayer/progress-tracking flow.
   scheduledStart  DateTime?
   scheduledEnd    DateTime?
+
+  // Set on a recorded lesson a mentor made from an ended live class ("add to a
+  // chapter"). The live class itself stays in the live room, never in a chapter.
+  sourceLiveClassId String?    @unique
+  sourceLiveClass   LiveClass? @relation("LessonFromLiveClass", fields: [sourceLiveClassId], references: [id], onDelete: SetNull)
 
   resources       LessonResource[]
   progresses      LessonProgress[]
@@ -2263,6 +2271,8 @@ model LiveClass {
   endSnapshot  Json?
 
   attendances  LiveClassAttendance[]
+  // The chapter lesson made from this class once it ended, if any.
+  recordedLesson Lesson? @relation("LessonFromLiveClass")
 
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

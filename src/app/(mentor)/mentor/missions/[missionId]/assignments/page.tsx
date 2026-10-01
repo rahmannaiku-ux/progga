@@ -21,6 +21,7 @@ export default async function AssignmentsListPage({
     where: { id: params.missionId },
     include: {
       modules: {
+        where: { isLiveContainer: false },
         orderBy: { order: "asc" },
         select: {
           chapters: {

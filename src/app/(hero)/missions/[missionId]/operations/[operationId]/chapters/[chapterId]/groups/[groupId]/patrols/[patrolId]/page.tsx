@@ -163,6 +163,7 @@ export default async function LessonPlayerPage({
     where: { id: course.id },
     select: {
       modules: {
+        where: { isLiveContainer: false },
         orderBy: { order: "asc" },
         select: {
           id: true,

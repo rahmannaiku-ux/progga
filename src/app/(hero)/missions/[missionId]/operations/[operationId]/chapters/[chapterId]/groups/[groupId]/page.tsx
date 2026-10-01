@@ -36,6 +36,9 @@ export default async function LessonGroupLessonsPage({
           },
         },
         lessons: {
+          // A live class never sits among the chapter videos; it only appears here once a mentor
+          // adds it as a normal lesson after it ended.
+          where: { scheduledStart: null },
           orderBy: { order: "asc" },
           include: { resources: { select: { id: true, type: true } } },
         },

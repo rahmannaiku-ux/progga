@@ -27,6 +27,7 @@ export default async function AssessmentsListPage({
         },
       },
       modules: {
+        where: { isLiveContainer: false },
         orderBy: { order: "asc" },
         select: {
           title: true,

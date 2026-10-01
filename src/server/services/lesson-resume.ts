@@ -34,6 +34,7 @@ export async function getResumeLessonPath(
     where: { id: courseId },
     select: {
       modules: {
+        where: { isLiveContainer: false },
         orderBy: { order: "asc" },
         select: {
           id: true,

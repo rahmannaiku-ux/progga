@@ -43,6 +43,7 @@ export default async function MissionOverviewPage({
         examsEnabled: true,
         teacher: { select: { firstName: true, lastName: true } },
         modules: {
+          where: { isLiveContainer: false },
           orderBy: { order: "asc" },
           select: {
             id: true,

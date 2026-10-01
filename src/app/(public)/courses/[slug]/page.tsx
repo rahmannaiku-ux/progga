@@ -58,7 +58,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
           select: { isActive: true, type: true, percentOff: true, amountOffCents: true, startsAt: true, endsAt: true },
         },
         reviews: { select: { rating: true } },
-        _count: { select: { modules: true, enrollments: true } },
+        _count: { select: { modules: { where: { isLiveContainer: false } }, enrollments: true } },
       },
     }),
     getCurrentUserOptional(),

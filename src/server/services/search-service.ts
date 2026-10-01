@@ -34,7 +34,7 @@ export async function searchContent(
     scope === "missions"
       ? []
       : db.lesson.findMany({
-          where: { title: { contains: q, mode: "insensitive" } },
+          where: { title: { contains: q, mode: "insensitive" }, group: { chapter: { module: { isLiveContainer: false } } } },
           select: {
             id: true,
             title: true,
