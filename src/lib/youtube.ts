@@ -60,6 +60,24 @@ export const YOUTUBE_CLEAN_PLAYER_VARS = {
 } as const;
 
 /**
+ * cc_load_policy=0 only means "do not force captions". YouTube can still show
+ * them for viewers whose account has captions always on, and the captions
+ * module starts loading once playback begins. Unloading it through the player
+ * (the IFrame API's unloadModule, which the embed offers for this) keeps them
+ * off. The lesson player has no CC button, so nothing here fights a student's
+ * own choice. Safe to call repeatedly; does nothing if the player lacks it.
+ */
+export function turnYoutubeCaptionsOff(player: object) {
+  const p = player as { unloadModule?: (module: string) => unknown };
+  try {
+    p.unloadModule?.("captions");
+    p.unloadModule?.("cc");
+  } catch {
+    // Best effort: a player that rejects the call simply keeps YouTube's default.
+  }
+}
+
+/**
  * Embed URL for a live class's YouTube stream. Deliberately separate
  * from the lesson player's embed setup (video-player.tsx uses the
  * react-youtube IFrame Player API wrapper for custom controls/progress

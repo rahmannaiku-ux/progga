@@ -6,7 +6,7 @@ import YouTube, { type YouTubeEvent, type YouTubePlayer } from "react-youtube";
 import { PlayCircle, Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { youtubeEmbedHost } from "@/lib/cookie-consent";
-import { YOUTUBE_CLEAN_PLAYER_VARS } from "@/lib/youtube";
+import { YOUTUBE_CLEAN_PLAYER_VARS, turnYoutubeCaptionsOff } from "@/lib/youtube";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
 
@@ -60,11 +60,14 @@ export function LiveClassPlayer({
   function handleReady(e: YouTubeEvent) {
     playerRef.current = e.target;
     setStatus("ready");
+    turnYoutubeCaptionsOff(e.target);
   }
 
   function handleStateChange(e: YouTubeEvent<number>) {
-    if (e.data === YT_STATE.PLAYING) setIsPlaying(true);
-    else if (e.data === YT_STATE.PAUSED) setIsPlaying(false);
+    if (e.data === YT_STATE.PLAYING) {
+      setIsPlaying(true);
+      turnYoutubeCaptionsOff(e.target);
+    } else if (e.data === YT_STATE.PAUSED) setIsPlaying(false);
   }
 
   function handleError() {

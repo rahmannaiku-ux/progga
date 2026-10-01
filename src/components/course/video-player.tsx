@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { youtubeEmbedHost } from "@/lib/cookie-consent";
-import { YOUTUBE_CLEAN_PLAYER_VARS } from "@/lib/youtube";
+import { YOUTUBE_CLEAN_PLAYER_VARS, turnYoutubeCaptionsOff } from "@/lib/youtube";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
 
@@ -240,6 +240,7 @@ export function VideoPlayer({
     const player = e.target;
     playerRef.current = player;
     setStatus("ready");
+    turnYoutubeCaptionsOff(player);
     if (resumeAtSeconds > 0) {
       player.seekTo(resumeAtSeconds, true);
       setCurrentTime(resumeAtSeconds);
@@ -271,6 +272,8 @@ export function VideoPlayer({
     if (state === YT_STATE.PLAYING) {
       onPlayingChangeRef.current?.(true);
       setIsPlaying(true);
+      // The captions module only loads once playback starts, so unload it again here.
+      turnYoutubeCaptionsOff(player);
       // Re-query now that playback has actually started — this is when
       // YouTube's reported quality list is most reliable.
       const levels = await player.getAvailableQualityLevels();
@@ -291,6 +294,10 @@ export function VideoPlayer({
       const d = await player.getDuration();
       setCurrentTime(d);
       onEndedRef.current(Math.floor(d));
+      // Stop rather than leave the player on its last frame: an ended embed is
+      // what makes YouTube draw its related-videos grid. Stopping returns to
+      // the poster frame; the student can press play to watch again.
+      void player.stopVideo();
     }
     // BUFFERING/CUED: no state change needed — isPlaying stays as-is.
   }
