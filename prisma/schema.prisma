@@ -708,6 +708,7 @@ model Course {
   subtitle         String?
   description      String       @db.Text
   thumbnailUrl     String?
+  routineImageUrl  String? // Google Drive image link: the weekly class routine shown atop the mission page
   trailerYoutubeId String? // optional YouTube preview video
   level            CourseLevel  @default(ALL_LEVELS)
   language         String       @default("en")

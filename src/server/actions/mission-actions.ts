@@ -218,12 +218,23 @@ export async function updateCourse(courseId: string, formData: FormData) {
     throw new Error(parsed.error.errors[0]?.message ?? "Invalid mission details");
   }
 
+  // Only touched when the form actually carries the field; blank removes the routine.
+  const routineRaw = formData.get("routineImageUrl");
+  let routineImageUrl: string | null | undefined;
+  if (typeof routineRaw === "string") {
+    routineImageUrl = routineRaw.trim() || null;
+    if (routineImageUrl && !parseDriveFileId(routineImageUrl)) {
+      throw new Error("The routine image must be a Google Drive file link (drive.google.com/file/d/...).");
+    }
+  }
+
   await db.course.update({
     where: { id: courseId },
     data: {
       ...parsed.data,
       subtitle: parsed.data.subtitle || null,
       categoryId: parsed.data.categoryId || null,
+      ...(routineImageUrl !== undefined ? { routineImageUrl } : {}),
     },
   });
 

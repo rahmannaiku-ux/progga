@@ -113,9 +113,16 @@ export function parseDriveFileId(rawUrl: string): string | null {
   return null;
 }
 
-/** A small image address for a Drive image link. The file must be shared as "anyone with the link". */
-export function driveThumbnailUrl(rawUrl: string | null | undefined): string | null {
+/** An image address for a Drive image link, `width` px wide. The file must be shared as "anyone with the link". */
+export function driveThumbnailUrl(rawUrl: string | null | undefined, width = 640): string | null {
   if (!rawUrl) return null;
   const id = parseDriveFileId(rawUrl);
-  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w640` : null;
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w${width}` : null;
+}
+
+/** Where a Drive image opens at full size (for "tap to zoom"). Null if it isn't a Drive file link. */
+export function driveViewUrl(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl) return null;
+  const id = parseDriveFileId(rawUrl);
+  return id ? `https://drive.google.com/file/d/${id}/view` : null;
 }

@@ -25,6 +25,7 @@ export default async function MissionBuilderPage({
       title: true,
       subtitle: true,
       description: true,
+      routineImageUrl: true,
       slug: true,
       status: true,
       level: true,
@@ -146,6 +147,21 @@ export default async function MissionBuilderPage({
               rows={4}
               className="w-full rounded-lg border border-border/60 bg-surface px-3 py-2 text-base text-foreground"
             />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">
+              Class routine image (Google Drive link)
+            </label>
+            <input
+              name="routineImageUrl"
+              defaultValue={course.routineImageUrl ?? ""}
+              placeholder="https://drive.google.com/file/d/.../view"
+              className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Shown at the top of the mission page. Upload the image to Google Drive, share it as
+              "Anyone with the link", paste the link here. Clear the box to remove it.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
