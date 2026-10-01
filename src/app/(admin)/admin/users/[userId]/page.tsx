@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { formatDhakaDate, formatDhakaDateTime } from "@/lib/timezone";
 import { formatMoney, PAYMENT_STATUS_META } from "@/lib/payments/format";
 import { paymentCourseTitle } from "@/lib/payments/course-title";
+import { AdminStudentEditor } from "@/components/admin-dashboard/admin-student-editor";
 
 /**
  * Admin-only view of one user's full record — most importantly the
  * mandatory first-login profile form (StudentProfile) every student
  * fills in, which is otherwise visible nowhere in the admin panel.
- * Read-only on purpose: role/suspension changes stay on the list page's
- * UserRowControls so there's still exactly one place those happen.
+ * Students can be edited in full from here. Role and suspension changes stay
+ * on the list page's UserRowControls so there's still exactly one place those
+ * happen.
  */
 export default async function AdminUserDetailPage({ params }: { params: { userId: string } }) {
   await requireRole("ADMIN");
@@ -30,6 +32,11 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
       role: true,
       isSuspended: true,
       profileCompleted: true,
+      isActive: true,
+      headline: true,
+      bio: true,
+      avatarUrl: true,
+      heroStats: { select: { xp: true, currentStreak: true, longestStreak: true, coinBalance: true } },
       createdAt: true,
       lastLoginAt: true,
       studentProfile: {
@@ -117,6 +124,47 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
         <Badge variant="outline">{user.role}</Badge>
         {user.isSuspended && <Badge variant="outline">Suspended</Badge>}
       </div>
+
+      {user.role === "STUDENT" && (
+        <section className="comic-panel mt-6 bg-surface p-5">
+          <h2 className="font-display text-lg font-bold text-foreground">Edit student</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Change anything on this student&apos;s profile. Every save is recorded in the activity log.
+          </p>
+          <div className="mt-5">
+            <AdminStudentEditor
+              userId={user.id}
+              hasAvatar={Boolean(user.avatarUrl)}
+              initialStats={{
+                xp: user.heroStats?.xp ?? 0,
+                currentStreak: user.heroStats?.currentStreak ?? 0,
+                longestStreak: user.heroStats?.longestStreak ?? 0,
+                coinBalance: user.heroStats?.coinBalance ?? 0,
+              }}
+              initial={{
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email ?? "",
+                phone: user.phone ?? "",
+                phoneVerified: user.phoneVerified,
+                headline: user.headline ?? "",
+                bio: user.bio ?? "",
+                profileCompleted: user.profileCompleted,
+                isActive: user.isActive,
+                name: profile?.name ?? "",
+                district: profile?.district ?? "",
+                zipCode: profile?.zipCode ?? "",
+                collegeName: profile?.collegeName ?? "",
+                collegeEIIN: profile?.collegeEIIN ?? "",
+                fatherPhone: profile?.fatherPhone ?? "",
+                motherPhone: profile?.motherPhone ?? "",
+                hscBatch: profile?.hscBatch ?? "",
+                studyVersion: profile?.studyVersion ?? "",
+              }}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="glass-panel mt-6 p-5">
         <h2 className="font-display text-lg font-bold text-foreground">Account</h2>
