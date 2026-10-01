@@ -66,7 +66,7 @@ export function NotificationBell({
             variant === "default"
               ? "sticker h-10 w-10 bg-surface"
               : "h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground",
-            open && variant === "default" && "-translate-y-0.5",
+           
             className
           )}
         >

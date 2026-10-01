@@ -40,7 +40,7 @@ export function GroupLessonList({
                 "flex min-h-11 items-center gap-2 rounded-xl border-[2.5px] border-transparent px-2 py-1.5 text-sm transition-all duration-200",
                 isActive
                   ? "animate-cartoon-pop border-border bg-primary/15 font-semibold text-primary"
-                  : "text-foreground hover:border-border/60 hover:bg-surface hover:translate-x-0.5"
+                  : "text-foreground hover:border-border/60 hover:bg-surface"
               )}
             >
               {isActive ? (

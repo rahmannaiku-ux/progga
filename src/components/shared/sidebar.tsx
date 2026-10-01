@@ -78,7 +78,7 @@ export function Sidebar({
                         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
                         isActive
                           ? "text-sidebar-active-foreground"
-                          : "text-sidebar-foreground/75 hover:translate-x-0.5 hover:bg-white/10 hover:text-sidebar-foreground"
+                          : "text-sidebar-foreground/75 hover:bg-white/10 hover:text-sidebar-foreground"
                       )}
                     >
                       {isActive && (
