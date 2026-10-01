@@ -24,6 +24,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       id: true, userId: true, status: true, amountCents: true, currency: true,
       paymentReference: true, transactionId: true, rejectionReason: true,
       createdAt: true, verifiedAt: true,
+      receivingNumber: true, mfsProvider: true,
       course: { select: { id: true, title: true } },
       user: { select: { id: true, firstName: true, lastName: true } },
     },

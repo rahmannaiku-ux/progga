@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { isCourseMentor } from "@/lib/auth/course-access";
+import { postMissionAnnouncement } from "@/server/services/mission-announcements";
 import { requireMentorUser } from "./require-user";
 import {
   grantCourseAccessCore,
@@ -43,27 +44,7 @@ export async function createMissionAnnouncement(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!courseId || !title || !body) throw new Error("Mission, title, and message are all required.");
 
-  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true } });
-  if (!course || (mentor.role === "TEACHER" && !(await isCourseMentor(courseId, mentor.id)))) {
-    throw new Error("You can only announce to your own missions.");
-  }
-
-  const announcement = await db.announcement.create({
-    data: { courseId, title, body, isGlobal: false, createdById: mentor.id },
-  });
-
-  const enrolled = await db.enrollment.findMany({ where: { courseId }, select: { userId: true } });
-  if (enrolled.length > 0) {
-    await db.notification.createMany({
-      data: enrolled.map((e) => ({
-        userId: e.userId,
-        type: "ANNOUNCEMENT" as const,
-        title,
-        body,
-        linkUrl: `/missions/${courseId}`,
-      })),
-    });
-  }
+  await postMissionAnnouncement(mentor, courseId, title, body);
 
   revalidatePath("/mentor/announcements");
 }
