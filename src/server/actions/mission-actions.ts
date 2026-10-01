@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { slugify } from "@/lib/slugify";
 import { extractYoutubeId } from "@/lib/youtube";
+import { googleDownloadUrl } from "@/lib/google-embed";
 import {
   courseCreateSchema,
   moduleCreateSchema,
@@ -666,7 +667,7 @@ export async function deleteLessonResource(courseId: string, resourceId: string)
 /**
  * Turns the student-facing Download button on or off for one uploaded file.
  * Same ownership chain as every other resource edit (mission team or admin).
- * External links can't be downloaded through Proggaa, so they're refused.
+ * Other external links can't be downloaded, so they're refused.
  */
 export async function setLessonResourceDownloadable(
   courseId: string,
@@ -676,9 +677,9 @@ export async function setLessonResourceDownloadable(
   const user = await requireMentorUser("Only mentors can author missions.");
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertResourceBelongsToCourse(resourceId, courseId);
-  const resource = await db.lessonResource.findUnique({ where: { id: resourceId }, select: { type: true } });
-  if (!resource || resource.type === "LINK") {
-    return { ok: false, error: "Only uploaded files can be made downloadable." };
+  const resource = await db.lessonResource.findUnique({ where: { id: resourceId }, select: { type: true, url: true } });
+  if (!resource || (resource.type === "LINK" && !googleDownloadUrl(resource.url))) {
+    return { ok: false, error: "Only uploaded files and Google Drive, Docs, Sheets or Slides links can be made downloadable." };
   }
   await db.lessonResource.update({ where: { id: resourceId }, data: { downloadable: Boolean(downloadable) } });
   revalidateMissionPage(`/${courseId}/builder`);

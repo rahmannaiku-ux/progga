@@ -9,10 +9,13 @@ export function ResourceDownloadToggle({
   courseId,
   resourceId,
   initial,
+  downloads = 0,
 }: {
   courseId: string;
   resourceId: string;
   initial: boolean;
+  /** How many times students have downloaded it. */
+  downloads?: number;
 }) {
   const [on, setOn] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +44,7 @@ export function ResourceDownloadToggle({
       >
         {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
         {on ? "Students can download" : "Download off"}
+        {downloads > 0 && <span className="font-mono font-normal opacity-80">({downloads})</span>}
       </button>
       {error && <span className="mt-1 text-xs text-danger">{error}</span>}
     </span>

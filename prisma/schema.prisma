@@ -981,6 +981,7 @@ model LessonResource {
   // Whether students get a one-click Download button. Set per file by the
   // mission owner or an admin; off by default.
   downloadable Boolean         @default(false)
+  downloadCount Int              @default(0)
   createdAt DateTime           @default(now())
 
   @@index([lessonId])

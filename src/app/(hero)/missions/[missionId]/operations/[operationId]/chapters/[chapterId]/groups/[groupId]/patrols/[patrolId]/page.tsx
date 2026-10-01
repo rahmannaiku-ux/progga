@@ -377,11 +377,18 @@ export default async function LessonPlayerPage({
             <div className="mt-3 space-y-3">
               {lesson.resources.map((r) =>
                 r.type === "LINK" ? (
-                  <GoogleResourceEmbed key={r.id} title={r.title} url={r.url} />
+                  <GoogleResourceEmbed
+                    key={r.id}
+                    title={r.title}
+                    url={r.url}
+                    downloadHref={r.downloadable ? `/api/resources/${r.id}/download` : undefined}
+                  />
                 ) : (
                   <div key={r.id} className="comic-panel flex min-h-11 flex-wrap items-center gap-2 bg-surface p-2.5 pl-3.5">
                     <a
-                      href={r.url}
+                      // Opens through the server, so the storage address never
+                      // reaches the page and the lesson's access rule applies.
+                      href={`/api/resources/${r.id}/download?view=1`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm font-medium text-foreground hover:text-primary"

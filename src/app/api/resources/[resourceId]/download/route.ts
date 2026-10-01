@@ -3,6 +3,14 @@ import { Readable } from "stream";
 import { db } from "@/lib/db/client";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 import { streamFromDrive } from "@/lib/storage/google-drive";
+import { googleDownloadUrl } from "@/lib/google-embed";
+import {
+  asciiFileName,
+  canShowInline,
+  decideResourceAccess,
+  downloadFileName,
+  type ResourceAccessMode,
+} from "@/lib/resource-download";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -11,22 +19,30 @@ export const fetchCache = "force-no-store";
 const ALLOWED_FILE_HOSTS = new Set(["utfs.io"]);
 
 /**
- * One-click download of a lesson file.
+ * Serves a lesson file, in one of two modes:
  *
- * Streams the file back with `Content-Disposition: attachment`, so the browser
- * saves it immediately instead of opening a viewer. Three checks run on every
- * request, all on the server: the resource's `downloadable` switch is on, the
- * file is a stored upload (never an external link), and the viewer may open the
- * lesson (enrolled, preview lesson, coin-store unlock, or the mission's
- * team / an admin).
+ *  - default: one-click download (`Content-Disposition: attachment`). Needs the
+ *    file's "downloadable" switch to be on. Each student download is counted.
+ *  - `?view=1`: opens the file in the browser (PDFs and plain images only; any
+ *    other type is still sent as a download). Needs only lesson access.
+ *
+ * Both go through the server, so the raw storage URL is never put in the page
+ * for uploaded files, and every request re-checks that the viewer is signed in
+ * and may open the lesson (enrolled, preview lesson, coin-store unlock, or the
+ * mission's team / an admin).
+ *
+ * Google Drive / Docs / Sheets / Slides links are never fetched by this server.
+ * When their switch is on, the request is counted and redirected to Google's
+ * own download address, which is built from the document id alone.
  */
-export async function GET(_req: NextRequest, { params }: { params: { resourceId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { resourceId: string } }) {
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.resourceId)) {
     return NextResponse.json({ error: "File not found." }, { status: 404 });
   }
+  const mode: ResourceAccessMode = req.nextUrl.searchParams.get("view") === "1" ? "view" : "download";
 
   const user = await getCurrentActiveSessionUser();
-  if (!user) return NextResponse.json({ error: "Sign in to download this file." }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sign in to open this file." }, { status: 401 });
 
   const resource = await db.lessonResource.findUnique({
     where: { id: params.resourceId },
@@ -52,36 +68,53 @@ export async function GET(_req: NextRequest, { params }: { params: { resourceId:
       },
     },
   });
-  if (!resource || resource.type === "LINK") {
-    return NextResponse.json({ error: "File not found." }, { status: 404 });
-  }
+  if (!resource) return NextResponse.json({ error: "File not found." }, { status: 404 });
+
+  const isLink = resource.type === "LINK";
+  // Links open from the page itself; only their Google download goes through here.
+  if (isLink && mode === "view") return NextResponse.json({ error: "File not found." }, { status: 404 });
 
   const courseId = resource.lesson.group.chapter.module.courseId;
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
   const isTeam =
     isAdmin ||
     resource.lesson.group.chapter.module.course.teacherId === user.id ||
-    Boolean(
-      await db.courseTeacher.findFirst({ where: { courseId, teacherId: user.id }, select: { id: true } })
-    );
+    Boolean(await db.courseTeacher.findFirst({ where: { courseId, teacherId: user.id }, select: { id: true } }));
 
-  if (!isTeam) {
-    if (!resource.downloadable) {
-      return NextResponse.json({ error: "Downloads are turned off for this file." }, { status: 403 });
-    }
-    const [enrollment, unlocked] = await Promise.all([
-      db.enrollment.findUnique({
-        where: { userId_courseId: { userId: user.id, courseId } },
-        select: { id: true },
-      }),
-      db.coinPurchase.findFirst({
-        where: { userId: user.id, item: { lessonId: resource.lesson.id } },
-        select: { id: true },
-      }),
-    ]);
-    if (!enrollment && !resource.lesson.isPreview && !unlocked) {
-      return NextResponse.json({ error: "Enroll in this mission to download its files." }, { status: 403 });
-    }
+  const [enrollment, unlocked] = isTeam
+    ? [null, null]
+    : await Promise.all([
+        db.enrollment.findUnique({
+          where: { userId_courseId: { userId: user.id, courseId } },
+          select: { id: true },
+        }),
+        db.coinPurchase.findFirst({
+          where: { userId: user.id, item: { lessonId: resource.lesson.id } },
+          select: { id: true },
+        }),
+      ]);
+
+  const access = decideResourceAccess({
+    isTeam,
+    downloadable: resource.downloadable,
+    mode,
+    enrolled: Boolean(enrollment),
+    isPreview: resource.lesson.isPreview,
+    unlocked: Boolean(unlocked),
+  });
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
+  if (mode === "download" && !isTeam) {
+    // A failed counter must never block the student's download.
+    await db.lessonResource
+      .update({ where: { id: params.resourceId }, data: { downloadCount: { increment: 1 } } })
+      .catch((err) => console.error("Could not count a resource download:", err));
+  }
+
+  if (isLink) {
+    const target = googleDownloadUrl(resource.url);
+    if (!target) return NextResponse.json({ error: "This link can't be downloaded." }, { status: 404 });
+    return NextResponse.redirect(target, 302);
   }
 
   // Only files the app itself stored are ever served.
@@ -91,10 +124,11 @@ export async function GET(_req: NextRequest, { params }: { params: { resourceId:
   });
   if (!upload) return NextResponse.json({ error: "File not found." }, { status: 404 });
 
-  const fileName = downloadName(resource.title, upload.name);
+  const fileName = downloadFileName(resource.title, upload.name);
+  const inline = mode === "view" && canShowInline(upload.fileType);
   const headers: Record<string, string> = {
     "Content-Type": upload.fileType || "application/octet-stream",
-    "Content-Disposition": `attachment; filename="${asciiName(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${asciiFileName(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
   };
@@ -119,16 +153,4 @@ export async function GET(_req: NextRequest, { params }: { params: { resourceId:
     console.error(`Failed to stream lesson resource ${params.resourceId}:`, err);
     return NextResponse.json({ error: "This file is temporarily unavailable. Try again shortly." }, { status: 502 });
   }
-}
-
-/** The resource title, with the stored file's extension if the title has none. */
-function downloadName(title: string, storedName: string): string {
-  const ext = /\.[A-Za-z0-9]{1,8}$/.exec(storedName)?.[0] ?? "";
-  const clean = title.replace(/[\\/:*?"<>|\r\n]+/g, " ").trim() || "lecture-file";
-  return ext && !clean.toLowerCase().endsWith(ext.toLowerCase()) ? `${clean}${ext}` : clean;
-}
-
-/** Header-safe fallback for old clients; the UTF-8 form carries the real name. */
-function asciiName(name: string): string {
-  return name.replace(/[^\x20-\x7E]+/g, "_").replace(/"/g, "");
 }

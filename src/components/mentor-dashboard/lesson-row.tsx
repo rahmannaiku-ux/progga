@@ -6,6 +6,7 @@ import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delet
 import { ResourceUploader } from "@/components/mentor-dashboard/resource-uploader";
 import { LinkResourceForm } from "@/components/mentor-dashboard/link-resource-form";
 import { ResourceDownloadToggle } from "@/components/mentor-dashboard/resource-download-toggle";
+import { googleDownloadUrl } from "@/lib/google-embed";
 import {
   updateLesson,
   deleteLesson,
@@ -24,7 +25,7 @@ type LessonWithResources = {
   isPreview: boolean;
   scheduledStart: Date | null;
   scheduledEnd: Date | null;
-  resources: { id: string; title: string; url: string; type: string; downloadable: boolean }[];
+  resources: { id: string; title: string; url: string; type: string; downloadable: boolean; downloadCount: number }[];
 };
 
 export function LessonRow({
@@ -160,8 +161,8 @@ export function LessonRow({
                 <FileText className="h-3 w-3 shrink-0" /> <span className="truncate">{r.title}</span>
               </span>
               <span className="flex shrink-0 items-center gap-2">
-                {r.type !== "LINK" && (
-                  <ResourceDownloadToggle courseId={courseId} resourceId={r.id} initial={r.downloadable} />
+                {(r.type !== "LINK" || googleDownloadUrl(r.url) !== null) && (
+                  <ResourceDownloadToggle courseId={courseId} resourceId={r.id} initial={r.downloadable} downloads={r.downloadCount} />
                 )}
               <ConfirmDeleteButton
                 action={boundDeleteResource(r.id)}

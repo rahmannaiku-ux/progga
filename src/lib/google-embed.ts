@@ -53,6 +53,37 @@ export function parseGoogleEmbedUrl(rawUrl: string): GoogleEmbed | null {
   return null;
 }
 
+/**
+ * The address that makes Google hand over the file itself (a download, not a
+ * viewer): the original file for Drive, a PDF export for Docs / Sheets /
+ * Slides. Null for anything Google can't export this way (a folder, another
+ * site, a malformed URL). Only ever built from the document id, so it can't
+ * point anywhere but Google.
+ */
+export function googleDownloadUrl(rawUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(rawUrl.trim());
+  } catch {
+    return null;
+  }
+  const host = url.hostname.replace(/^www\./, "");
+
+  if (host === "docs.google.com") {
+    const match = url.pathname.match(/^\/(document|spreadsheets|presentation)\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) return null;
+    const [, type, id] = match;
+    if (type === "presentation") return `https://docs.google.com/presentation/d/${id}/export/pdf`;
+    return `https://docs.google.com/${type}/d/${id}/export?format=pdf`;
+  }
+  if (host === "drive.google.com") {
+    const match = url.pathname.match(/^\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) return null;
+    return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+  }
+  return null;
+}
+
 export const GOOGLE_EMBED_LABEL: Record<GoogleEmbedKind, string> = {
   file: "Google Drive file",
   document: "Google Doc",

@@ -1,4 +1,4 @@
-import { FileText, ExternalLink, Maximize2 } from "lucide-react";
+import { Download, FileText, ExternalLink, Maximize2 } from "lucide-react";
 import { parseGoogleEmbedUrl, GOOGLE_EMBED_LABEL } from "@/lib/google-embed";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
 
@@ -11,8 +11,26 @@ import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
  * link, a malformed URL) falls back to a plain external link, same as
  * before.
  */
-export function GoogleResourceEmbed({ title, url }: { title: string; url: string }) {
+export function GoogleResourceEmbed({
+  title,
+  url,
+  downloadHref,
+}: {
+  title: string;
+  url: string;
+  /** Set only when the mission team has turned downloads on for this link. */
+  downloadHref?: string;
+}) {
   const embed = parseGoogleEmbedUrl(url);
+  const downloadButton = downloadHref ? (
+    <a
+      href={downloadHref}
+      download
+      className="comic-btn inline-flex min-h-11 shrink-0 items-center gap-1.5 bg-primary px-4 text-sm font-semibold text-primary-foreground"
+    >
+      <Download className="h-4 w-4" aria-hidden="true" /> Download
+    </a>
+  ) : null;
 
   if (!embed) {
     return (
@@ -28,7 +46,7 @@ export function GoogleResourceEmbed({ title, url }: { title: string; url: string
     );
   }
 
-  return (
+  const card = (
     <Dialog>
       <DialogTrigger asChild>
         <button
@@ -62,5 +80,13 @@ export function GoogleResourceEmbed({ title, url }: { title: string; url: string
         />
       </DialogContent>
     </Dialog>
+  );
+
+  if (!downloadButton) return card;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="min-w-0 flex-1">{card}</div>
+      {downloadButton}
+    </div>
   );
 }
