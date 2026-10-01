@@ -38,7 +38,7 @@ export function CookieConsentBanner() {
     <div
       role="dialog"
       aria-label="Cookie preferences"
-      className="fixed inset-x-0 bottom-0 z-[60] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:bottom-4 sm:left-4 sm:max-w-md sm:p-0"
+      className="fixed inset-x-0 bottom-0 z-[60] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:bottom-4 sm:right-4 sm:max-w-md sm:p-0"
     >
       <div className="comic-panel bg-surface p-4 shadow-2xl">
         <div className="flex items-start gap-3">
