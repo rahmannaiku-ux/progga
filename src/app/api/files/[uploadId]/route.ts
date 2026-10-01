@@ -113,6 +113,9 @@ async function canAccessUpload(
   if (viewer.role === "ADMIN" || viewer.role === "SUPER_ADMIN") return true;
   if (upload.uploaderId === viewer.id) return true;
 
+  // Mission routine and patrol thumbnail images are shown to every signed-in student.
+  if (upload.context === "COURSE_ROUTINE" || upload.context === "LESSON_THUMBNAIL") return true;
+
   if (upload.context === "ASSIGNMENT_SUBMISSION") {
     return isTeacherForSubmission(upload, viewer.id);
   }

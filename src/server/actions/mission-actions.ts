@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { slugify } from "@/lib/slugify";
 import { extractYoutubeId } from "@/lib/youtube";
-import { parseDriveFileId } from "@/lib/google-embed";
 import { googleDownloadUrl } from "@/lib/google-embed";
+import { deleteUserFile } from "@/lib/storage";
 import { refreshCourseProgress } from "@/lib/progress";
 import {
   courseCreateSchema,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/validation/course";
 import { requireMentorUser } from "./require-user";
 import { parseDhakaInput } from "@/lib/timezone";
+import { parseLessonLines, parseTitleLines, type BulkKind } from "@/lib/mission-bulk";
 
 /**
  * Verifies `courseId` exists and the caller may manage it: the
@@ -124,6 +125,43 @@ function revalidateBuilder(courseId: string) {
 // COURSE
 // ---------------------------------------------------------------------
 
+type ImageContext = "COURSE_ROUTINE" | "LESSON_THUMBNAIL";
+
+/**
+ * A saved picture must be one this mentor actually uploaded for this purpose
+ * (an Upload row with the right context), never an arbitrary address from the
+ * form. A value left unchanged is always fine, which keeps older pasted Drive
+ * links working until they are replaced.
+ */
+async function checkedImageUrl(
+  raw: string | null | undefined,
+  context: ImageContext,
+  user: { id: string; role: string },
+  current: string | null
+): Promise<string | null> {
+  const url = raw?.trim() || null;
+  if (!url) return null;
+  if (url === current) return url;
+  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+  const upload = await db.upload.findFirst({
+    where: { url, context, ...(isAdmin ? {} : { uploaderId: user.id }) },
+    select: { id: true },
+  });
+  if (!upload) throw new Error("That picture didn't upload properly. Please choose it again.");
+  return url;
+}
+
+/** Frees the old picture's storage once it has been replaced or removed. Never fails the save. */
+async function discardReplacedImage(oldUrl: string | null, newUrl: string | null, context: ImageContext) {
+  if (!oldUrl || oldUrl === newUrl) return;
+  try {
+    const old = await db.upload.findFirst({ where: { url: oldUrl, context }, select: { id: true } });
+    if (old) await deleteUserFile(old.id);
+  } catch (err) {
+    console.error("Couldn't remove the replaced picture", err);
+  }
+}
+
 export async function createCourse(formData: FormData) {
   const user = await requireMentorUser("Only mentors can author missions.");
 
@@ -221,11 +259,11 @@ export async function updateCourse(courseId: string, formData: FormData) {
   // Only touched when the form actually carries the field; blank removes the routine.
   const routineRaw = formData.get("routineImageUrl");
   let routineImageUrl: string | null | undefined;
+  let previousRoutine: string | null = null;
   if (typeof routineRaw === "string") {
-    routineImageUrl = routineRaw.trim() || null;
-    if (routineImageUrl && !parseDriveFileId(routineImageUrl)) {
-      throw new Error("The routine image must be a Google Drive file link (drive.google.com/file/d/...).");
-    }
+    previousRoutine =
+      (await db.course.findUnique({ where: { id: courseId }, select: { routineImageUrl: true } }))?.routineImageUrl ?? null;
+    routineImageUrl = await checkedImageUrl(routineRaw, "COURSE_ROUTINE", user, previousRoutine);
   }
 
   await db.course.update({
@@ -237,6 +275,9 @@ export async function updateCourse(courseId: string, formData: FormData) {
       ...(routineImageUrl !== undefined ? { routineImageUrl } : {}),
     },
   });
+  if (routineImageUrl !== undefined) {
+    await discardReplacedImage(previousRoutine, routineImageUrl, "COURSE_ROUTINE");
+  }
 
   revalidateMissionPage(`/${courseId}/builder`);
 }
@@ -534,10 +575,7 @@ export async function createLesson(courseId: string, formData: FormData) {
   if (!youtubeVideoId) {
     throw new Error("That doesn't look like a valid YouTube URL.");
   }
-  const thumbnailUrl = data.thumbnailUrl?.trim() || null;
-  if (thumbnailUrl && !parseDriveFileId(thumbnailUrl)) {
-    throw new Error("The thumbnail must be a Google Drive file link (drive.google.com/file/d/...).");
-  }
+  const thumbnailUrl = await checkedImageUrl(data.thumbnailUrl, "LESSON_THUMBNAIL", user, null);
   const { scheduledStart, scheduledEnd } = parseScheduleFields(data.scheduledStart, data.scheduledEnd);
 
   const maxOrder = await db.lesson.aggregate({
@@ -590,10 +628,9 @@ export async function updateLesson(courseId: string, formData: FormData) {
   if (!youtubeVideoId) {
     throw new Error("That doesn't look like a valid YouTube URL.");
   }
-  const thumbnailUrl = data.thumbnailUrl?.trim() || null;
-  if (thumbnailUrl && !parseDriveFileId(thumbnailUrl)) {
-    throw new Error("The thumbnail must be a Google Drive file link (drive.google.com/file/d/...).");
-  }
+  const previousThumbnail =
+    (await db.lesson.findUnique({ where: { id: data.lessonId }, select: { thumbnailUrl: true } }))?.thumbnailUrl ?? null;
+  const thumbnailUrl = await checkedImageUrl(data.thumbnailUrl, "LESSON_THUMBNAIL", user, previousThumbnail);
   const { scheduledStart, scheduledEnd } = parseScheduleFields(data.scheduledStart, data.scheduledEnd);
 
   await db.lesson.update({
@@ -609,6 +646,7 @@ export async function updateLesson(courseId: string, formData: FormData) {
       scheduledEnd,
     },
   });
+  await discardReplacedImage(previousThumbnail, thumbnailUrl, "LESSON_THUMBNAIL");
 
   revalidateMissionPage(`/${courseId}/builder`);
 }
@@ -714,4 +752,71 @@ export async function setLessonResourceDownloadable(
   await db.lessonResource.update({ where: { id: resourceId }, data: { downloadable: Boolean(downloadable) } });
   revalidateMissionPage(`/${courseId}/builder`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// QUICK ADD — one box on every level of the builder that creates one
+// item or a whole pasted list (one per line). `parentId` is the course
+// (operations), operation (chapters), chapter (class types) or class
+// type (patrols) the new items go under. Returns the error instead of
+// throwing so the message reaches the mentor in production.
+// ---------------------------------------------------------------------
+
+export type BulkAddResult = { ok: true; added: number } | { ok: false; error: string };
+
+export async function bulkAddItems(
+  courseId: string,
+  kind: BulkKind,
+  parentId: string,
+  text: string
+): Promise<BulkAddResult> {
+  const user = await requireMentorUser("Only mentors can author missions.");
+  await assertOwnsCourse(courseId, user.id, user.role);
+
+  if (typeof text !== "string" || typeof parentId !== "string") {
+    return { ok: false, error: "Something looks wrong with that request." };
+  }
+
+  let added = 0;
+  if (kind === "lessons") {
+    const parsed = parseLessonLines(text);
+    if (!parsed.ok) return parsed;
+    await assertGroupBelongsToCourse(parentId, courseId);
+    const max = await db.lesson.aggregate({ where: { groupId: parentId }, _max: { order: true } });
+    const start = (max._max.order ?? -1) + 1;
+    const res = await db.lesson.createMany({
+      data: parsed.items.map((l, i) => ({
+        groupId: parentId,
+        title: l.title,
+        youtubeVideoId: l.youtubeVideoId,
+        order: start + i,
+      })),
+    });
+    added = res.count;
+    await refreshCourseProgress(courseId);
+  } else if (kind === "modules" || kind === "chapters" || kind === "groups") {
+    const parsed = parseTitleLines(text, kind);
+    if (!parsed.ok) return parsed;
+    if (kind === "modules") {
+      if (parentId !== courseId) return { ok: false, error: "Something looks wrong with that request." };
+      const max = await db.module.aggregate({ where: { courseId }, _max: { order: true } });
+      const start = (max._max.order ?? -1) + 1;
+      added = (await db.module.createMany({ data: parsed.items.map((title, i) => ({ courseId, title, order: start + i })) })).count;
+    } else if (kind === "chapters") {
+      await assertModuleBelongsToCourse(parentId, courseId);
+      const max = await db.chapter.aggregate({ where: { moduleId: parentId }, _max: { order: true } });
+      const start = (max._max.order ?? -1) + 1;
+      added = (await db.chapter.createMany({ data: parsed.items.map((title, i) => ({ moduleId: parentId, title, order: start + i })) })).count;
+    } else {
+      await assertChapterBelongsToCourse(parentId, courseId);
+      const max = await db.lessonGroup.aggregate({ where: { chapterId: parentId }, _max: { order: true } });
+      const start = (max._max.order ?? -1) + 1;
+      added = (await db.lessonGroup.createMany({ data: parsed.items.map((title, i) => ({ chapterId: parentId, title, order: start + i })) })).count;
+    }
+  } else {
+    return { ok: false, error: "Something looks wrong with that request." };
+  }
+
+  revalidateMissionPage(`/${courseId}/builder`);
+  return { ok: true, added };
 }

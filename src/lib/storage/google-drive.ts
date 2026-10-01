@@ -32,11 +32,13 @@ const CATEGORY_FOLDER_NAME: Record<
   COMMUNITY_IMAGE: "community",
   BUG_REPORT: "bug-reports",
   OTHER: "other",
+  COURSE_ROUTINE: "course-images",
+  LESSON_THUMBNAIL: "course-images",
 };
 
 const CATEGORY_FOLDER_DB_FIELD: Record<
   Exclude<UploadContext, "LESSON_RESOURCE">,
-  "profilePicturesFolderId" | "assignmentsFolderId" | "certificatesFolderId" | "communityFolderId" | "bugReportsFolderId" | "otherFolderId"
+  "profilePicturesFolderId" | "assignmentsFolderId" | "certificatesFolderId" | "communityFolderId" | "bugReportsFolderId" | "otherFolderId" | "courseMediaFolderId"
 > = {
   AVATAR: "profilePicturesFolderId",
   ASSIGNMENT_SUBMISSION: "assignmentsFolderId",
@@ -44,6 +46,8 @@ const CATEGORY_FOLDER_DB_FIELD: Record<
   COMMUNITY_IMAGE: "communityFolderId",
   BUG_REPORT: "bugReportsFolderId",
   OTHER: "otherFolderId",
+  COURSE_ROUTINE: "courseMediaFolderId",
+  LESSON_THUMBNAIL: "courseMediaFolderId",
 };
 
 export class DriveNotConnectedError extends Error {

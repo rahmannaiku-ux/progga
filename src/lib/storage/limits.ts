@@ -36,6 +36,14 @@ export const UPLOAD_LIMITS: Record<UploadContext, { maxSizeBytes: number; allowe
     maxSizeBytes: 10 * 1024 * 1024,
     allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"],
   },
+  COURSE_ROUTINE: {
+    maxSizeBytes: 10 * 1024 * 1024,
+    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"],
+  },
+  LESSON_THUMBNAIL: {
+    maxSizeBytes: 10 * 1024 * 1024,
+    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"],
+  },
   OTHER: {
     maxSizeBytes: 10 * 1024 * 1024,
     allowedMimeTypes: ["application/pdf", "image/png", "image/jpeg", "image/webp", "text/plain"],

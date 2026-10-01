@@ -4,6 +4,7 @@ import { formatDhakaDateTime, toDhakaInputValue } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { ResourceUploader } from "@/components/mentor-dashboard/resource-uploader";
+import { ImageUploadField } from "@/components/mentor-dashboard/image-upload-field";
 import { LinkResourceForm } from "@/components/mentor-dashboard/link-resource-form";
 import { ResourceDownloadToggle } from "@/components/mentor-dashboard/resource-download-toggle";
 import { googleDownloadUrl } from "@/lib/google-embed";
@@ -97,11 +98,12 @@ export function LessonRow({
                 className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
                 placeholder="YouTube URL"
               />
-              <input
+              <ImageUploadField
                 name="thumbnailUrl"
-                defaultValue={lesson.thumbnailUrl ?? ""}
-                className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
-                placeholder="Thumbnail: Google Drive image link (optional)"
+                context="LESSON_THUMBNAIL"
+                label="Thumbnail picture"
+                initialUrl={lesson.thumbnailUrl}
+                maxSide={1280}
               />
               <textarea
                 name="description"

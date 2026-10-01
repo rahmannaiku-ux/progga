@@ -1,7 +1,11 @@
 import { LessonGroupBlock } from "@/components/mentor-dashboard/lesson-group-block";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
-import { SubmitButton } from "@/components/shared/submit-button";
-import { createLessonGroup, deleteChapter } from "@/server/actions/mission-actions";
+import { CollapsibleSection } from "@/components/mentor-dashboard/collapsible-section";
+import { QuickAdd } from "@/components/mentor-dashboard/quick-add";
+import { deleteChapter } from "@/server/actions/mission-actions";
+
+/** One-tap class type names; ones the chapter already has are hidden. */
+const GROUP_SUGGESTIONS = ["Foundation Class", "Practice Class", "Live Class", "Archive Class"];
 
 type ChapterWithGroups = {
   id: string;
@@ -31,57 +35,48 @@ export function ChapterBlock({
   courseId: string;
   chapter: ChapterWithGroups;
 }) {
-  const boundCreateGroup = createLessonGroup.bind(null, courseId);
   const boundDeleteChapter = deleteChapter.bind(null, courseId, chapter.id);
+
+  const patrolCount = chapter.groups.reduce((n, g) => n + g.lessons.length, 0);
+  const have = new Set(chapter.groups.map((g) => g.title.toLowerCase()));
+  const suggestions = GROUP_SUGGESTIONS.filter((name) => !have.has(name.toLowerCase()));
 
   return (
     <div className="rounded-xl border border-border/40 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {chapter.title}
-        </p>
-        <ConfirmDeleteButton
-          action={boundDeleteChapter}
-          confirmMessage={`Delete chapter "${chapter.title}" and everything inside it?`}
+      <CollapsibleSection
+        title={chapter.title}
+        meta={`${patrolCount} patrol${patrolCount === 1 ? "" : "s"}`}
+        titleClassName="text-sm font-semibold text-foreground"
+        actions={
+          <ConfirmDeleteButton
+            action={boundDeleteChapter}
+            confirmMessage={`Delete chapter "${chapter.title}" and everything inside it?`}
+          />
+        }
+      >
+        <div className="space-y-2">
+          {chapter.groups.map((group, i) => (
+            <LessonGroupBlock
+              key={group.id}
+              courseId={courseId}
+              chapterId={chapter.id}
+              group={group}
+              isFirst={i === 0}
+              isLast={i === chapter.groups.length - 1}
+            />
+          ))}
+        </div>
+
+        <QuickAdd
+          className="mt-3"
+          courseId={courseId}
+          kind="groups"
+          parentId={chapter.id}
+          placeholder="Add class type, e.g. Foundation Class"
+          suggestions={suggestions}
+          hint="A class type groups patrols inside a chapter. Pick one above, or type your own."
         />
-      </div>
-
-      <div className="space-y-2">
-        {chapter.groups.map((group, i) => (
-          <LessonGroupBlock
-            key={group.id}
-            courseId={courseId}
-            chapterId={chapter.id}
-            group={group}
-            isFirst={i === 0}
-            isLast={i === chapter.groups.length - 1}
-          />
-        ))}
-      </div>
-
-      <details className="mt-3">
-        <summary className="cursor-pointer list-none text-xs font-medium text-accent hover:text-accent/80">
-          + Add class type (e.g. "Foundation Class", "Archive Class")
-        </summary>
-        <form
-          action={boundCreateGroup}
-          className="mt-2 flex gap-2 rounded-xl border border-border/60 bg-surface/60 p-3"
-        >
-          <input type="hidden" name="chapterId" value={chapter.id} />
-          <input
-            name="title"
-            required
-            placeholder="Class type title"
-            className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
-          />
-          <SubmitButton
-            pendingLabel="Adding…"
-            className="h-9 shrink-0 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-primary/90"
-          >
-            Add
-          </SubmitButton>
-        </form>
-      </details>
+      </CollapsibleSection>
     </div>
   );
 }

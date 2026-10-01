@@ -12,7 +12,13 @@ const CLIENT_UPLOADABLE_CONTEXTS: UploadContext[] = [
   "COMMUNITY_IMAGE",
   "BUG_REPORT",
   "OTHER",
+  "COURSE_ROUTINE",
+  "LESSON_THUMBNAIL",
 ];
+
+// Only people who build missions may upload these.
+const MENTOR_ONLY_CONTEXTS: UploadContext[] = ["COURSE_ROUTINE", "LESSON_THUMBNAIL"];
+const MENTOR_ROLES = ["TEACHER", "ADMIN", "SUPER_ADMIN"];
 
 /**
  * Replaces the UploadThing client widget for the Drive-eligible
@@ -40,6 +46,9 @@ export async function POST(req: NextRequest) {
   }
   if (typeof context !== "string" || !CLIENT_UPLOADABLE_CONTEXTS.includes(context as UploadContext)) {
     return NextResponse.json({ error: "Invalid upload context." }, { status: 400 });
+  }
+  if (MENTOR_ONLY_CONTEXTS.includes(context as UploadContext) && !MENTOR_ROLES.includes(user.role)) {
+    return NextResponse.json({ error: "Only mentors can upload this." }, { status: 403 });
   }
 
   try {

@@ -8,7 +8,9 @@ import { PublishToggle } from "@/components/mentor-dashboard/publish-toggle";
 import { ExamsToggle } from "@/components/mentor-dashboard/exams-toggle";
 import { ModuleBlock } from "@/components/mentor-dashboard/module-block";
 import { SubmitButton } from "@/components/shared/submit-button";
-import { createModule, updateCourse } from "@/server/actions/mission-actions";
+import { updateCourse } from "@/server/actions/mission-actions";
+import { QuickAdd } from "@/components/mentor-dashboard/quick-add";
+import { ImageUploadField } from "@/components/mentor-dashboard/image-upload-field";
 
 export default async function MissionBuilderPage({
   params,
@@ -77,7 +79,6 @@ export default async function MissionBuilderPage({
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
   if (!isAdmin && course.teacherId !== user.id) notFound();
 
-  const boundCreateModule = createModule.bind(null);
   const boundUpdateCourse = updateCourse.bind(null, course.id);
 
   return (
@@ -148,21 +149,13 @@ export default async function MissionBuilderPage({
               className="w-full rounded-lg border border-border/60 bg-surface px-3 py-2 text-base text-foreground"
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-foreground">
-              Class routine image (Google Drive link)
-            </label>
-            <input
-              name="routineImageUrl"
-              defaultValue={course.routineImageUrl ?? ""}
-              placeholder="https://drive.google.com/file/d/.../view"
-              className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Shown at the top of the mission page. Upload the image to Google Drive, share it as
-              "Anyone with the link", paste the link here. Clear the box to remove it.
-            </p>
-          </div>
+          <ImageUploadField
+            name="routineImageUrl"
+            context="COURSE_ROUTINE"
+            label="Class routine image"
+            hint="Shown at the top of the mission page. Press Save details after choosing it."
+            initialUrl={course.routineImageUrl}
+          />
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-foreground">
@@ -205,10 +198,25 @@ export default async function MissionBuilderPage({
         </form>
       </details>
 
-      <div className="mt-8 space-y-5">
-        <h2 className="font-display text-lg font-semibold text-foreground">
-          Operations (modules)
-        </h2>
+      <div className="mt-8 space-y-4">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-foreground">Build your mission</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Operation → Chapter → Class type → Patrol. Type a name and press Enter to add it, or paste a
+            list (one per line) to add many at once. Tap a title to fold it away.
+          </p>
+        </div>
+
+        {course.modules.length === 0 && (
+          <div className="comic-panel bg-surface p-5 text-sm text-muted-foreground">
+            <p className="font-display font-bold text-foreground">Start here</p>
+            <ol className="mt-2 list-inside list-decimal space-y-1">
+              <li>Add your subjects as operations below, e.g. "Physics 1st Paper".</li>
+              <li>Open one, add its chapters, then a class type such as "Foundation Class".</li>
+              <li>Paste your patrols as "Title | YouTube link" lines.</li>
+            </ol>
+          </div>
+        )}
 
         {course.modules.map((module, i) => (
           <ModuleBlock
@@ -220,30 +228,15 @@ export default async function MissionBuilderPage({
           />
         ))}
 
-        <div className="glass-panel p-5">
-          <p className="mb-3 text-sm font-semibold text-foreground">
-            + Add an operation
-          </p>
-          <form action={boundCreateModule} className="space-y-2">
-            <input type="hidden" name="courseId" value={course.id} />
-            <input
-              name="title"
-              required
-              placeholder="e.g. Getting Started"
-              className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
-            />
-            <input
-              name="summary"
-              placeholder="Short summary (optional)"
-              className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
-            />
-            <SubmitButton
-              pendingLabel="Adding…"
-              className="h-10 w-full comic-btn bg-primary text-sm font-bold text-primary-foreground"
-            >
-              Add operation
-            </SubmitButton>
-          </form>
+        <div className="glass-panel p-4 sm:p-5">
+          <p className="mb-2 text-sm font-semibold text-foreground">+ Add operations</p>
+          <QuickAdd
+            courseId={course.id}
+            kind="modules"
+            parentId={course.id}
+            placeholder="e.g. Physics 1st Paper"
+            hint="Press Enter to add. Paste a list (one operation per line) to add them all at once."
+          />
         </div>
       </div>
     </div>

@@ -878,6 +878,8 @@ enum UploadContext {
   COMMUNITY_IMAGE
   BUG_REPORT
   OTHER
+  COURSE_ROUTINE // a mission's weekly class routine image
+  LESSON_THUMBNAIL // a patrol's thumbnail image
 }
 
 // Which storage backend actually holds the bytes for this Upload row.
@@ -970,6 +972,7 @@ model GoogleDriveConnection {
   communityFolderId         String?
   otherFolderId             String?
   bugReportsFolderId        String?
+  courseMediaFolderId       String? // routine + thumbnail images, both live in one folder
   updatedAt      DateTime               @updatedAt
 }
 

@@ -2,6 +2,9 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { LessonRow } from "@/components/mentor-dashboard/lesson-row";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { SubmitButton } from "@/components/shared/submit-button";
+import { CollapsibleSection } from "@/components/mentor-dashboard/collapsible-section";
+import { QuickAdd } from "@/components/mentor-dashboard/quick-add";
+import { ImageUploadField } from "@/components/mentor-dashboard/image-upload-field";
 import {
   createLesson,
   deleteLessonGroup,
@@ -45,45 +48,57 @@ export function LessonGroupBlock({
 
   return (
     <div className="rounded-xl border border-border/60 bg-surface/40 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-foreground">{group.title}</p>
-        <div className="flex items-center gap-1.5">
-          <form action={boundReorderUp}>
-            <button
-              type="submit"
-              disabled={isFirst}
-              className="rounded-lg border border-border/60 p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-              aria-label="Move class type up"
-            >
-              <ChevronUp className="h-3 w-3" />
-            </button>
-          </form>
-          <form action={boundReorderDown}>
-            <button
-              type="submit"
-              disabled={isLast}
-              className="rounded-lg border border-border/60 p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-              aria-label="Move class type down"
-            >
-              <ChevronDown className="h-3 w-3" />
-            </button>
-          </form>
-          <ConfirmDeleteButton
-            action={boundDeleteGroup}
-            confirmMessage={`Delete "${group.title}" and all its patrols?`}
-          />
+      <CollapsibleSection
+        title={group.title}
+        meta={`${group.lessons.length} patrol${group.lessons.length === 1 ? "" : "s"}`}
+        titleClassName="text-sm font-semibold text-foreground"
+        actions={
+          <>
+            <form action={boundReorderUp}>
+              <button
+                type="submit"
+                disabled={isFirst}
+                className="rounded-lg border border-border/60 p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                aria-label="Move class type up"
+              >
+                <ChevronUp className="h-3 w-3" />
+              </button>
+            </form>
+            <form action={boundReorderDown}>
+              <button
+                type="submit"
+                disabled={isLast}
+                className="rounded-lg border border-border/60 p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                aria-label="Move class type down"
+              >
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </form>
+            <ConfirmDeleteButton
+              action={boundDeleteGroup}
+              confirmMessage={`Delete "${group.title}" and all its patrols?`}
+            />
+          </>
+        }
+      >
+        <div className="space-y-2">
+          {group.lessons.map((lesson) => (
+            <LessonRow key={lesson.id} courseId={courseId} groupId={group.id} lesson={lesson} />
+          ))}
         </div>
-      </div>
 
-      <div className="space-y-2">
-        {group.lessons.map((lesson) => (
-          <LessonRow key={lesson.id} courseId={courseId} groupId={group.id} lesson={lesson} />
-        ))}
-      </div>
+        <QuickAdd
+          className="mt-3"
+          courseId={courseId}
+          kind="lessons"
+          parentId={group.id}
+          placeholder="Title | YouTube link"
+          hint="One patrol per line, so you can paste a whole list. Add each thumbnail afterwards with Edit."
+        />
 
       <details className="mt-3">
         <summary className="cursor-pointer list-none text-xs font-medium text-accent hover:text-accent/80">
-          + Add patrol (lesson)
+          Add one patrol with more options (duration, free preview, live class)
         </summary>
         <form
           action={boundCreateLesson}
@@ -102,14 +117,12 @@ export function LessonGroupBlock({
             placeholder="Paste a YouTube URL"
             className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
           />
-          <input
+          <ImageUploadField
             name="thumbnailUrl"
-            placeholder="Thumbnail: Google Drive image link (optional)"
-            className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
+            context="LESSON_THUMBNAIL"
+            label="Thumbnail picture (optional)"
+            maxSide={1280}
           />
-          <p className="text-[11px] text-muted-foreground">
-            Upload the image to Google Drive, share it as "Anyone with the link", and paste the link here.
-          </p>
           <div className="flex gap-2">
             <input
               name="durationSeconds"
@@ -153,6 +166,7 @@ export function LessonGroupBlock({
           </SubmitButton>
         </form>
       </details>
+      </CollapsibleSection>
     </div>
   );
 }

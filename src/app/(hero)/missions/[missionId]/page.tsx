@@ -10,7 +10,7 @@ import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { missionProgressPct } from "@/lib/progress-math";
-import { driveThumbnailUrl, driveViewUrl } from "@/lib/google-embed";
+import { mediaSrc, mediaViewUrl } from "@/lib/media-url";
 
 /**
  * Mission overview — step 1 of the drill-down: Subjects (Modules).
@@ -117,8 +117,8 @@ export default async function MissionOverviewPage({
   // stale when a mentor adds or publishes lessons after the student started).
   const progressPct = missionProgressPct(completedIds.size, flat.length);
   const isComplete = enrollment.status === "COMPLETED";
-  const routineSrc = driveThumbnailUrl(course.routineImageUrl, 1600);
-  const routineLink = driveViewUrl(course.routineImageUrl);
+  const routineSrc = mediaSrc(course.routineImageUrl, 1600);
+  const routineLink = mediaViewUrl(course.routineImageUrl);
   const totalPatrols = flat.length;
 
   return (

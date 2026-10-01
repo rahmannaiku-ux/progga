@@ -7,7 +7,7 @@ import { db } from "@/lib/db/client";
 import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
-import { driveThumbnailUrl } from "@/lib/google-embed";
+import { mediaSrc } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
 
 /** Lessons within a class type — step 4, the last stop before the player. */
@@ -99,7 +99,7 @@ export default async function LessonGroupLessonsPage({
           {group.lessons.map((lesson) => {
             const isCompleted = completedIds.has(lesson.id);
             const thumb =
-              driveThumbnailUrl(lesson.thumbnailUrl) ??
+              mediaSrc(lesson.thumbnailUrl) ??
               (lesson.youtubeVideoId ? `https://i.ytimg.com/vi/${lesson.youtubeVideoId}/hqdefault.jpg` : null);
             return (
               <div
