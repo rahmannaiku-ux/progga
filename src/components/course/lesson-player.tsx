@@ -23,11 +23,17 @@ export function LessonPlayer({
   youtubeVideoId,
   resumeAtSeconds,
   isCompleted,
+  onPositionChange,
+  onCompleted,
 }: {
   lessonId: string;
   youtubeVideoId: string;
   resumeAtSeconds: number;
   isCompleted: boolean;
+  /** Optional: lets a wrapper (the video popup) remember where the student got to. */
+  onPositionChange?: (seconds: number, durationSeconds?: number) => void;
+  /** Optional: called once when the server marks the lesson complete. */
+  onCompleted?: () => void;
 }) {
   // Refs, not state: they change up to 4x/second and only save time reads them.
   const positionRef = useRef(resumeAtSeconds);
@@ -65,6 +71,7 @@ export function LessonPlayer({
       if (result?.completed && !completedRef.current) {
         completedRef.current = true;
         setCompleted(true);
+        onCompleted?.();
         setJustCompleted(true);
         setTimeout(() => setJustCompleted(false), 3200);
       }
@@ -82,6 +89,7 @@ export function LessonPlayer({
     const now = Date.now();
     positionRef.current = seconds;
     if (videoDuration && videoDuration > 0) durationRef.current = videoDuration;
+    onPositionChange?.(seconds, durationRef.current > 0 ? durationRef.current : undefined);
     pendingPlayedRef.current += playedSecondsBetweenTicks(lastTickRef.current, seconds, now);
     lastTickRef.current = { position: seconds, at: now };
   }
