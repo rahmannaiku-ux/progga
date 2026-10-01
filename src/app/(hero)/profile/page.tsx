@@ -70,34 +70,32 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        <div className="relative mt-6 grid grid-cols-3 gap-3 text-center">
-          <div className="sticker bg-accent/10 py-3">
-            <p className="font-mono text-xl font-extrabold text-accent">Lv.{level}</p>
-            <p className="text-[11px] font-semibold text-muted-foreground">Level</p>
+        <div className="relative mt-6 flex items-stretch gap-4">
+          <div className="flex w-24 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-border bg-xp py-3 text-xp-foreground shadow-[3px_3px_0_hsl(var(--border)/0.85)]">
+            <span className="text-xs font-bold">Level</span>
+            <span className="font-display text-4xl font-extrabold leading-none">{level}</span>
           </div>
-          <div className="sticker bg-danger/10 py-3">
-            <p className="flex items-center justify-center gap-1 font-mono text-xl font-extrabold text-danger">
-              <Flame className="h-4 w-4 fill-danger" /> {stats.currentStreak}
+          <div className="min-w-0 flex-1 self-center">
+            <p className="font-mono text-sm font-bold text-foreground">
+              {stats.xp.toLocaleString("en-US")} <span className="font-sans font-semibold text-muted-foreground">XP in total</span>
             </p>
-            <p className="text-[11px] font-semibold text-muted-foreground">Day streak</p>
-          </div>
-          <div className="sticker bg-xp/10 py-3">
-            <p className="flex items-center justify-center gap-1 font-mono text-xl font-extrabold text-xp">
-              <Trophy className="h-4 w-4 fill-xp" /> {completedCount}
+            <AnimatedProgressBar percent={percent} className="mt-1.5" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {xpIntoLevel} / {xpForNextLevel} XP to level {level + 1}
             </p>
-            <p className="text-[11px] font-semibold text-muted-foreground">Missions done</p>
           </div>
         </div>
 
-        <div className="relative mt-6">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {xpIntoLevel} / {xpForNextLevel} XP to level {level + 1}
-            </span>
-            <span className="font-mono font-semibold">{stats.xp.toLocaleString("en-US")} total XP</span>
-          </div>
-          <AnimatedProgressBar percent={percent} className="mt-1.5" />
-        </div>
+        <p className="relative mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm font-semibold text-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Flame className="h-4 w-4 fill-danger text-danger" aria-hidden="true" />
+            {stats.currentStreak}-day streak
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Trophy className="h-4 w-4 fill-xp text-xp" aria-hidden="true" />
+            {completedCount} Mission{completedCount === 1 ? "" : "s"} done
+          </span>
+        </p>
       </StaggerItem>
 
       {studentProfile && (

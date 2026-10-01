@@ -84,7 +84,7 @@ export function ForgotPasswordFlow() {
       <div className="mb-6 text-center">
         <ProggyMascot state={step === "done" ? "celebrating" : "thinking"} className="mx-auto h-24 w-24" groundShadow priority />
         <h1 className="mt-2 font-display text-2xl font-extrabold text-foreground">Reset your password</h1>
-        <p className="mt-1 text-sm text-muted-foreground">We'll text you a code to verify it's you</p>
+        <p className="mt-1 text-sm text-muted-foreground">We will text a code to the phone number on your account.</p>
       </div>
 
       <div className="comic-panel-bold space-y-4 bg-surface p-5">

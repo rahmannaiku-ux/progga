@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/course/course-card";
 import { searchCourses } from "@/server/services/course-catalog";
@@ -39,11 +40,10 @@ export default async function CoursesPage({
         <DoodleSparkle className="pointer-events-none absolute right-24 top-6 hidden h-8 w-8 opacity-70 sm:block" />
         <div className="relative">
           <h1 className="font-display text-3xl font-extrabold text-foreground sm:text-4xl">
-            Choose your <span className="text-primary">mission!</span>
+            Pick a Mission
           </h1>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
-            Each mission = a new skill unlocked. {courses.length} mission{courses.length === 1 ? "" : "s"} match
-            your filters right now.
+            {courses.length} Mission{courses.length === 1 ? "" : "s"} match your filters.
           </p>
         </div>
         <ProggyMascot state="encouraging" className="h-32 w-32 shrink-0 sm:h-40 sm:w-40" groundShadow />
@@ -57,7 +57,7 @@ export default async function CoursesPage({
             type="text"
             name="q"
             defaultValue={searchParams.q}
-            placeholder="Search missions..."
+            placeholder="Search Missions"
             className="h-11 w-full rounded-xl border border-border/60 bg-surface pl-10 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
@@ -112,11 +112,12 @@ export default async function CoursesPage({
           ))}
         </StaggerContainer>
       ) : (
-        <div className="comic-panel mt-10 p-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            No missions match those filters yet. Try clearing a filter or check back soon.
-          </p>
-        </div>
+        <EmptyState
+          className="mt-10"
+          title="No Missions match those filters"
+          body="Remove a filter or search for something broader."
+          action={{ href: "/courses", label: "Clear filters" }}
+        />
       )}
       </StaggerContainer>
     </div>

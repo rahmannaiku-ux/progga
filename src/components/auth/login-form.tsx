@@ -46,8 +46,8 @@ export function LoginForm() {
     <div className="relative">
       <div className="mb-6 text-center">
         <ProggyMascot state="welcoming" className="mx-auto h-24 w-24" groundShadow priority />
-        <h1 className="mt-2 font-display text-2xl font-extrabold text-foreground">Welcome back, hero!</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Continue your learning adventure 🚀</p>
+        <h1 className="mt-2 font-display text-2xl font-extrabold text-foreground">Log in</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Use the phone number you signed up with.</p>
       </div>
 
       <form

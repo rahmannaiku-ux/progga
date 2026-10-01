@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wallet } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { formatMoney, PAYMENT_STATUS_META } from "@/lib/payments/format";
@@ -20,19 +20,7 @@ export default async function PaymentHistoryPage() {
       <p className="mt-1 text-sm text-muted-foreground">Every mission unlock you've paid for, in one place.</p>
 
       {payments.length === 0 ? (
-        <div className="comic-panel mt-6 bg-surface p-10 text-center">
-          <Wallet className="mx-auto h-10 w-10 text-muted-foreground" />
-          <p className="mt-3 font-display text-lg font-bold text-foreground">No payments yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Unlock a premium mission and it'll show up here.
-          </p>
-          <Link
-            href="/courses"
-            className="comic-btn mt-4 inline-flex items-center justify-center bg-primary px-5 py-2.5 font-display text-sm font-bold text-primary-foreground"
-          >
-            Explore missions
-          </Link>
-        </div>
+        <EmptyState className="mt-6" title="No payments yet" body="When you unlock a paid Mission, the payment and its status will be listed here." action={{ href: "/courses", label: "Browse Missions" }} />
       ) : (
         <div className="mt-6 space-y-3">
           {payments.map((p) => {

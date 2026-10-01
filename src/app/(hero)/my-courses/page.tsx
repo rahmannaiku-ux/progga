@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PlayCircle, Award, Heart, LayoutGrid, Flame, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -129,7 +130,7 @@ export default async function MyCoursesPage({
                 </StaggerItem>
               ))
             ) : (
-              <EmptyState label="Nothing wishlisted yet — save a course to come back to it later." />
+              <EmptyState pose="happy" title="Your wishlist is empty" body="Tap the heart on a Mission to keep it here for later." action={{ href: "/courses", label: "Browse Missions" }} />
             )
           ) : visibleEnrollments.length > 0 ? (
             visibleEnrollments.map((e) => (
@@ -170,7 +171,7 @@ export default async function MyCoursesPage({
               </StaggerItem>
             ))
           ) : (
-            <EmptyState label="No courses here yet — browse the catalog to start your first mission." />
+            <EmptyState title="No Missions here yet" body="Enroll in a Mission and it will show up here with your progress." action={{ href: "/courses", label: "Browse Missions" }} />
           )}
         </div>
 
@@ -209,18 +210,6 @@ function Stat({
         <p className="font-display text-lg font-extrabold leading-none text-foreground">{value}</p>
         <p className="text-[10px] font-semibold text-muted-foreground">{label}</p>
       </div>
-    </div>
-  );
-}
-
-function EmptyState({ label }: { label: string }) {
-  return (
-    <div className="comic-panel flex flex-col items-center gap-3 bg-surface p-10 text-center">
-      <ProggyMascot state="thinking" className="h-16 w-16" />
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <Button asChild variant="accent" size="sm">
-        <Link href="/courses">Browse missions</Link>
-      </Button>
     </div>
   );
 }

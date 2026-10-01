@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Rocket, Wallet, Star, ClipboardCheck } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { formatMoney } from "@/lib/payments/format";
@@ -54,14 +54,10 @@ export default async function MentorDashboardPage() {
   ]);
 
   const stats = [
-    { label: "Total Students", value: totalStudents.toLocaleString("en-US"), icon: Users },
-    { label: "Total Missions", value: myCourses.length, icon: Rocket },
-    { label: "Total Earnings", value: formatMoney(totalEarnings._sum.amountCents ?? 0, "BDT"), icon: Wallet },
-    {
-      label: "Reviews",
-      value: reviews._count > 0 ? `${(reviews._avg.rating ?? 0).toFixed(1)} \u2605` : "\u2014",
-      icon: Star,
-    },
+    { label: "Students", value: totalStudents.toLocaleString("en-US") },
+    { label: "Missions", value: myCourses.length },
+    { label: "Earnings", value: formatMoney(totalEarnings._sum.amountCents ?? 0, "BDT") },
+    { label: "Rating", value: reviews._count > 0 ? `${(reviews._avg.rating ?? 0).toFixed(1)} ★` : "—", sub: `${reviews._count} review${reviews._count === 1 ? "" : "s"}` },
   ];
 
   return (
@@ -69,28 +65,36 @@ export default async function MentorDashboardPage() {
       <StaggerItem className="comic-panel halftone-dots relative flex flex-wrap items-center justify-between gap-4 overflow-hidden bg-surface p-6">
         <div className="relative">
           <h1 className="font-display text-2xl font-extrabold text-foreground">
-            Welcome back, mentor! 👋
+            Hi, mentor.
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {pendingSubmissions > 0
-              ? `${pendingSubmissions} submission${pendingSubmissions === 1 ? "" : "s"} waiting on your review.`
-              : "Nothing waiting for review."}
+              ? `${pendingSubmissions} submission${pendingSubmissions === 1 ? "" : "s"} waiting for your review.`
+              : "Nothing is waiting for your review."}
           </p>
+          {pendingSubmissions > 0 && (
+            <Link
+              href="/mentor/grading/assignments"
+              className="comic-btn mt-3 inline-flex min-h-11 items-center bg-primary px-4 text-sm font-semibold text-primary-foreground"
+            >
+              Start grading
+            </Link>
+          )}
         </div>
         <ProggyMascot state="welcoming" className="h-24 w-24 shrink-0" />
       </StaggerItem>
 
-      <StaggerContainer className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <StaggerItem key={s.label} className="comic-panel bg-surface p-5">
-            <span className="sticker flex h-9 w-9 items-center justify-center bg-accent/15">
-              <s.icon className="h-4 w-4 text-accent" />
-            </span>
-            <p className="mt-2 font-display text-2xl font-extrabold text-foreground">{s.value}</p>
-            <p className="text-xs font-semibold text-muted-foreground">{s.label}</p>
-          </StaggerItem>
-        ))}
-      </StaggerContainer>
+      <StaggerItem className="comic-panel mt-5 bg-surface">
+        <div className="grid grid-cols-2 divide-border/20 lg:grid-cols-4 lg:divide-x">
+          {stats.map((s) => (
+            <div key={s.label} className="p-4 sm:p-5">
+              <p className="font-display text-2xl font-extrabold text-foreground">{s.value}</p>
+              <p className="text-sm font-semibold text-muted-foreground">{s.label}</p>
+              {s.sub && <p className="text-xs text-muted-foreground">{s.sub}</p>}
+            </div>
+          ))}
+        </div>
+      </StaggerItem>
 
       <StaggerItem className="comic-panel mt-6 bg-surface p-5">
         <div className="flex items-center justify-between">
@@ -98,7 +102,7 @@ export default async function MentorDashboardPage() {
             <ClipboardCheck className="h-4 w-4" /> Recent submissions
           </h2>
           <Link href="/mentor/grading/assignments" className="text-xs font-semibold text-accent hover:text-accent/80">
-            View all →
+            View all
           </Link>
         </div>
         <div className="mt-3 space-y-2">

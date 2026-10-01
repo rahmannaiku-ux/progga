@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, GraduationCap, BookOpen, Activity, Award, FileClock, Wallet } from "lucide-react";
+import { FileClock } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { formatMoney } from "@/lib/payments/format";
@@ -40,41 +40,57 @@ export default async function AdminDashboardPage() {
     }),
   ]);
 
+  // Money that needs a human comes first; the rest is a reference strip.
   const stats = [
-    { label: "Heroes", value: studentCount, icon: GraduationCap, href: "/admin/heroes" },
-    { label: "Mentors", value: teacherCount, icon: Users, href: "/admin/mentors" },
-    { label: "Missions", value: courseCount, sub: `${publishedCount} published`, icon: BookOpen, href: "/admin/missions" },
-    { label: "Medals issued", value: certCount, icon: Award, href: "/admin/medals" },
-    { label: "Active (24h)", value: activeToday, icon: Activity, href: "/admin/reports" },
-    {
-      label: "Payments this month",
-      value: formatMoney(paidThisMonth._sum.amountCents ?? 0, "BDT"),
-      sub: paymentsAwaiting > 0 ? `${paymentsAwaiting} awaiting verification` : "All caught up",
-      icon: Wallet,
-      href: "/admin/payments",
-    },
+    { label: "Heroes", value: studentCount, href: "/admin/heroes" },
+    { label: "Mentors", value: teacherCount, href: "/admin/mentors" },
+    { label: "Missions", value: courseCount, sub: `${publishedCount} published`, href: "/admin/missions" },
+    { label: "Medals issued", value: certCount, href: "/admin/medals" },
+    { label: "Active in 24h", value: activeToday, href: "/admin/reports" },
   ];
 
   return (
     <StaggerContainer>
       <StaggerItem>
-        <h1 className="font-display text-2xl font-extrabold text-foreground">👋 Admin dashboard</h1>
+        <h1 className="font-display text-2xl font-extrabold text-foreground">Admin dashboard</h1>
       </StaggerItem>
 
-      <StaggerContainer className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {stats.map((s) => (
-          <StaggerItem key={s.label}>
-            <Link href={s.href} className="comic-panel hover-glow-card block bg-surface p-5">
-              <span className="sticker flex h-9 w-9 items-center justify-center bg-accent/15">
-                <s.icon className="h-4 w-4 text-accent" />
-              </span>
-              <p className="mt-2 font-display text-2xl font-extrabold text-foreground">{s.value}</p>
-              <p className="text-xs font-semibold text-muted-foreground">{s.label}</p>
-              {s.sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{s.sub}</p>}
+      <StaggerItem className="mt-6">
+        <Link
+          href="/admin/payments"
+          className={
+            "hover-glow-card block p-5 sm:p-6 " +
+            (paymentsAwaiting > 0 ? "comic-panel-bold bg-xp text-xp-foreground" : "comic-panel bg-surface")
+          }
+        >
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+            <div>
+              <p className="text-sm font-bold">
+                {paymentsAwaiting > 0
+                  ? `${paymentsAwaiting} payment${paymentsAwaiting === 1 ? "" : "s"} waiting for you to verify`
+                  : "No payments waiting"}
+              </p>
+              <p className="mt-1 font-display text-3xl font-extrabold sm:text-4xl">
+                {formatMoney(paidThisMonth._sum.amountCents ?? 0, "BDT")}
+              </p>
+              <p className="text-xs opacity-80">verified this month</p>
+            </div>
+            <span className="text-sm font-bold underline underline-offset-4">Open payments</span>
+          </div>
+        </Link>
+      </StaggerItem>
+
+      <StaggerItem className="comic-panel mt-5 bg-surface">
+        <div className="grid grid-cols-2 divide-border/20 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+          {stats.map((s) => (
+            <Link key={s.label} href={s.href} className="block p-4 hover:bg-muted/60 sm:p-5">
+              <p className="font-display text-2xl font-extrabold text-foreground">{s.value}</p>
+              <p className="text-sm font-semibold text-muted-foreground">{s.label}</p>
+              {s.sub && <p className="text-xs text-muted-foreground">{s.sub}</p>}
             </Link>
-          </StaggerItem>
-        ))}
-      </StaggerContainer>
+          ))}
+        </div>
+      </StaggerItem>
 
       <StaggerItem className="comic-panel mt-8 bg-surface p-5">
         <div className="flex items-center justify-between">
@@ -82,7 +98,7 @@ export default async function AdminDashboardPage() {
             <FileClock className="h-4 w-4" /> Recent activity
           </h2>
           <Link href="/admin/activity-logs" className="text-xs font-semibold text-accent hover:text-accent/80">
-            View all →
+            View all
           </Link>
         </div>
         <ul className="mt-3 space-y-2">

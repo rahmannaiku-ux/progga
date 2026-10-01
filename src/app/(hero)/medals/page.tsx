@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Award, CheckCircle2, Download, Clock3, Eye, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { RetryCertificateButton } from "@/components/gamification/retry-certificate-button";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
-import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { formatDhakaDate } from "@/lib/timezone";
 import { certificateVerifyPath } from "@/lib/certificate/certificate-no";
@@ -168,12 +168,7 @@ export default async function MedalsPage({
             ))}
 
           {showCompleted && certificates.length === 0 && showInProgress && inProgress.length === 0 && (
-            <div className="comic-panel bg-surface p-10 text-center">
-              <ProggyMascot state="thinking" className="mx-auto h-16 w-16" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                No certificates yet — complete a mission to earn your first one.
-              </p>
-            </div>
+            <EmptyState title="No Medals yet" body="Finish every Patrol and exam in a Mission to earn its Medal." action={{ href: "/missions", label: "Open your Missions" }} />
           )}
         </div>
 

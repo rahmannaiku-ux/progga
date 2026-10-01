@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { MessageCircle, MessageSquare, Trophy } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { MessageSquare, Trophy } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
@@ -120,21 +121,15 @@ export default async function CommunityPage() {
           })}
 
           {posts.length === 0 && (
-            <div className="comic-panel bg-surface p-10 text-center">
-              <MessageCircle className="mx-auto h-10 w-10 text-muted-foreground" />
-              <p className="mt-3 font-display text-lg font-bold text-foreground">No discussions yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {myCourses.length > 0
-                  ? "Be the first to post above, or jump into a lesson's Q&A thread."
-                  : "Enroll in a mission to start the first one."}
-              </p>
-              <Link
-                href="/courses"
-                className="comic-btn mt-4 inline-flex items-center justify-center bg-primary px-5 py-2.5 font-display text-sm font-bold text-primary-foreground"
-              >
-                Explore missions
-              </Link>
-            </div>
+            <EmptyState
+              title="No discussions yet"
+              body={
+                myCourses.length > 0
+                  ? "Post above, or open a Patrol and ask in its Q&A thread."
+                  : "Enroll in a Mission to join its discussion."
+              }
+              action={myCourses.length > 0 ? undefined : { href: "/courses", label: "Browse Missions" }}
+            />
           )}
         </StaggerContainer>
       </StaggerContainer>
