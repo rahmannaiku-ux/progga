@@ -379,17 +379,28 @@ export default async function LessonPlayerPage({
                 r.type === "LINK" ? (
                   <GoogleResourceEmbed key={r.id} title={r.title} url={r.url} />
                 ) : (
-                  <a
-                    key={r.id}
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="comic-panel flex min-h-11 items-center gap-2 bg-surface p-3.5 text-sm font-medium text-foreground hover:text-primary"
-                  >
-                    <FileText className="h-4 w-4 shrink-0 text-accent" />
-                    <span className="min-w-0 break-words">{r.title}</span>
-                    <Download className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </a>
+                  <div key={r.id} className="comic-panel flex min-h-11 flex-wrap items-center gap-2 bg-surface p-2.5 pl-3.5">
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
+                    >
+                      <FileText className="h-4 w-4 shrink-0 text-accent" />
+                      <span className="min-w-0 break-words">{r.title}</span>
+                    </a>
+                    {r.downloadable && (
+                      // A plain link to an attachment response: the browser saves
+                      // the file straight away, with no new tab or viewer.
+                      <a
+                        href={`/api/resources/${r.id}/download`}
+                        download
+                        className="comic-btn inline-flex min-h-11 shrink-0 items-center gap-1.5 bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" /> Download
+                      </a>
+                    )}
+                  </div>
                 )
               )}
             </div>

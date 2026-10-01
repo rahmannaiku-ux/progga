@@ -59,7 +59,7 @@ export default async function MissionBuilderPage({
                       isPreview: true,
                       scheduledStart: true,
                       scheduledEnd: true,
-                      resources: { select: { id: true, title: true, url: true } },
+                      resources: { select: { id: true, title: true, url: true, type: true, downloadable: true } },
                     },
                   },
                 },

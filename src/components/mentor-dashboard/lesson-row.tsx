@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { ResourceUploader } from "@/components/mentor-dashboard/resource-uploader";
 import { LinkResourceForm } from "@/components/mentor-dashboard/link-resource-form";
+import { ResourceDownloadToggle } from "@/components/mentor-dashboard/resource-download-toggle";
 import {
   updateLesson,
   deleteLesson,
@@ -23,7 +24,7 @@ type LessonWithResources = {
   isPreview: boolean;
   scheduledStart: Date | null;
   scheduledEnd: Date | null;
-  resources: { id: string; title: string; url: string }[];
+  resources: { id: string; title: string; url: string; type: string; downloadable: boolean }[];
 };
 
 export function LessonRow({
@@ -155,14 +156,19 @@ export function LessonRow({
               key={r.id}
               className="flex items-center justify-between text-xs text-muted-foreground"
             >
-              <span className="flex items-center gap-1.5">
-                <FileText className="h-3 w-3" /> {r.title}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <FileText className="h-3 w-3 shrink-0" /> <span className="truncate">{r.title}</span>
               </span>
+              <span className="flex shrink-0 items-center gap-2">
+                {r.type !== "LINK" && (
+                  <ResourceDownloadToggle courseId={courseId} resourceId={r.id} initial={r.downloadable} />
+                )}
               <ConfirmDeleteButton
                 action={boundDeleteResource(r.id)}
                 confirmMessage={`Remove "${r.title}"?`}
                 label="Remove"
               />
+              </span>
             </li>
           ))}
         </ul>

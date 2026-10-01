@@ -18,7 +18,7 @@ type ChapterWithGroups = {
       isPreview: boolean;
       scheduledStart: Date | null;
       scheduledEnd: Date | null;
-      resources: { id: string; title: string; url: string }[];
+      resources: { id: string; title: string; url: string; type: string; downloadable: boolean }[];
     }[];
   }[];
 };

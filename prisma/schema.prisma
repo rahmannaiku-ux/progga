@@ -978,6 +978,9 @@ model LessonResource {
   type      LessonResourceType
   title     String
   url       String // storage URL for PDFs/files
+  // Whether students get a one-click Download button. Set per file by the
+  // mission owner or an admin; off by default.
+  downloadable Boolean         @default(false)
   createdAt DateTime           @default(now())
 
   @@index([lessonId])

@@ -662,3 +662,25 @@ export async function deleteLessonResource(courseId: string, resourceId: string)
   await db.lessonResource.delete({ where: { id: resourceId } });
   revalidateMissionPage(`/${courseId}/builder`);
 }
+
+/**
+ * Turns the student-facing Download button on or off for one uploaded file.
+ * Same ownership chain as every other resource edit (mission team or admin).
+ * External links can't be downloaded through Proggaa, so they're refused.
+ */
+export async function setLessonResourceDownloadable(
+  courseId: string,
+  resourceId: string,
+  downloadable: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireMentorUser("Only mentors can author missions.");
+  await assertOwnsCourse(courseId, user.id, user.role);
+  await assertResourceBelongsToCourse(resourceId, courseId);
+  const resource = await db.lessonResource.findUnique({ where: { id: resourceId }, select: { type: true } });
+  if (!resource || resource.type === "LINK") {
+    return { ok: false, error: "Only uploaded files can be made downloadable." };
+  }
+  await db.lessonResource.update({ where: { id: resourceId }, data: { downloadable: Boolean(downloadable) } });
+  revalidateMissionPage(`/${courseId}/builder`);
+  return { ok: true };
+}
