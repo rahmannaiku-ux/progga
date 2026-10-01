@@ -49,11 +49,11 @@ export function CookieConsentBanner() {
               Essential cookies keep you signed in and remember your settings — they are always on.
               Lesson videos and Google previews are provided by YouTube and Google, which may set
               their own cookies if you accept all. Read our{" "}
-              <Link href="/cookies" className="font-semibold text-accent underline">
+              <Link href="/cookies" className="inline-block py-2 font-semibold text-accent underline">
                 Cookie policy
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="font-semibold text-accent underline">
+              <Link href="/privacy" className="inline-block py-2 font-semibold text-accent underline">
                 Privacy policy
               </Link>
               .
@@ -64,7 +64,7 @@ export function CookieConsentBanner() {
           <button
             type="button"
             onClick={() => choose("essential")}
-            className="comic-btn h-11 flex-1 bg-surface text-sm font-bold text-foreground"
+            className="comic-btn h-11 sm:flex-1 bg-surface text-sm font-bold text-foreground"
             aria-pressed={current === "essential"}
           >
             Essential only
@@ -72,7 +72,7 @@ export function CookieConsentBanner() {
           <button
             type="button"
             onClick={() => choose("all")}
-            className="comic-btn h-11 flex-1 bg-primary text-sm font-bold text-primary-foreground"
+            className="comic-btn h-11 sm:flex-1 bg-primary text-sm font-bold text-primary-foreground"
             aria-pressed={current === "all"}
           >
             Accept all

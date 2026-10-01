@@ -32,7 +32,7 @@ export function BookmarkButton({
       className={cn(
         "comic-btn flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
         bookmarked
-          ? "bg-xp text-background"
+          ? "bg-xp text-xp-foreground"
           : "bg-surface text-muted-foreground hover:text-foreground"
       )}
     >

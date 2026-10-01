@@ -78,10 +78,10 @@ export function LoginForm() {
         </Button>
 
         <div className="flex items-center justify-between text-sm">
-          <Link href="/forgot-password" className="font-semibold text-accent hover:text-accent/80">
+          <Link href="/forgot-password" className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent/80">
             Forgot password?
           </Link>
-          <Link href="/register" className="font-semibold text-accent hover:text-accent/80">
+          <Link href="/register" className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent/80">
             Create account
           </Link>
         </div>

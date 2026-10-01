@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { slugify } from "@/lib/slugify";
 import { extractYoutubeId } from "@/lib/youtube";
 import { googleDownloadUrl } from "@/lib/google-embed";
+import { refreshCourseProgress } from "@/lib/progress";
 import {
   courseCreateSchema,
   moduleCreateSchema,
@@ -314,6 +315,7 @@ export async function deleteModule(courseId: string, moduleId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertModuleBelongsToCourse(moduleId, courseId);
   await db.module.delete({ where: { id: moduleId } });
+  await refreshCourseProgress(courseId);
   revalidateMissionPage(`/${courseId}/builder`);
 }
 
@@ -382,6 +384,7 @@ export async function deleteChapter(courseId: string, chapterId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertChapterBelongsToCourse(chapterId, courseId);
   await db.chapter.delete({ where: { id: chapterId } });
+  await refreshCourseProgress(courseId);
   revalidateMissionPage(`/${courseId}/builder`);
 }
 
@@ -421,6 +424,7 @@ export async function deleteLessonGroup(courseId: string, groupId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertGroupBelongsToCourse(groupId, courseId);
   await db.lessonGroup.delete({ where: { id: groupId } });
+  await refreshCourseProgress(courseId);
   revalidateMissionPage(`/${courseId}/builder`);
 }
 
@@ -537,6 +541,7 @@ export async function createLesson(courseId: string, formData: FormData) {
       scheduledEnd,
     },
   });
+  await refreshCourseProgress(courseId);
 
   revalidateMissionPage(`/${courseId}/builder`);
 }
@@ -589,6 +594,7 @@ export async function deleteLesson(courseId: string, lessonId: string) {
   await assertOwnsCourse(courseId, user.id, user.role);
   await assertLessonBelongsToCourse(lessonId, courseId);
   await db.lesson.delete({ where: { id: lessonId } });
+  await refreshCourseProgress(courseId);
   revalidateMissionPage(`/${courseId}/builder`);
 }
 

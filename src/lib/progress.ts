@@ -4,6 +4,7 @@ import { generateCertificateNo } from "@/lib/certificate/certificate-no";
 import { awardXp } from "@/lib/gamification/award-xp";
 import { checkMissionCompletionAchievements } from "@/lib/gamification/check-achievements";
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
+import { missionProgressPct } from "@/lib/progress-math";
 
 /**
  * Recalculates `Enrollment.progressPct` for one user/course from actual
@@ -27,7 +28,7 @@ export async function recalcEnrollmentProgress(userId: string, courseId: string)
     },
   });
 
-  const progressPct = Math.round((completedLessons / totalLessons) * 100);
+  const progressPct = missionProgressPct(completedLessons, totalLessons);
   const isNowComplete = completedLessons === totalLessons;
 
   const existing = await db.enrollment.findUnique({
@@ -85,4 +86,47 @@ export async function recalcEnrollmentProgress(userId: string, courseId: string)
   }
 
   return enrollment;
+}
+
+/**
+ * Re-derives every student's saved percentage for one mission. Call it after a
+ * mentor adds or removes lessons: the saved number is otherwise only updated
+ * when a student finishes a lesson, so My Missions, Medals, the dashboard and
+ * Profile would keep showing the old percentage. Only `progressPct` is touched;
+ * completion status and certificates are never changed here.
+ */
+export async function refreshCourseProgress(courseId: string): Promise<void> {
+  try {
+    const lessons = await db.lesson.findMany({
+      where: { group: { chapter: { module: { courseId } } }, isPublished: true },
+      select: { id: true },
+    });
+    const enrollments = await db.enrollment.findMany({
+      where: { courseId },
+      select: { id: true, userId: true, progressPct: true },
+    });
+    if (enrollments.length === 0) return;
+
+    const done =
+      lessons.length > 0
+        ? await db.lessonProgress.groupBy({
+            by: ["userId"],
+            where: { isCompleted: true, lessonId: { in: lessons.map((l) => l.id) } },
+            _count: { _all: true },
+          })
+        : [];
+    const doneByUser = new Map(done.map((d) => [d.userId, d._count._all]));
+
+    const changed = enrollments
+      .map((e) => ({ id: e.id, was: e.progressPct, now: missionProgressPct(doneByUser.get(e.userId) ?? 0, lessons.length) }))
+      .filter((e) => e.now !== e.was);
+    if (changed.length === 0) return;
+
+    await db.$transaction(
+      changed.map((e) => db.enrollment.update({ where: { id: e.id }, data: { progressPct: e.now } }))
+    );
+  } catch (err) {
+    // The author's edit already succeeded; a stale percentage is not worth failing it.
+    console.error(`Could not refresh progress for course ${courseId}:`, err);
+  }
 }

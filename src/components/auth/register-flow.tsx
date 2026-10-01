@@ -178,7 +178,7 @@ export function RegisterFlow() {
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-accent hover:text-accent/80">
+          <Link href="/login" className="inline-flex min-h-11 items-center px-1 font-semibold text-accent hover:text-accent/80">
             Sign in
           </Link>
         </p>

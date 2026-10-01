@@ -9,6 +9,7 @@ import { AnimatedProgressBar } from "@/components/gamification/animated-progress
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { missionProgressPct } from "@/lib/progress-math";
 
 /**
  * Mission overview — step 1 of the drill-down: Subjects (Modules).
@@ -54,7 +55,7 @@ export default async function MissionOverviewPage({
                     // Only lesson ids are read on this page (counts +
                     // progress lookups) — title isn't shown here, so
                     // skip it and every other lesson column.
-                    lessons: { select: { id: true } },
+                    lessons: { where: { isPublished: true }, select: { id: true } },
                   },
                 },
               },
@@ -109,6 +110,10 @@ export default async function MissionOverviewPage({
     };
   });
 
+  // Worked out from the same published lessons the subject counts use, so the
+  // bar can never disagree with "x of y Patrols" (the stored percentage goes
+  // stale when a mentor adds or publishes lessons after the student started).
+  const progressPct = missionProgressPct(completedIds.size, flat.length);
   const isComplete = enrollment.status === "COMPLETED";
 
   return (
@@ -132,11 +137,11 @@ export default async function MissionOverviewPage({
         <div className="relative mt-5">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="font-semibold">Mission progress</span>
-            <span className="sticker bg-xp px-2.5 py-0.5 font-mono font-extrabold text-background">
-              {enrollment.progressPct}%
+            <span className="sticker bg-xp px-2.5 py-0.5 font-mono font-extrabold text-xp-foreground">
+              {progressPct}%
             </span>
           </div>
-          <AnimatedProgressBar percent={enrollment.progressPct} className="mt-1.5" />
+          <AnimatedProgressBar percent={progressPct} className="mt-1.5" />
         </div>
 
         {isComplete ? (
