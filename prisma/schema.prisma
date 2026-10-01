@@ -838,6 +838,7 @@ model Lesson {
   title           String
   description     String?     @db.Text
   youtubeVideoId  String? // extracted from pasted YouTube URL
+  thumbnailUrl    String? // Google Drive image link the mentor pasted; shown on the patrol list
   durationSeconds Int         @default(0)
   order           Int
   isPreview       Boolean     @default(false) // free preview lesson

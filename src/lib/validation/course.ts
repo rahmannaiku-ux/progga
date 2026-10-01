@@ -33,6 +33,8 @@ export const lessonCreateSchema = z.object({
   title: z.string().min(3, "Give the patrol a title").max(120),
   description: z.string().max(2000).optional().or(z.literal("")),
   youtubeUrl: z.string().min(1, "Paste a YouTube URL"),
+  // Optional Google Drive image link used as the patrol's thumbnail.
+  thumbnailUrl: z.string().max(500).optional().or(z.literal("")),
   durationSeconds: z.coerce.number().int().min(0).default(0),
   isPreview: z.coerce.boolean().default(false),
   // Leave both blank for an ordinary recorded lesson. Set scheduledStart

@@ -55,6 +55,7 @@ export default async function MissionBuilderPage({
                       title: true,
                       description: true,
                       youtubeVideoId: true,
+                      thumbnailUrl: true,
                       durationSeconds: true,
                       isPreview: true,
                       scheduledStart: true,

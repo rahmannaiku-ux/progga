@@ -16,6 +16,7 @@ type GroupWithLessons = {
     title: string;
     description: string | null;
     youtubeVideoId: string | null;
+    thumbnailUrl: string | null;
     durationSeconds: number;
     isPreview: boolean;
     scheduledStart: Date | null;
@@ -101,6 +102,14 @@ export function LessonGroupBlock({
             placeholder="Paste a YouTube URL"
             className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
           />
+          <input
+            name="thumbnailUrl"
+            placeholder="Thumbnail: Google Drive image link (optional)"
+            className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Upload the image to Google Drive, share it as "Anyone with the link", and paste the link here.
+          </p>
           <div className="flex gap-2">
             <input
               name="durationSeconds"

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { slugify } from "@/lib/slugify";
 import { extractYoutubeId } from "@/lib/youtube";
+import { parseDriveFileId } from "@/lib/google-embed";
 import { googleDownloadUrl } from "@/lib/google-embed";
 import { refreshCourseProgress } from "@/lib/progress";
 import {
@@ -506,6 +507,7 @@ export async function createLesson(courseId: string, formData: FormData) {
     title: formData.get("title"),
     description: formData.get("description") || undefined,
     youtubeUrl: formData.get("youtubeUrl"),
+    thumbnailUrl: formData.get("thumbnailUrl") || undefined,
     durationSeconds: formData.get("durationSeconds") || 0,
     isPreview: formData.get("isPreview") === "on",
     scheduledStart: formData.get("scheduledStart") || undefined,
@@ -521,6 +523,10 @@ export async function createLesson(courseId: string, formData: FormData) {
   if (!youtubeVideoId) {
     throw new Error("That doesn't look like a valid YouTube URL.");
   }
+  const thumbnailUrl = data.thumbnailUrl?.trim() || null;
+  if (thumbnailUrl && !parseDriveFileId(thumbnailUrl)) {
+    throw new Error("The thumbnail must be a Google Drive file link (drive.google.com/file/d/...).");
+  }
   const { scheduledStart, scheduledEnd } = parseScheduleFields(data.scheduledStart, data.scheduledEnd);
 
   const maxOrder = await db.lesson.aggregate({
@@ -534,6 +540,7 @@ export async function createLesson(courseId: string, formData: FormData) {
       title: data.title,
       description: data.description || null,
       youtubeVideoId,
+      thumbnailUrl,
       durationSeconds: data.durationSeconds,
       isPreview: data.isPreview,
       order: (maxOrder._max.order ?? -1) + 1,
@@ -556,6 +563,7 @@ export async function updateLesson(courseId: string, formData: FormData) {
     title: formData.get("title"),
     description: formData.get("description"),
     youtubeUrl: formData.get("youtubeUrl"),
+    thumbnailUrl: formData.get("thumbnailUrl") || undefined,
     durationSeconds: formData.get("durationSeconds") || 0,
     isPreview: formData.get("isPreview") === "on",
     scheduledStart: formData.get("scheduledStart") || undefined,
@@ -571,6 +579,10 @@ export async function updateLesson(courseId: string, formData: FormData) {
   if (!youtubeVideoId) {
     throw new Error("That doesn't look like a valid YouTube URL.");
   }
+  const thumbnailUrl = data.thumbnailUrl?.trim() || null;
+  if (thumbnailUrl && !parseDriveFileId(thumbnailUrl)) {
+    throw new Error("The thumbnail must be a Google Drive file link (drive.google.com/file/d/...).");
+  }
   const { scheduledStart, scheduledEnd } = parseScheduleFields(data.scheduledStart, data.scheduledEnd);
 
   await db.lesson.update({
@@ -579,6 +591,7 @@ export async function updateLesson(courseId: string, formData: FormData) {
       title: data.title,
       description: data.description || null,
       youtubeVideoId,
+      thumbnailUrl,
       durationSeconds: data.durationSeconds,
       isPreview: data.isPreview,
       scheduledStart,

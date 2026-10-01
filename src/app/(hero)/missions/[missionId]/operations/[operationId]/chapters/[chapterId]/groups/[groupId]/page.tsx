@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2, Circle, PlayCircle, FileText } from "lucide-react";
+import { CheckCircle2, ChevronRight, FileText, PlayCircle, User } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { assertCourseEnrollment } from "@/lib/auth/enrollment-guard";
 import { db } from "@/lib/db/client";
 import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
+import { driveThumbnailUrl } from "@/lib/google-embed";
 import { cn } from "@/lib/utils";
 
 /** Lessons within a class type — step 4, the last stop before the player. */
@@ -30,7 +31,7 @@ export default async function LessonGroupLessonsPage({
             id: true,
             title: true,
             module: {
-              select: { id: true, title: true, courseId: true, course: { select: { slug: true, title: true } } },
+              select: { id: true, title: true, courseId: true, course: { select: { slug: true, title: true, teacher: { select: { firstName: true, lastName: true } } } } },
             },
           },
         },
@@ -61,6 +62,9 @@ export default async function LessonGroupLessonsPage({
       })
     : [];
   const completedIds = new Set(progressRows.filter((p) => p.isCompleted).map((p) => p.lessonId));
+
+  const teacher = group.chapter.module.course.teacher;
+  const mentorName = `${teacher.firstName} ${teacher.lastName}`.trim() || "Mentor";
 
   const basePath = `/missions/${group.chapter.module.courseId}/operations/${group.chapter.module.id}/chapters/${group.chapter.id}/groups/${group.id}`;
 
@@ -94,41 +98,54 @@ export default async function LessonGroupLessonsPage({
         <div className="space-y-2.5">
           {group.lessons.map((lesson) => {
             const isCompleted = completedIds.has(lesson.id);
+            const thumb =
+              driveThumbnailUrl(lesson.thumbnailUrl) ??
+              (lesson.youtubeVideoId ? `https://i.ytimg.com/vi/${lesson.youtubeVideoId}/hqdefault.jpg` : null);
             return (
-              <div key={lesson.id} className="comic-panel bg-surface p-4">
-                <div className="flex items-start gap-3">
-                  {isCompleted ? (
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+              <div
+                key={lesson.id}
+                className="comic-panel relative flex items-center gap-3 bg-surface p-2.5 transition-colors hover:border-primary/50 sm:gap-4 sm:p-3"
+              >
+                <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-xl border border-border/40 bg-muted sm:w-44">
+                  {thumb ? (
+                    // Plain <img>: Drive thumbnails come from changing Google hosts, which next/image can't allow-list.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                   ) : (
-                    <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="flex h-full w-full items-center justify-center bg-primary/10">
+                      <PlayCircle className="h-8 w-8 text-primary" />
+                    </div>
                   )}
-                  <p className="min-w-0 flex-1 truncate font-display text-sm font-bold text-foreground">
-                    {lesson.title}
-                  </p>
+                  {isCompleted && (
+                    <span className="absolute right-1 top-1 rounded-full bg-background/90 p-0.5">
+                      <CheckCircle2 className="h-4 w-4 text-accent" aria-label="Completed" />
+                    </span>
+                  )}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="min-w-0 flex-1">
                   <Link
                     href={`${basePath}/patrols/${lesson.id}`}
                     prefetch={false}
-                    className={cn(
-                      "comic-btn inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold",
-                      isCompleted
-                        ? "bg-surface text-foreground"
-                        : "bg-primary text-primary-foreground"
-                    )}
+                    className="line-clamp-2 font-display text-sm font-bold text-foreground after:absolute after:inset-0 after:content-[''] sm:text-base"
                   >
-                    <PlayCircle className="h-3.5 w-3.5" /> Video
+                    {lesson.title}
                   </Link>
+                  <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                    <User className="h-3.5 w-3.5 shrink-0" /> {mentorName}
+                  </p>
                   {lesson.resources.length > 0 && (
                     <Link
                       href={`${basePath}/patrols/${lesson.id}#resources`}
                       prefetch={false}
-                      className="comic-btn inline-flex items-center gap-1.5 bg-surface px-4 py-2 text-xs font-bold text-foreground"
+                      className={cn(
+                        "comic-btn relative z-10 mt-2 inline-flex items-center gap-1.5 bg-surface px-3 py-1.5 text-xs font-bold text-foreground"
+                      )}
                     >
                       <FileText className="h-3.5 w-3.5" /> Notes
                     </Link>
                   )}
                 </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
               </div>
             );
           })}

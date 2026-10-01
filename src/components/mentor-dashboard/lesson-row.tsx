@@ -21,6 +21,7 @@ type LessonWithResources = {
   title: string;
   description: string | null;
   youtubeVideoId: string | null;
+  thumbnailUrl: string | null;
   durationSeconds: number;
   isPreview: boolean;
   scheduledStart: Date | null;
@@ -95,6 +96,12 @@ export function LessonRow({
                 required
                 className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
                 placeholder="YouTube URL"
+              />
+              <input
+                name="thumbnailUrl"
+                defaultValue={lesson.thumbnailUrl ?? ""}
+                className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-xs"
+                placeholder="Thumbnail: Google Drive image link (optional)"
               />
               <textarea
                 name="description"

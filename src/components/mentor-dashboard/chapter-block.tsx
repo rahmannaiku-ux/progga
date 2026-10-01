@@ -14,6 +14,7 @@ type ChapterWithGroups = {
       title: string;
       description: string | null;
       youtubeVideoId: string | null;
+      thumbnailUrl: string | null;
       durationSeconds: number;
       isPreview: boolean;
       scheduledStart: Date | null;
