@@ -11,6 +11,7 @@ import { ModuleBlock } from "@/components/mentor-dashboard/module-block";
 import { SubmitButton } from "@/components/shared/submit-button";
 import { updateCourse } from "@/server/actions/mission-actions";
 import { QuickAdd } from "@/components/mentor-dashboard/quick-add";
+import { AddAction } from "@/components/mentor-dashboard/add-action";
 import { ImageUploadField } from "@/components/mentor-dashboard/image-upload-field";
 
 export default async function MissionBuilderPage({
@@ -82,6 +83,17 @@ export default async function MissionBuilderPage({
   if (!isAdmin && !(await isCourseMentor(course.id, user.id))) notFound();
 
   const boundUpdateCourse = updateCourse.bind(null, course.id);
+
+  const addOperation = (
+    <QuickAdd
+      courseId={course.id}
+      kind="modules"
+      parentId={course.id}
+      placeholder="Operation, e.g. Physics 1st Paper"
+      bulkPlaceholder={"Physics 1st Paper\nChemistry 1st Paper"}
+      hint="One operation per line."
+    />
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -200,25 +212,13 @@ export default async function MissionBuilderPage({
         </form>
       </details>
 
-      <div className="mt-8 space-y-4">
+      <div className="mt-8 space-y-3">
         <div>
           <h2 className="font-display text-lg font-semibold text-foreground">Build your mission</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Operation → Chapter → Class type → Patrol. Type a name and press Enter to add it, or paste a
-            list (one per line) to add many at once. Tap a title to fold it away.
+            Operation → Chapter → Class type → Patrol. Open a row to see what is inside it.
           </p>
         </div>
-
-        {course.modules.length === 0 && (
-          <div className="comic-panel bg-surface p-5 text-sm text-muted-foreground">
-            <p className="font-display font-bold text-foreground">Start here</p>
-            <ol className="mt-2 list-inside list-decimal space-y-1">
-              <li>Add your subjects as operations below, e.g. "Physics 1st Paper".</li>
-              <li>Open one, add its chapters, then a class type such as "Foundation Class".</li>
-              <li>Paste your patrols as "Title | YouTube link" lines.</li>
-            </ol>
-          </div>
-        )}
 
         {course.modules.map((module, i) => (
           <ModuleBlock
@@ -230,16 +230,20 @@ export default async function MissionBuilderPage({
           />
         ))}
 
-        <div className="glass-panel p-4 sm:p-5">
-          <p className="mb-2 text-sm font-semibold text-foreground">+ Add operations</p>
-          <QuickAdd
-            courseId={course.id}
-            kind="modules"
-            parentId={course.id}
-            placeholder="e.g. Physics 1st Paper"
-            hint="Press Enter to add. Paste a list (one operation per line) to add them all at once."
-          />
-        </div>
+        {course.modules.length === 0 ? (
+          <div className="comic-panel bg-surface p-5 text-center">
+            <p className="font-display font-bold text-foreground">Start your mission</p>
+            <p className="mx-auto mb-4 mt-1 max-w-sm text-xs text-muted-foreground">
+              Add your subjects as operations, e.g. &quot;Physics 1st Paper&quot;. Then open one to add chapters,
+              class types and patrols.
+            </p>
+            <AddAction label="Add operation" primary className="text-left">
+              {addOperation}
+            </AddAction>
+          </div>
+        ) : (
+          <AddAction label="Add operation">{addOperation}</AddAction>
+        )}
       </div>
     </div>
   );

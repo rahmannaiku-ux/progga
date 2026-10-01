@@ -31,18 +31,18 @@ export function LinkResourceForm({
   }
 
   return (
-    <div className="rounded-xl border border-border/60 bg-surface/60 p-3">
+    <div className="w-full rounded-xl border border-border/60 bg-surface/60 p-3">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Title, e.g. Lecture Slides"
-        className="h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-xs text-foreground"
+        className="h-11 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:h-10 md:text-sm"
       />
       <input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="Paste a Google Drive, Docs, Sheets, or Slides link"
-        className="mt-2 h-9 w-full rounded-lg border border-border/60 bg-surface px-3 text-xs text-foreground"
+        className="mt-2 h-11 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:h-10 md:text-sm"
       />
       {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
       <div className="mt-2 flex gap-2">

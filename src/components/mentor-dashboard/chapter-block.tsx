@@ -2,6 +2,9 @@ import { LessonGroupBlock } from "@/components/mentor-dashboard/lesson-group-blo
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { CollapsibleSection } from "@/components/mentor-dashboard/collapsible-section";
 import { QuickAdd } from "@/components/mentor-dashboard/quick-add";
+import { AddAction } from "@/components/mentor-dashboard/add-action";
+import { OverflowMenu } from "@/components/mentor-dashboard/overflow-menu";
+import { MENU_ITEM_CLASS } from "@/components/mentor-dashboard/builder-menu-items";
 import { deleteChapter } from "@/server/actions/mission-actions";
 
 /** One-tap class type names; ones the chapter already has are hidden. */
@@ -41,42 +44,63 @@ export function ChapterBlock({
   const have = new Set(chapter.groups.map((g) => g.title.toLowerCase()));
   const suggestions = GROUP_SUGGESTIONS.filter((name) => !have.has(name.toLowerCase()));
 
+  const addClassType = (
+    <QuickAdd
+      courseId={courseId}
+      kind="groups"
+      parentId={chapter.id}
+      placeholder="Class type, e.g. Foundation Class"
+      bulkPlaceholder={"Foundation Class\nPractice Class"}
+      suggestions={suggestions}
+      hint="One class type per line."
+    />
+  );
+
   return (
-    <div className="rounded-xl border border-border/40 p-3">
-      <CollapsibleSection
-        title={chapter.title}
-        meta={`${patrolCount} patrol${patrolCount === 1 ? "" : "s"}`}
-        titleClassName="text-sm font-semibold text-foreground"
-        actions={
+    <CollapsibleSection
+      title={chapter.title}
+      meta={`${chapter.groups.length} class type${chapter.groups.length === 1 ? "" : "s"} · ${patrolCount} patrol${patrolCount === 1 ? "" : "s"}`}
+      titleClassName="text-sm font-semibold text-foreground"
+      defaultOpen={false}
+      actions={
+        <OverflowMenu label={`More actions for ${chapter.title}`}>
           <ConfirmDeleteButton
             action={boundDeleteChapter}
             confirmMessage={`Delete chapter "${chapter.title}" and everything inside it?`}
+            label="Delete chapter"
+            className={`${MENU_ITEM_CLASS} text-danger hover:text-danger`}
           />
-        }
-      >
-        <div className="space-y-2">
-          {chapter.groups.map((group, i) => (
-            <LessonGroupBlock
-              key={group.id}
-              courseId={courseId}
-              chapterId={chapter.id}
-              group={group}
-              isFirst={i === 0}
-              isLast={i === chapter.groups.length - 1}
-            />
-          ))}
+        </OverflowMenu>
+      }
+    >
+      {chapter.groups.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/60 px-3 py-5 text-center">
+          <p className="mb-3 text-xs text-muted-foreground">
+            No class types yet. A class type (like Foundation Class) groups patrols inside this chapter.
+          </p>
+          <AddAction label="Add class type" primary className="text-left">
+            {addClassType}
+          </AddAction>
         </div>
-
-        <QuickAdd
-          className="mt-3"
-          courseId={courseId}
-          kind="groups"
-          parentId={chapter.id}
-          placeholder="Add class type, e.g. Foundation Class"
-          suggestions={suggestions}
-          hint="A class type groups patrols inside a chapter. Pick one above, or type your own."
-        />
-      </CollapsibleSection>
-    </div>
+      ) : (
+        <>
+          <div className="ml-3 space-y-1 border-l-2 border-border/40 pl-2 sm:ml-4 sm:pl-3">
+            {chapter.groups.map((group, i) => (
+              <LessonGroupBlock
+                key={group.id}
+                courseId={courseId}
+                chapterId={chapter.id}
+                group={group}
+                isFirst={i === 0}
+                isLast={i === chapter.groups.length - 1}
+              />
+            ))}
+          </div>
+          <AddAction label="Add class type" className="ml-3 mt-1 sm:ml-4">
+            {addClassType}
+          </AddAction>
+        </>
+      )}
+    </CollapsibleSection>
   );
 }
