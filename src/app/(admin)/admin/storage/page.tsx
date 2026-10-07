@@ -119,6 +119,19 @@ export default async function AdminStoragePage({
         </div>
       )}
 
+      {connection?.status === "ERROR" && connection.lastErrorMessage && (
+        <div className="comic-panel space-y-1 border-danger/30 bg-danger/10 p-4 text-sm text-danger">
+          <p className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> Google Drive stopped working
+            {connection.lastErrorAt ? ` on ${formatDhakaDate(connection.lastErrorAt)}` : ""}.
+          </p>
+          <p>{connection.lastErrorMessage}</p>
+          <p className="text-foreground">
+            Until it is reconnected, new uploads go to the backup storage and files already in Drive can&apos;t be shown.
+          </p>
+        </div>
+      )}
+
       {/* Connection card */}
       <div className="comic-panel bg-surface p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">

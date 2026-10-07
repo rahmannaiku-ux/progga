@@ -186,12 +186,17 @@ async function getAuthorizedDrive(): Promise<{ drive: drive_v3.Drive; connection
     await client.getAccessToken();
   } catch (err) {
     cachedDrive = null;
+    // Only a refusal of the token itself ("invalid_grant") needs a reconnect. A
+    // network blip or a Google outage must not switch Drive off until an admin
+    // notices: that request falls back, and the next one tries Drive again.
+    const reason = tokenRefusal(err);
+    if (!reason) throw err;
     await db.googleDriveConnection.update({
       where: { id: CONNECTION_ID },
       data: {
         status: "ERROR",
         lastErrorAt: new Date(),
-        lastErrorMessage: "Google rejected the stored refresh token — reconnect required.",
+        lastErrorMessage: `Google rejected the stored refresh token (${reason}). Reconnect Google Drive. If this happens about 7 days after every connect, the Google Cloud OAuth consent screen is still in "Testing": publish the app ("In production") and reconnect.`,
       },
     });
     throw new DriveNotConnectedError();
@@ -200,6 +205,19 @@ async function getAuthorizedDrive(): Promise<{ drive: drive_v3.Drive; connection
   const drive = google.drive({ version: "v3", auth: client });
   cachedDrive = { tokenCipher, drive, connectionId: connection.id };
   return { drive, connectionId: connection.id };
+}
+
+/**
+ * Google's reason when it refused the refresh token itself (expired, revoked, or the
+ * OAuth client changed), or null for any other failure such as a timeout.
+ */
+export function tokenRefusal(err: unknown): string | null {
+  const data = (err as { response?: { data?: { error?: unknown; error_description?: unknown } } })?.response?.data;
+  const code = typeof data?.error === "string" ? data.error : null;
+  if (code === "invalid_grant" || code === "unauthorized_client" || code === "invalid_client") {
+    return typeof data?.error_description === "string" ? `${code}: ${data.error_description}` : code;
+  }
+  return null;
 }
 
 async function findOrCreateFolder(
