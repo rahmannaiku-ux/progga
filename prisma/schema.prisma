@@ -922,6 +922,7 @@ enum UploadContext {
   OTHER
   COURSE_ROUTINE // a mission's weekly class routine image
   LESSON_THUMBNAIL // a patrol's thumbnail image
+  COURSE_THUMBNAIL // a mission's catalog card poster
 }
 
 // Which storage backend actually holds the bytes for this Upload row.

@@ -34,6 +34,7 @@ const CATEGORY_FOLDER_NAME: Record<
   OTHER: "other",
   COURSE_ROUTINE: "course-images",
   LESSON_THUMBNAIL: "course-images",
+  COURSE_THUMBNAIL: "course-images",
 };
 
 const CATEGORY_FOLDER_DB_FIELD: Record<
@@ -48,6 +49,7 @@ const CATEGORY_FOLDER_DB_FIELD: Record<
   OTHER: "otherFolderId",
   COURSE_ROUTINE: "courseMediaFolderId",
   LESSON_THUMBNAIL: "courseMediaFolderId",
+  COURSE_THUMBNAIL: "courseMediaFolderId",
 };
 
 export class DriveNotConnectedError extends Error {

@@ -30,6 +30,7 @@ export default async function MissionBuilderPage({
       subtitle: true,
       description: true,
       routineImageUrl: true,
+      thumbnailUrl: true,
       slug: true,
       status: true,
       level: true,
@@ -163,6 +164,14 @@ export default async function MissionBuilderPage({
               className="w-full rounded-lg border border-border/60 bg-surface px-3 py-2 text-base text-foreground"
             />
           </div>
+          <ImageUploadField
+            name="thumbnailUrl"
+            context="COURSE_THUMBNAIL"
+            label="Thumbnail"
+            hint="The poster on the mission card. A square picture looks best. Press Save details after choosing it."
+            initialUrl={course.thumbnailUrl}
+            maxSide={1200}
+          />
           <ImageUploadField
             name="routineImageUrl"
             context="COURSE_ROUTINE"

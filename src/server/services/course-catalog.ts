@@ -6,6 +6,7 @@ function toCardData(course: {
   slug: string;
   title: string;
   subtitle: string | null;
+  thumbnailUrl: string | null;
   level: string;
   isFree: boolean;
   priceCents: number;
@@ -25,6 +26,7 @@ function toCardData(course: {
     slug: course.slug,
     title: course.title,
     subtitle: course.subtitle,
+    thumbnailUrl: course.thumbnailUrl,
     level: course.level,
     isFree: course.isFree,
     priceCents: course.priceCents,
@@ -43,6 +45,7 @@ const cardSelect = {
   slug: true,
   title: true,
   subtitle: true,
+  thumbnailUrl: true,
   level: true,
   isFree: true,
   priceCents: true,

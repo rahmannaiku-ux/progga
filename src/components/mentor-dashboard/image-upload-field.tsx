@@ -5,7 +5,7 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { mediaSrc } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
 
-type ImageContext = "COURSE_ROUTINE" | "LESSON_THUMBNAIL";
+type ImageContext = "COURSE_ROUTINE" | "LESSON_THUMBNAIL" | "COURSE_THUMBNAIL";
 
 /**
  * Phones hand over 5–12 MB photos, and the upload endpoint has a request size

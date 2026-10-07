@@ -109,6 +109,8 @@ async function canAccessUpload(
   // (leaderboard, community, mentor rosters) — inherently public-facing,
   // same as they were as plain UploadThing URLs before.
   if (upload.context === "AVATAR") return true;
+  // Mission posters appear on the public catalog, so visitors who aren't signed in see them too.
+  if (upload.context === "COURSE_THUMBNAIL") return true;
 
   if (!viewer) return false;
   if (viewer.role === "ADMIN" || viewer.role === "SUPER_ADMIN") return true;

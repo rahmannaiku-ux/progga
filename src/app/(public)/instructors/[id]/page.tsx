@@ -85,6 +85,7 @@ export default async function InstructorProfilePage({
                   slug: c.slug,
                   title: c.title,
                   subtitle: c.subtitle,
+                  thumbnailUrl: c.thumbnailUrl,
                   level: c.level,
                   isFree: c.isFree,
                   priceCents: c.priceCents,

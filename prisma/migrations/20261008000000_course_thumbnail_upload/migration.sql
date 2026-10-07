@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "UploadContext" ADD VALUE 'COURSE_THUMBNAIL';

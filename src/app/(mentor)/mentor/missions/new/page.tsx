@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { createCourse } from "@/server/actions/mission-actions";
 import { buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/shared/submit-button";
+import { ImageUploadField } from "@/components/mentor-dashboard/image-upload-field";
 
 export default async function NewMissionPage() {
   const user = await requireRole("TEACHER");
@@ -49,6 +50,14 @@ export default async function NewMissionPage() {
             className="h-11 w-full rounded-xl border border-border/60 bg-surface px-4 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
+
+        <ImageUploadField
+          name="thumbnailUrl"
+          context="COURSE_THUMBNAIL"
+          label="Thumbnail (optional)"
+          hint="The poster on the mission card. A square picture (e.g. 1080×1080) looks best."
+          maxSide={1200}
+        />
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">

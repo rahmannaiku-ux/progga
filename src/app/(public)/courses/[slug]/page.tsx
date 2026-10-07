@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/payments/format";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
+import { mediaSrc } from "@/lib/media-url";
 import { PurchasePanel } from "@/components/course/purchase-panel";
 import { CourseTeachersShowcase, type CourseTeacherEntry } from "@/components/course/course-teachers-showcase";
 
@@ -111,6 +112,8 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
     });
   }
 
+  const thumbnail = mediaSrc(course.thumbnailUrl, 1200);
+
   return (
     <div className="container py-10 sm:py-14">
       <StaggerContainer className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
@@ -119,12 +122,12 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
           <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-primary p-8">
             <DoodleStar className="pointer-events-none absolute -left-2 top-4 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
             <DoodleSparkle className="pointer-events-none absolute right-8 top-6 hidden h-8 w-8 opacity-70 sm:block" />
-            {course.thumbnailUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- decorative hero image, dimensions vary per upload
+            {thumbnail && (
+              // eslint-disable-next-line @next/next/no-img-element -- mentor-uploaded poster, dimensions vary per upload
               <img
-                src={course.thumbnailUrl}
-                alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25"
+                src={thumbnail}
+                alt={course.title}
+                className="relative mb-5 aspect-square w-full max-w-sm rounded-2xl border-2 border-border object-cover"
               />
             )}
             <div className="relative">

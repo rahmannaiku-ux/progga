@@ -4,11 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { DoodleStar } from "@/components/marketing/cartoon-doodles";
 import { formatMoney } from "@/lib/payments/format";
 import { computeDiscountedPriceCents, type DiscountLike } from "@/lib/payments/discount";
+import { mediaSrc } from "@/lib/media-url";
 
 export type CourseCardData = {
   slug: string;
   title: string;
   subtitle: string | null;
+  /** The mentor's uploaded poster; the coloured placeholder is drawn when missing. */
+  thumbnailUrl?: string | null;
   level: string;
   isFree: boolean;
   priceCents: number;
@@ -61,6 +64,7 @@ export function CourseCard({
   const hours = Math.round((course.durationMinutes / 60) * 10) / 10;
   const theme = THUMB_THEME[accent];
   const price = computeDiscountedPriceCents(course.priceCents, course.discount);
+  const thumbnail = mediaSrc(course.thumbnailUrl, 800);
 
   return (
     <Link
@@ -73,23 +77,47 @@ export function CourseCard({
         </span>
       )}
 
-      <div className={`relative flex h-32 flex-col justify-between overflow-hidden p-4 ${theme.header}`}>
-        <div className="halftone-dots pointer-events-none absolute inset-0 opacity-30" />
-        <Cpu className={`pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 ${theme.iconTint}`} />
-        {course.categoryName && (
-          <span
-            className={`relative w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold ${theme.text}`}
-          >
-            {course.categoryName}
-          </span>
-        )}
-        <h3 className={`relative font-display text-lg font-extrabold leading-tight ${theme.text}`}>
-          {course.title}
-        </h3>
-        <DoodleStar className="pointer-events-none absolute -bottom-2 -left-2 h-9 w-9 -rotate-12 opacity-70" />
-      </div>
+      {thumbnail ? (
+        <div className="relative aspect-square w-full overflow-hidden border-b-2 border-border bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element -- served by /api/files or Drive, sizes vary per upload */}
+          <img
+            src={thumbnail}
+            alt={course.title}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        </div>
+      ) : (
+        <div className={`relative flex h-32 flex-col justify-between overflow-hidden p-4 ${theme.header}`}>
+          <div className="halftone-dots pointer-events-none absolute inset-0 opacity-30" />
+          <Cpu className={`pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 ${theme.iconTint}`} />
+          {course.categoryName && (
+            <span
+              className={`relative w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold ${theme.text}`}
+            >
+              {course.categoryName}
+            </span>
+          )}
+          <h3 className={`relative font-display text-lg font-extrabold leading-tight ${theme.text}`}>
+            {course.title}
+          </h3>
+          <DoodleStar className="pointer-events-none absolute -bottom-2 -left-2 h-9 w-9 -rotate-12 opacity-70" />
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col gap-3 p-5">
+        {thumbnail && (
+          <>
+            {course.categoryName && (
+              <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                {course.categoryName}
+              </span>
+            )}
+            <h3 className="font-display text-lg font-extrabold leading-tight text-foreground">
+              {course.title}
+            </h3>
+          </>
+        )}
         {course.subtitle && (
           <p className="line-clamp-2 text-sm text-muted-foreground">
             {course.subtitle}

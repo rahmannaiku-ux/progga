@@ -33,6 +33,7 @@ const CATEGORIES: { context: UploadContext; label: string; icon: typeof UserIcon
   { context: "BUG_REPORT", label: "Bug Reports", icon: Bug },
   { context: "COURSE_ROUTINE", label: "Class Routines", icon: FolderOpen },
   { context: "LESSON_THUMBNAIL", label: "Patrol Thumbnails", icon: FolderOpen },
+  { context: "COURSE_THUMBNAIL", label: "Mission Thumbnails", icon: FolderOpen },
   { context: "OTHER", label: "Other Files", icon: FolderOpen },
 ];
 

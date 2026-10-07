@@ -14,10 +14,11 @@ const CLIENT_UPLOADABLE_CONTEXTS: UploadContext[] = [
   "OTHER",
   "COURSE_ROUTINE",
   "LESSON_THUMBNAIL",
+  "COURSE_THUMBNAIL",
 ];
 
 // Only people who build missions may upload these.
-const MENTOR_ONLY_CONTEXTS: UploadContext[] = ["COURSE_ROUTINE", "LESSON_THUMBNAIL"];
+const MENTOR_ONLY_CONTEXTS: UploadContext[] = ["COURSE_ROUTINE", "LESSON_THUMBNAIL", "COURSE_THUMBNAIL"];
 const MENTOR_ROLES = ["TEACHER", "ADMIN", "SUPER_ADMIN"];
 
 /**

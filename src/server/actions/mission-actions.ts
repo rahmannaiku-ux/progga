@@ -126,7 +126,7 @@ function revalidateBuilder(courseId: string) {
 // COURSE
 // ---------------------------------------------------------------------
 
-type ImageContext = "COURSE_ROUTINE" | "LESSON_THUMBNAIL";
+type ImageContext = "COURSE_ROUTINE" | "LESSON_THUMBNAIL" | "COURSE_THUMBNAIL";
 
 /**
  * A saved picture must be one this mentor actually uploaded for this purpose
@@ -180,6 +180,12 @@ export async function createCourse(formData: FormData) {
     throw new Error(parsed.error.errors[0]?.message ?? "Invalid mission details");
   }
   const data = parsed.data;
+  const thumbnailUrl = await checkedImageUrl(
+    formData.get("thumbnailUrl") as string | null,
+    "COURSE_THUMBNAIL",
+    user,
+    null
+  );
 
   const baseSlug = slugify(data.title) || "mission";
   let slug = baseSlug;
@@ -198,6 +204,7 @@ export async function createCourse(formData: FormData) {
       isFree: data.isFree,
       priceCents: data.isFree ? 0 : data.priceCents,
       categoryId: data.categoryId || null,
+      thumbnailUrl,
       teacherId: user.id,
       status: "DRAFT",
     },
@@ -276,6 +283,15 @@ export async function updateCourse(courseId: string, formData: FormData) {
     routineImageUrl = await checkedImageUrl(routineRaw, "COURSE_ROUTINE", user, previousRoutine);
   }
 
+  const thumbnailRaw = formData.get("thumbnailUrl");
+  let thumbnailUrl: string | null | undefined;
+  let previousThumbnail: string | null = null;
+  if (typeof thumbnailRaw === "string") {
+    previousThumbnail =
+      (await db.course.findUnique({ where: { id: courseId }, select: { thumbnailUrl: true } }))?.thumbnailUrl ?? null;
+    thumbnailUrl = await checkedImageUrl(thumbnailRaw, "COURSE_THUMBNAIL", user, previousThumbnail);
+  }
+
   await db.course.update({
     where: { id: courseId },
     data: {
@@ -283,10 +299,14 @@ export async function updateCourse(courseId: string, formData: FormData) {
       subtitle: parsed.data.subtitle || null,
       categoryId: parsed.data.categoryId || null,
       ...(routineImageUrl !== undefined ? { routineImageUrl } : {}),
+      ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
     },
   });
   if (routineImageUrl !== undefined) {
     await discardReplacedImage(previousRoutine, routineImageUrl, "COURSE_ROUTINE");
+  }
+  if (thumbnailUrl !== undefined) {
+    await discardReplacedImage(previousThumbnail, thumbnailUrl, "COURSE_THUMBNAIL");
   }
 
   revalidateMissionPage(`/${courseId}/builder`);
