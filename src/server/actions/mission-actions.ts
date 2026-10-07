@@ -1,104 +1,49 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { revalidateMissionPage } from "@/lib/mission-paths";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
-import { slugify } from "@/lib/slugify";
-import { extractYoutubeId } from "@/lib/youtube";
 import { googleDownloadUrl } from "@/lib/google-embed";
-import { deleteUserFile } from "@/lib/storage";
 import { notifyAdminsOfCoMentorRequest } from "@/lib/course-team/notify";
-import { refreshCourseProgress } from "@/lib/progress";
-import {
-  courseCreateSchema,
-  moduleCreateSchema,
-  chapterCreateSchema,
-  lessonGroupCreateSchema,
-  lessonCreateSchema,
-  lessonUpdateSchema,
-} from "@/lib/validation/course";
 import { requireMentorUser } from "./require-user";
-import { parseDhakaInput } from "@/lib/timezone";
-import { parseLessonLines, parseTitleLines, type BulkKind } from "@/lib/mission-bulk";
+import type { BulkKind } from "@/lib/mission-bulk";
+import {
+  assertOwnsCourse as assertOwnsCourseCore,
+  assertChapterBelongsToCourse,
+  assertLessonBelongsToCourse,
+  createCourseCore,
+  updateCourseCore,
+  setCoursePublishStateCore,
+  setCourseExamsEnabledCore,
+  createModuleCore,
+  deleteModuleCore,
+  createChapterCore,
+  deleteChapterCore,
+  createLessonGroupCore,
+  deleteLessonGroupCore,
+  createLessonCore,
+  updateLessonCore,
+  deleteLessonCore,
+  bulkAddItemsCore,
+  type BulkAddResult,
+} from "@/server/services/mission-builder";
+
+/*
+ * The Mission builder's Server Actions. Each one checks the signed-in session
+ * and hands over to server/services/mission-builder.ts, which holds the rules
+ * (ownership, validation, picture checks) shared with the Telegram bot.
+ */
+
+const MENTOR_ONLY = "Only mentors can author missions.";
 
 /**
- * Verifies `courseId` exists and the caller may manage it: the
- * course's primary teacher (teacherId), a co-teacher assigned via
- * CourseTeacher, or an admin. Throws rather than silently no-op-ing,
- * so a spoofed ID from the client fails loudly instead of pretending
- * to succeed.
- *
- * Exported so every other course-management action — coupon
- * create/edit/delete, teacher-assignment, avatar-in-course-context,
- * etc. — shares this exact same ownership check instead of each
- * reimplementing its own "am I allowed to touch this course" logic
- * (and risking one of the copies drifting, e.g. forgetting the
- * co-teacher case).
+ * Verifies `courseId` exists and the caller may manage it: the course's
+ * primary teacher, a co-teacher, or an admin. Throws on failure. Other
+ * course-management actions (coupons, team, ...) import this so every one
+ * shares the same check.
  */
 export async function assertOwnsCourse(courseId: string, userId: string, role: string) {
-  const course = await db.course.findUnique({
-    where: { id: courseId },
-    select: {
-      teacherId: true,
-      courseTeachers: { where: { teacherId: userId }, select: { id: true } },
-    },
-  });
-  if (!course) throw new Error("Mission not found.");
-  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
-  const isPrimaryTeacher = course.teacherId === userId;
-  const isCoTeacher = course.courseTeachers.length > 0;
-  if (!isAdmin && !isPrimaryTeacher && !isCoTeacher) {
-    throw new Error("You don't have access to this mission.");
-  }
-}
-
-// ---------------------------------------------------------------------
-// Ownership-CHAIN assertions. `assertOwnsCourse` alone only proves the
-// caller owns `courseId` — it says nothing about whether the nested
-// moduleId/chapterId/lessonId/resourceId the client also supplied
-// actually belongs to that course. Without these, a teacher could pass
-// their OWN courseId (to pass the ownership check) alongside another
-// teacher's moduleId/chapterId/lessonId and mutate or delete that
-// other teacher's content. Every nested-resource action below must
-// call the matching assertion before touching the ID.
-// ---------------------------------------------------------------------
-
-async function assertModuleBelongsToCourse(moduleId: string, courseId: string) {
-  const mod = await db.module.findUnique({ where: { id: moduleId }, select: { courseId: true } });
-  if (!mod || mod.courseId !== courseId) {
-    throw new Error("That operation doesn't belong to this mission.");
-  }
-}
-
-async function assertChapterBelongsToCourse(chapterId: string, courseId: string) {
-  const chapter = await db.chapter.findUnique({
-    where: { id: chapterId },
-    select: { module: { select: { courseId: true } } },
-  });
-  if (!chapter || chapter.module.courseId !== courseId) {
-    throw new Error("That chapter doesn't belong to this mission.");
-  }
-}
-
-async function assertGroupBelongsToCourse(groupId: string, courseId: string) {
-  const group = await db.lessonGroup.findUnique({
-    where: { id: groupId },
-    select: { chapter: { select: { module: { select: { courseId: true } } } } },
-  });
-  if (!group || group.chapter.module.courseId !== courseId) {
-    throw new Error("That class type doesn't belong to this mission.");
-  }
-}
-
-async function assertLessonBelongsToCourse(lessonId: string, courseId: string) {
-  const lesson = await db.lesson.findUnique({
-    where: { id: lessonId },
-    select: { group: { select: { chapter: { select: { module: { select: { courseId: true } } } } } } },
-  });
-  if (!lesson || lesson.group.chapter.module.courseId !== courseId) {
-    throw new Error("That patrol doesn't belong to this mission.");
-  }
+  return assertOwnsCourseCore(courseId, userId, role);
 }
 
 /** Returns the resource's lessonId after verifying the full chain, since callers only have resourceId. */
@@ -116,57 +61,15 @@ async function assertResourceBelongsToCourse(resourceId: string, courseId: strin
   return resource.lessonId;
 }
 
-/** The builder is served in both consoles (see src/lib/mission-paths.ts) — refresh both. */
-function revalidateBuilder(courseId: string) {
-  revalidateMissionPage(`/${courseId}/builder`);
-  revalidatePath(`/admin/missions/${courseId}/builder`);
-}
 
 // ---------------------------------------------------------------------
 // COURSE
 // ---------------------------------------------------------------------
 
-type ImageContext = "COURSE_ROUTINE" | "LESSON_THUMBNAIL" | "COURSE_THUMBNAIL";
-
-/**
- * A saved picture must be one this mentor actually uploaded for this purpose
- * (an Upload row with the right context), never an arbitrary address from the
- * form. A value left unchanged is always fine, which keeps older pasted Drive
- * links working until they are replaced.
- */
-async function checkedImageUrl(
-  raw: string | null | undefined,
-  context: ImageContext,
-  user: { id: string; role: string },
-  current: string | null
-): Promise<string | null> {
-  const url = raw?.trim() || null;
-  if (!url) return null;
-  if (url === current) return url;
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  const upload = await db.upload.findFirst({
-    where: { url, context, ...(isAdmin ? {} : { uploaderId: user.id }) },
-    select: { id: true },
-  });
-  if (!upload) throw new Error("That picture didn't upload properly. Please choose it again.");
-  return url;
-}
-
-/** Frees the old picture's storage once it has been replaced or removed. Never fails the save. */
-async function discardReplacedImage(oldUrl: string | null, newUrl: string | null, context: ImageContext) {
-  if (!oldUrl || oldUrl === newUrl) return;
-  try {
-    const old = await db.upload.findFirst({ where: { url: oldUrl, context }, select: { id: true } });
-    if (old) await deleteUserFile(old.id);
-  } catch (err) {
-    console.error("Couldn't remove the replaced picture", err);
-  }
-}
-
 export async function createCourse(formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
+  const user = await requireMentorUser(MENTOR_ONLY);
 
-  const parsed = courseCreateSchema.safeParse({
+  const course = await createCourseCore(user, {
     title: formData.get("title"),
     subtitle: formData.get("subtitle"),
     description: formData.get("description"),
@@ -174,40 +77,7 @@ export async function createCourse(formData: FormData) {
     level: formData.get("level"),
     isFree: formData.get("isFree") === "on",
     priceCents: formData.get("priceCents") || 0,
-  });
-
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid mission details");
-  }
-  const data = parsed.data;
-  const thumbnailUrl = await checkedImageUrl(
-    formData.get("thumbnailUrl") as string | null,
-    "COURSE_THUMBNAIL",
-    user,
-    null
-  );
-
-  const baseSlug = slugify(data.title) || "mission";
-  let slug = baseSlug;
-  let attempt = 1;
-  while (await db.course.findUnique({ where: { slug } })) {
-    slug = `${baseSlug}-${++attempt}`;
-  }
-
-  const course = await db.course.create({
-    data: {
-      title: data.title,
-      subtitle: data.subtitle || null,
-      description: data.description,
-      slug,
-      level: data.level,
-      isFree: data.isFree,
-      priceCents: data.isFree ? 0 : data.priceCents,
-      categoryId: data.categoryId || null,
-      thumbnailUrl,
-      teacherId: user.id,
-      status: "DRAFT",
-    },
+    thumbnailUrl: formData.get("thumbnailUrl") as string | null,
   });
 
   // Optional co-teachers picked at creation time (see the multi-select
@@ -244,23 +114,16 @@ export async function createCourse(formData: FormData) {
     }
   }
 
-  await db.activityLog.create({
-    data: {
-      userId: user.id,
-      action: "CREATE",
-      entityType: "Course",
-      entityId: course.id,
-    },
-  });
-
   redirect(`/mentor/missions/${course.id}/builder`);
 }
 
 export async function updateCourse(courseId: string, formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  const routine = formData.get("routineImageUrl");
+  const thumbnail = formData.get("thumbnailUrl");
 
-  const parsed = courseCreateSchema.partial().safeParse({
+  // Only fields the form actually carries are changed; a blank picture removes it.
+  await updateCourseCore(user, courseId, {
     title: formData.get("title") || undefined,
     subtitle: formData.get("subtitle") ?? undefined,
     description: formData.get("description") || undefined,
@@ -268,80 +131,14 @@ export async function updateCourse(courseId: string, formData: FormData) {
     level: formData.get("level") || undefined,
     isFree: formData.get("isFree") === "on",
     priceCents: formData.get("priceCents") || undefined,
+    routineImageUrl: typeof routine === "string" ? routine : undefined,
+    thumbnailUrl: typeof thumbnail === "string" ? thumbnail : undefined,
   });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid mission details");
-  }
-
-  // Only touched when the form actually carries the field; blank removes the routine.
-  const routineRaw = formData.get("routineImageUrl");
-  let routineImageUrl: string | null | undefined;
-  let previousRoutine: string | null = null;
-  if (typeof routineRaw === "string") {
-    previousRoutine =
-      (await db.course.findUnique({ where: { id: courseId }, select: { routineImageUrl: true } }))?.routineImageUrl ?? null;
-    routineImageUrl = await checkedImageUrl(routineRaw, "COURSE_ROUTINE", user, previousRoutine);
-  }
-
-  const thumbnailRaw = formData.get("thumbnailUrl");
-  let thumbnailUrl: string | null | undefined;
-  let previousThumbnail: string | null = null;
-  if (typeof thumbnailRaw === "string") {
-    previousThumbnail =
-      (await db.course.findUnique({ where: { id: courseId }, select: { thumbnailUrl: true } }))?.thumbnailUrl ?? null;
-    thumbnailUrl = await checkedImageUrl(thumbnailRaw, "COURSE_THUMBNAIL", user, previousThumbnail);
-  }
-
-  await db.course.update({
-    where: { id: courseId },
-    data: {
-      ...parsed.data,
-      subtitle: parsed.data.subtitle || null,
-      categoryId: parsed.data.categoryId || null,
-      ...(routineImageUrl !== undefined ? { routineImageUrl } : {}),
-      ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
-    },
-  });
-  if (routineImageUrl !== undefined) {
-    await discardReplacedImage(previousRoutine, routineImageUrl, "COURSE_ROUTINE");
-  }
-  if (thumbnailUrl !== undefined) {
-    await discardReplacedImage(previousThumbnail, thumbnailUrl, "COURSE_THUMBNAIL");
-  }
-
-  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function setCoursePublishState(courseId: string, publish: boolean) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  if (publish) {
-    const moduleCount = await db.module.count({ where: { courseId, isLiveContainer: false } });
-    if (moduleCount === 0) {
-      throw new Error("Add at least one operation before publishing.");
-    }
-  }
-
-  await db.course.update({
-    where: { id: courseId },
-    data: {
-      status: publish ? "PUBLISHED" : "DRAFT",
-      publishedAt: publish ? new Date() : null,
-    },
-  });
-
-  await db.activityLog.create({
-    data: {
-      userId: user.id,
-      action: publish ? "PUBLISH" : "UNPUBLISH",
-      entityType: "Course",
-      entityId: courseId,
-    },
-  });
-
-  revalidateMissionPage(`/${courseId}/builder`);
-  revalidatePath("/mentor/missions");
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await setCoursePublishStateCore(user, courseId, publish);
 }
 
 /**
@@ -351,12 +148,8 @@ export async function setCoursePublishState(courseId: string, publish: boolean) 
  * actually enforce it server-side for create/publish/attempt.
  */
 export async function setCourseExamsEnabled(courseId: string, enabled: boolean) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  await db.course.update({ where: { id: courseId }, data: { examsEnabled: enabled } });
-  revalidateMissionPage(`/${courseId}/builder`);
-  revalidateMissionPage(`/${courseId}/assessments`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await setCourseExamsEnabledCore(user, courseId, enabled);
 }
 
 // ---------------------------------------------------------------------
@@ -364,42 +157,17 @@ export async function setCourseExamsEnabled(courseId: string, enabled: boolean) 
 // ---------------------------------------------------------------------
 
 export async function createModule(formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  const parsed = moduleCreateSchema.safeParse({
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await createModuleCore(user, {
     courseId: formData.get("courseId"),
     title: formData.get("title"),
     summary: formData.get("summary"),
   });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid operation details");
-  }
-  const { courseId, title, summary } = parsed.data;
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  const maxOrder = await db.module.aggregate({
-    where: { courseId },
-    _max: { order: true },
-  });
-
-  await db.module.create({
-    data: {
-      courseId,
-      title,
-      summary: summary || null,
-      order: (maxOrder._max.order ?? -1) + 1,
-    },
-  });
-
-  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteModule(courseId: string, moduleId: string) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-  await assertModuleBelongsToCourse(moduleId, courseId);
-  await db.module.delete({ where: { id: moduleId } });
-  await refreshCourseProgress(courseId);
-  revalidateMissionPage(`/${courseId}/builder`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await deleteModuleCore(user, courseId, moduleId);
 }
 
 export async function reorderModule(
@@ -437,38 +205,13 @@ export async function reorderModule(
 // ---------------------------------------------------------------------
 
 export async function createChapter(courseId: string, formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  const parsed = chapterCreateSchema.safeParse({
-    moduleId: formData.get("moduleId"),
-    title: formData.get("title"),
-  });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid chapter details");
-  }
-  const { moduleId, title } = parsed.data;
-  await assertModuleBelongsToCourse(moduleId, courseId);
-
-  const maxOrder = await db.chapter.aggregate({
-    where: { moduleId },
-    _max: { order: true },
-  });
-
-  await db.chapter.create({
-    data: { moduleId, title, order: (maxOrder._max.order ?? -1) + 1 },
-  });
-
-  revalidateMissionPage(`/${courseId}/builder`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await createChapterCore(user, courseId, { moduleId: formData.get("moduleId"), title: formData.get("title") });
 }
 
 export async function deleteChapter(courseId: string, chapterId: string) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-  await assertChapterBelongsToCourse(chapterId, courseId);
-  await db.chapter.delete({ where: { id: chapterId } });
-  await refreshCourseProgress(courseId);
-  revalidateMissionPage(`/${courseId}/builder`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await deleteChapterCore(user, courseId, chapterId);
 }
 
 // ---------------------------------------------------------------------
@@ -477,38 +220,13 @@ export async function deleteChapter(courseId: string, chapterId: string) {
 // ---------------------------------------------------------------------
 
 export async function createLessonGroup(courseId: string, formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  const parsed = lessonGroupCreateSchema.safeParse({
-    chapterId: formData.get("chapterId"),
-    title: formData.get("title"),
-  });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid class type details");
-  }
-  const { chapterId, title } = parsed.data;
-  await assertChapterBelongsToCourse(chapterId, courseId);
-
-  const maxOrder = await db.lessonGroup.aggregate({
-    where: { chapterId },
-    _max: { order: true },
-  });
-
-  await db.lessonGroup.create({
-    data: { chapterId, title, order: (maxOrder._max.order ?? -1) + 1 },
-  });
-
-  revalidateMissionPage(`/${courseId}/builder`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await createLessonGroupCore(user, courseId, { chapterId: formData.get("chapterId"), title: formData.get("title") });
 }
 
 export async function deleteLessonGroup(courseId: string, groupId: string) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-  await assertGroupBelongsToCourse(groupId, courseId);
-  await db.lessonGroup.delete({ where: { id: groupId } });
-  await refreshCourseProgress(courseId);
-  revalidateMissionPage(`/${courseId}/builder`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await deleteLessonGroupCore(user, courseId, groupId);
 }
 
 export async function reorderLessonGroup(
@@ -547,44 +265,9 @@ export async function reorderLessonGroup(
 // LESSON
 // ---------------------------------------------------------------------
 
-/**
- * Parses the two optional datetime-local strings that turn an ordinary
- * lesson into a live class. Both blank → { start: null, end: null }, an
- * ordinary recorded lesson, unchanged from before this field existed.
- * scheduledStart alone is enough to mark a lesson live; scheduledEnd is
- * optional (see getLiveClassStatus's fallback-duration rule for what
- * happens without one). Parsed here rather than via z.coerce.date() for
- * the same reason assessment-actions.ts's monitoring window is: plain
- * strings straight from <input type="datetime-local">.
- */
-function parseScheduleFields(scheduledStart?: string, scheduledEnd?: string) {
-  if (!scheduledStart) return { scheduledStart: null, scheduledEnd: null };
-
-  // datetime-local values are Dhaka wall-clock time — see lib/timezone.ts.
-  const start = parseDhakaInput(scheduledStart);
-  if (Number.isNaN(start.getTime())) {
-    throw new Error("Invalid scheduled start time.");
-  }
-
-  let end: Date | null = null;
-  if (scheduledEnd) {
-    end = parseDhakaInput(scheduledEnd);
-    if (Number.isNaN(end.getTime())) {
-      throw new Error("Invalid scheduled end time.");
-    }
-    if (end <= start) {
-      throw new Error("Scheduled end must be after the scheduled start.");
-    }
-  }
-
-  return { scheduledStart: start, scheduledEnd: end };
-}
-
 export async function createLesson(courseId: string, formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  const parsed = lessonCreateSchema.safeParse({
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await createLessonCore(user, courseId, {
     groupId: formData.get("groupId"),
     title: formData.get("title"),
     description: formData.get("description") || undefined,
@@ -595,48 +278,11 @@ export async function createLesson(courseId: string, formData: FormData) {
     scheduledStart: formData.get("scheduledStart") || undefined,
     scheduledEnd: formData.get("scheduledEnd") || undefined,
   });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid patrol details");
-  }
-  const data = parsed.data;
-  await assertGroupBelongsToCourse(data.groupId, courseId);
-
-  const youtubeVideoId = extractYoutubeId(data.youtubeUrl);
-  if (!youtubeVideoId) {
-    throw new Error("That doesn't look like a valid YouTube URL.");
-  }
-  const thumbnailUrl = await checkedImageUrl(data.thumbnailUrl, "LESSON_THUMBNAIL", user, null);
-  const { scheduledStart, scheduledEnd } = parseScheduleFields(data.scheduledStart, data.scheduledEnd);
-
-  const maxOrder = await db.lesson.aggregate({
-    where: { groupId: data.groupId },
-    _max: { order: true },
-  });
-
-  await db.lesson.create({
-    data: {
-      groupId: data.groupId,
-      title: data.title,
-      description: data.description || null,
-      youtubeVideoId,
-      thumbnailUrl,
-      durationSeconds: data.durationSeconds,
-      isPreview: data.isPreview,
-      order: (maxOrder._max.order ?? -1) + 1,
-      scheduledStart,
-      scheduledEnd,
-    },
-  });
-  await refreshCourseProgress(courseId);
-
-  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function updateLesson(courseId: string, formData: FormData) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  const parsed = lessonUpdateSchema.safeParse({
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await updateLessonCore(user, courseId, {
     lessonId: formData.get("lessonId"),
     groupId: formData.get("groupId"),
     title: formData.get("title"),
@@ -645,46 +291,12 @@ export async function updateLesson(courseId: string, formData: FormData) {
     thumbnailUrl: formData.get("thumbnailUrl") || undefined,
     durationSeconds: formData.get("durationSeconds") || 0,
     isPreview: formData.get("isPreview") === "on",
-    scheduledStart: formData.get("scheduledStart") || undefined,
-    scheduledEnd: formData.get("scheduledEnd") || undefined,
   });
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid patrol details");
-  }
-  const data = parsed.data;
-  await assertLessonBelongsToCourse(data.lessonId, courseId);
-
-  const youtubeVideoId = extractYoutubeId(data.youtubeUrl);
-  if (!youtubeVideoId) {
-    throw new Error("That doesn't look like a valid YouTube URL.");
-  }
-  const previousThumbnail =
-    (await db.lesson.findUnique({ where: { id: data.lessonId }, select: { thumbnailUrl: true } }))?.thumbnailUrl ?? null;
-  const thumbnailUrl = await checkedImageUrl(data.thumbnailUrl, "LESSON_THUMBNAIL", user, previousThumbnail);
-
-  await db.lesson.update({
-    where: { id: data.lessonId },
-    data: {
-      title: data.title,
-      description: data.description || null,
-      youtubeVideoId,
-      thumbnailUrl,
-      durationSeconds: data.durationSeconds,
-      isPreview: data.isPreview,
-    },
-  });
-  await discardReplacedImage(previousThumbnail, thumbnailUrl, "LESSON_THUMBNAIL");
-
-  revalidateMissionPage(`/${courseId}/builder`);
 }
 
 export async function deleteLesson(courseId: string, lessonId: string) {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-  await assertLessonBelongsToCourse(lessonId, courseId);
-  await db.lesson.delete({ where: { id: lessonId } });
-  await refreshCourseProgress(courseId);
-  revalidateMissionPage(`/${courseId}/builder`);
+  const user = await requireMentorUser(MENTOR_ONLY);
+  await deleteLessonCore(user, courseId, lessonId);
 }
 
 // ---------------------------------------------------------------------
@@ -780,16 +392,11 @@ export async function setLessonResourceDownloadable(
   revalidateMissionPage(`/${courseId}/builder`);
   return { ok: true };
 }
-
 // ---------------------------------------------------------------------
 // QUICK ADD — one box on every level of the builder that creates one
-// item or a whole pasted list (one per line). `parentId` is the course
-// (operations), operation (chapters), chapter (class types) or class
-// type (patrols) the new items go under. Returns the error instead of
+// item or a whole pasted list (one per line). Returns the error instead of
 // throwing so the message reaches the mentor in production.
 // ---------------------------------------------------------------------
-
-export type BulkAddResult = { ok: true; added: number } | { ok: false; error: string };
 
 export async function bulkAddItems(
   courseId: string,
@@ -797,53 +404,6 @@ export async function bulkAddItems(
   parentId: string,
   text: string
 ): Promise<BulkAddResult> {
-  const user = await requireMentorUser("Only mentors can author missions.");
-  await assertOwnsCourse(courseId, user.id, user.role);
-
-  if (typeof text !== "string" || typeof parentId !== "string") {
-    return { ok: false, error: "Something looks wrong with that request." };
-  }
-
-  let added = 0;
-  if (kind === "lessons") {
-    const parsed = parseLessonLines(text);
-    if (!parsed.ok) return parsed;
-    await assertGroupBelongsToCourse(parentId, courseId);
-    const max = await db.lesson.aggregate({ where: { groupId: parentId }, _max: { order: true } });
-    const start = (max._max.order ?? -1) + 1;
-    const res = await db.lesson.createMany({
-      data: parsed.items.map((l, i) => ({
-        groupId: parentId,
-        title: l.title,
-        youtubeVideoId: l.youtubeVideoId,
-        order: start + i,
-      })),
-    });
-    added = res.count;
-    await refreshCourseProgress(courseId);
-  } else if (kind === "modules" || kind === "chapters" || kind === "groups") {
-    const parsed = parseTitleLines(text, kind);
-    if (!parsed.ok) return parsed;
-    if (kind === "modules") {
-      if (parentId !== courseId) return { ok: false, error: "Something looks wrong with that request." };
-      const max = await db.module.aggregate({ where: { courseId }, _max: { order: true } });
-      const start = (max._max.order ?? -1) + 1;
-      added = (await db.module.createMany({ data: parsed.items.map((title, i) => ({ courseId, title, order: start + i })) })).count;
-    } else if (kind === "chapters") {
-      await assertModuleBelongsToCourse(parentId, courseId);
-      const max = await db.chapter.aggregate({ where: { moduleId: parentId }, _max: { order: true } });
-      const start = (max._max.order ?? -1) + 1;
-      added = (await db.chapter.createMany({ data: parsed.items.map((title, i) => ({ moduleId: parentId, title, order: start + i })) })).count;
-    } else {
-      await assertChapterBelongsToCourse(parentId, courseId);
-      const max = await db.lessonGroup.aggregate({ where: { chapterId: parentId }, _max: { order: true } });
-      const start = (max._max.order ?? -1) + 1;
-      added = (await db.lessonGroup.createMany({ data: parsed.items.map((title, i) => ({ chapterId: parentId, title, order: start + i })) })).count;
-    }
-  } else {
-    return { ok: false, error: "Something looks wrong with that request." };
-  }
-
-  revalidateMissionPage(`/${courseId}/builder`);
-  return { ok: true, added };
+  const user = await requireMentorUser(MENTOR_ONLY);
+  return bulkAddItemsCore(user, courseId, kind, parentId, text);
 }

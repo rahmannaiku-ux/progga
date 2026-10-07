@@ -269,3 +269,14 @@ export async function updateStudentProfile(userId: string, input: EditableStuden
   await db.studentProfile.update({ where: { userId }, data });
   return { ok: true };
 }
+
+/** The public "about me" fields on /profile. Shared by the profile page and the Telegram bot. */
+export async function updateHeadlineAndBio(userId: string, input: { headline?: string; bio?: string }) {
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      ...(input.headline !== undefined ? { headline: input.headline.trim().slice(0, 150) || null } : {}),
+      ...(input.bio !== undefined ? { bio: input.bio.trim().slice(0, 2000) || null } : {}),
+    },
+  });
+}

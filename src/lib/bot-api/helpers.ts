@@ -73,3 +73,15 @@ export async function patrolAccessFor(
 export function patrolPath(ids: { missionId: string; operationId: string; chapterId: string; groupId: string; patrolId: string }) {
   return `/missions/${ids.missionId}/operations/${ids.operationId}/chapters/${ids.chapterId}/groups/${ids.groupId}/patrols/${ids.patrolId}`;
 }
+
+/**
+ * The message to send back when a shared service threw: its own sentences are written
+ * for people, but a database error (say, an id that was just deleted) is not.
+ */
+export function botErrorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof Error)) return fallback;
+  if (err.name.startsWith("PrismaClient") || err.constructor.name.startsWith("PrismaClient")) {
+    return "That item no longer exists or was changed. Please refresh and try again.";
+  }
+  return err.message;
+}

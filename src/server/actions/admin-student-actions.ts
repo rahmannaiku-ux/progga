@@ -15,7 +15,7 @@ import {
 import { validatePasswordInput, hashPassword } from "@/lib/auth/password";
 import { revokeAllActiveSessionsForUser } from "@/lib/auth/session";
 import { levelForXp } from "@/lib/gamification/xp-curve";
-import { adjustCoinsAsAdmin, InsufficientCoinsError } from "@/lib/gamification/coins";
+import { adjustStudentCoinsCore } from "@/server/services/admin-tools";
 
 /**
  * Admin-only editing of a student's whole profile. Every action re-checks the
@@ -166,23 +166,8 @@ export async function adminSetStudentPasswordAction(targetId: string, newPasswor
 
 export async function adminAdjustStudentCoinsAction(targetId: string, amount: number, reason: string): Promise<Result> {
   const admin = await requireAdminUser();
-  if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1_000_000) {
-    return { ok: false, message: "Enter a whole number of coins, not zero." };
-  }
-  if (!reason.trim()) return { ok: false, message: "Say why you are changing the balance." };
-
-  const loaded = await loadStudent(targetId);
-  if (loaded.error !== null) return { ok: false, message: loaded.error };
-
-  try {
-    await adjustCoinsAsAdmin(targetId, amount, reason);
-  } catch (err) {
-    if (err instanceof InsufficientCoinsError) return { ok: false, message: "That would take the balance below zero." };
-    throw err;
-  }
-  await logActivity(admin.id, "UPDATE", "ProggyCoinTransaction", targetId, { amount, reason: reason.trim() });
-  revalidatePath(`/admin/users/${targetId}`);
-  return { ok: true };
+  const result = await adjustStudentCoinsCore(admin, targetId, amount, reason);
+  return result.ok ? { ok: true } : { ok: false, message: result.error };
 }
 
 export async function adminRemoveStudentAvatarAction(targetId: string): Promise<Result> {

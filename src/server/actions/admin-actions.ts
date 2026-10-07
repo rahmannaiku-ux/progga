@@ -3,16 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
-import { slugify } from "@/lib/slugify";
-import {
-  categoryCreateSchema,
-  categoryUpdateSchema,
-  categoryDeleteSchema,
-} from "@/lib/validation/admin";
+import { categoryUpdateSchema, categoryDeleteSchema } from "@/lib/validation/admin";
 import type { Role } from "@prisma/client";
 import { requireAdminUser } from "./require-user";
 import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { isCourseDeleteConfirmed } from "@/lib/validation/course-delete";
+import {
+  adminSetCourseStatusCore,
+  createCategoryCore,
+  createGlobalAnnouncementCore,
+  createUniqueCategorySlug,
+  logAdminActivity,
+  setUserRoleCore,
+  setUserSuspendedCore,
+} from "@/server/services/admin-tools";
 
 /** Shared P2002 check — every model here follows the same
  * find-then-retry-on-race pattern already used elsewhere in the
@@ -30,9 +34,7 @@ export async function logActivity(
   entityId?: string,
   metadata?: Record<string, unknown>
 ) {
-  await db.activityLog.create({
-    data: { userId: adminId, action, entityType, entityId, metadata: metadata as Prisma.InputJsonValue | undefined },
-  });
+  await logAdminActivity(adminId, action, entityType, entityId, metadata);
 }
 
 // ---------------------------------------------------------------------
@@ -41,62 +43,12 @@ export async function logActivity(
 
 export async function setUserRole(targetUserId: string, newRole: Role) {
   const admin = await requireAdminUser();
-  if (admin.role !== "SUPER_ADMIN" && (newRole === "ADMIN" || newRole === "SUPER_ADMIN")) {
-    throw new Error("Only a super admin can grant admin access.");
-  }
-
-  const target = await db.user.findUnique({ where: { id: targetUserId } });
-  if (!target) throw new Error("User not found.");
-  if (target.id === admin.id) throw new Error("You can't change your own role.");
-  // A regular ADMIN must never be able to touch a SUPER_ADMIN's role at
-  // all — not just "promote to admin" (checked above), but demoting a
-  // SUPER_ADMIN down to STUDENT would be just as much a privilege
-  // escalation in effect, since it neutralizes the higher authority.
-  // Only another SUPER_ADMIN may change a SUPER_ADMIN's role.
-  if (target.role === "SUPER_ADMIN" && admin.role !== "SUPER_ADMIN") {
-    throw new Error("Only a super admin can change another super admin's role.");
-  }
-
-  await db.$transaction([
-    db.user.update({ where: { id: targetUserId }, data: { role: newRole } }),
-    db.roleChangeLog.create({
-      data: {
-        targetUserId,
-        changedById: admin.id,
-        fromRole: target.role,
-        toRole: newRole,
-      },
-    }),
-  ]);
-
-  await logActivity(admin.id, "ROLE_CHANGE", "User", targetUserId, {
-    from: target.role,
-    to: newRole,
-  });
-
-  revalidatePath("/admin/users");
-  revalidatePath("/admin/mentors");
-  revalidatePath("/admin/heroes");
+  await setUserRoleCore(admin, targetUserId, newRole);
 }
 
 export async function setUserSuspended(targetUserId: string, isSuspended: boolean) {
   const admin = await requireAdminUser();
-  if (targetUserId === admin.id) throw new Error("You can't suspend your own account.");
-
-  const target = await db.user.findUnique({ where: { id: targetUserId }, select: { role: true } });
-  if (!target) throw new Error("User not found.");
-  // Same hierarchy rule as role changes: a regular ADMIN must not be
-  // able to suspend (or unsuspend) a SUPER_ADMIN's account.
-  if (target.role === "SUPER_ADMIN" && admin.role !== "SUPER_ADMIN") {
-    throw new Error("Only a super admin can suspend another super admin.");
-  }
-
-  await db.user.update({ where: { id: targetUserId }, data: { isSuspended } });
-  await logActivity(admin.id, "UPDATE", "User", targetUserId, { isSuspended });
-
-  revalidatePath("/admin/users");
-  revalidatePath("/admin/mentors");
-  revalidatePath("/admin/heroes");
+  await setUserSuspendedCore(admin, targetUserId, isSuspended);
 }
 
 export async function promoteUserByIdentifier(identifier: string, newRole: Role) {
@@ -114,69 +66,17 @@ export async function promoteUserByIdentifier(identifier: string, newRole: Role)
 // CATEGORIES
 // ---------------------------------------------------------------------
 
-/** Creates a unique slug for `name`, retrying on collision (including a
- * concurrent create landing between our uniqueness check and the
- * insert — the retry loop here is driven by the DB's own unique
- * constraint, not just a pre-check, so it's race-safe). */
-async function createUniqueCategorySlug(name: string, excludeId?: string): Promise<string> {
-  const baseSlug = slugify(name) || "category";
-  let slug = baseSlug;
-  let n = 1;
-  // Bounded — a category name colliding 50 times over is effectively
-  // impossible and this avoids any chance of an infinite loop.
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const existing = await db.category.findUnique({ where: { slug } });
-    if (!existing || existing.id === excludeId) return slug;
-    slug = `${baseSlug}-${++n}`;
-  }
-  throw new Error("Could not generate a unique slug — try a different name.");
-}
-
 export async function createCategory(
   formData: FormData
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const admin = await requireAdminUser();
-
-  const parsed = categoryCreateSchema.safeParse({
+  return createCategoryCore(admin, {
     name: formData.get("name"),
     description: formData.get("description"),
     iconKey: formData.get("iconKey"),
     displayOrder: formData.get("displayOrder") || undefined,
     isActive: formData.get("isActive") === "on",
   });
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.errors[0]?.message ?? "Invalid category details" };
-  }
-  const { name, description, iconKey, displayOrder, isActive } = parsed.data;
-
-  // Retried below on a unique-constraint race, not just checked once
-  // up front — two admins saving a same-named category at the same
-  // moment could otherwise both pass the pre-check and one would 500.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const slug = await createUniqueCategorySlug(name);
-    try {
-      const category = await db.category.create({
-        data: {
-          name,
-          slug,
-          description: description || null,
-          iconKey: iconKey || null,
-          displayOrder: displayOrder ?? 0,
-          isActive: isActive ?? true,
-        },
-      });
-      await logActivity(admin.id, "CREATE", "Category", category.id);
-      revalidatePath("/admin/categories");
-      revalidatePath("/categories");
-      revalidatePath("/courses");
-      return { ok: true, id: category.id };
-    } catch (err) {
-      if (isUniqueConstraintError(err) && attempt < 4) continue;
-      return { ok: false, error: "A category with that name or slug already exists." };
-    }
-  }
-
-  return { ok: false, error: "Could not create the category — please try again." };
 }
 
 export async function updateCategory(
@@ -302,15 +202,7 @@ export async function adminSetCourseStatus(
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
 ) {
   const admin = await requireAdminUser();
-  await db.course.update({
-    where: { id: courseId },
-    data: {
-      status,
-      publishedAt: status === "PUBLISHED" ? new Date() : undefined,
-    },
-  });
-  await logActivity(admin.id, status === "ARCHIVED" ? "UNPUBLISH" : "PUBLISH", "Course", courseId);
-  revalidatePath("/admin/missions");
+  await adminSetCourseStatusCore(admin, courseId, status);
 }
 
 /**
@@ -385,30 +277,7 @@ export async function createGlobalAnnouncement(
   formData: FormData
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = await requireAdminUser();
-  const title = String(formData.get("title") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
-  if (!title || !body) return { ok: false, error: "Title and body are required." };
-
-  const announcement = await db.announcement.create({
-    data: { title, body, isGlobal: true, createdById: admin.id },
-  });
-
-  // Fan out a notification to every active user. For a very large user
-  // base this belongs in a background job — acceptable inline for the
-  // scale this platform is built for at launch.
-  const users = await db.user.findMany({ where: { isActive: true }, select: { id: true } });
-  await db.notification.createMany({
-    data: users.map((u) => ({
-      userId: u.id,
-      type: "ANNOUNCEMENT" as const,
-      title,
-      body,
-    })),
-  });
-
-  await logActivity(admin.id, "CREATE", "Announcement", announcement.id);
-  revalidatePath("/admin/announcements");
-  return { ok: true };
+  return createGlobalAnnouncementCore(admin, String(formData.get("title") ?? ""), String(formData.get("body") ?? ""));
 }
 
 export async function deleteAnnouncement(announcementId: string) {

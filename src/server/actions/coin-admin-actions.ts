@@ -6,6 +6,7 @@ import { requireAdminUser } from "./require-user";
 import { logActivity } from "./admin-actions";
 import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { adjustCoinsAsAdmin as adjustCoinsCore } from "@/lib/gamification/coins";
+import { toggleStoreItemPublishedCore } from "@/server/services/admin-tools";
 
 export async function createStoreItem(formData: FormData) {
   const admin = await requireAdminUser();
@@ -52,10 +53,7 @@ export async function createStoreItem(formData: FormData) {
 
 export async function toggleStoreItemPublished(itemId: string, isPublished: boolean) {
   const admin = await requireAdminUser();
-  await db.coinStoreItem.update({ where: { id: itemId }, data: { isPublished } });
-  await logActivity(admin.id, isPublished ? "PUBLISH" : "UNPUBLISH", "CoinStoreItem", itemId);
-  revalidatePath("/admin/store");
-  revalidatePath("/store");
+  await toggleStoreItemPublishedCore(admin, itemId, isPublished);
 }
 
 export async function deleteStoreItem(itemId: string) {

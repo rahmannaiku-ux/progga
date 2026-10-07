@@ -3,6 +3,10 @@ import { extractYoutubeId } from "@/lib/youtube";
 /** What the mission builder's quick-add box can create. */
 export type BulkKind = "modules" | "chapters" | "groups" | "lessons";
 
+export function isBulkKind(value: string): value is BulkKind {
+  return value === "modules" || value === "chapters" || value === "groups" || value === "lessons";
+}
+
 export const BULK_MAX_LINES = 100;
 
 /** Same title lengths the single-item forms enforce (lib/validation/course.ts). */

@@ -6,6 +6,10 @@ import { db } from "@/lib/db/client";
 import { notifyAdminsOfCoMentorRequest } from "@/lib/course-team/notify";
 import { requireActiveUser, requireAdminUser } from "./require-user";
 import { assertOwnsCourse } from "./mission-actions";
+import {
+  approveCourseTeacherRequestCore,
+  rejectCourseTeacherRequestCore,
+} from "@/server/services/admin-tools";
 
 /**
  * Sharing a mission between mentors.
@@ -163,106 +167,11 @@ export async function removeCourseTeacher(courseId: string, courseTeacherId: str
 /** Admin: approve a request. Gives the mentor access to the mission. */
 export async function approveCourseTeacherRequest(requestId: string): Promise<TeamResult> {
   const admin = await requireAdminUser();
-
-  const request = await db.courseTeacherRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      course: { select: { id: true, slug: true, title: true, teacherId: true } },
-      teacher: { select: { role: true, isActive: true, isSuspended: true } },
-    },
-  });
-  if (!request) return { ok: false, error: "That request no longer exists." };
-  if (request.status !== "PENDING") return { ok: false, error: "That request was already reviewed." };
-  if (request.teacher.role !== "TEACHER" || !request.teacher.isActive || request.teacher.isSuspended) {
-    return { ok: false, error: "That account isn't an active mentor any more." };
-  }
-
-  try {
-    await db.$transaction(async (tx) => {
-      // Only the admin who flips PENDING -> APPROVED goes on to create the access.
-      const claim = await tx.courseTeacherRequest.updateMany({
-        where: { id: requestId, status: "PENDING" },
-        data: { status: "APPROVED", reviewedById: admin.id, reviewedAt: new Date() },
-      });
-      if (claim.count !== 1) throw new Error("ALREADY_REVIEWED");
-      if (request.teacherId !== request.course.teacherId) {
-        await tx.courseTeacher.upsert({
-          where: { courseId_teacherId: { courseId: request.courseId, teacherId: request.teacherId } },
-          create: {
-            courseId: request.courseId,
-            teacherId: request.teacherId,
-            roleLabel: request.roleLabel,
-            addedById: request.requestedById,
-          },
-          update: {},
-        });
-      }
-    });
-  } catch (err) {
-    if (err instanceof Error && err.message === "ALREADY_REVIEWED") {
-      return { ok: false, error: "Another admin just reviewed that request." };
-    }
-    throw err;
-  }
-
-  await db.notification.createMany({
-    data: [
-      {
-        userId: request.teacherId,
-        type: "SYSTEM" as const,
-        title: "You were added to a mission",
-        body: `You can now manage "${request.course.title}" together with its mentors.`,
-        linkUrl: `/mentor/missions/${request.courseId}/builder`,
-      },
-      {
-        userId: request.requestedById,
-        type: "SYSTEM" as const,
-        title: "Co-mentor request approved",
-        body: `Your request to share "${request.course.title}" was approved.`,
-        linkUrl: `/mentor/missions/${request.courseId}/team`,
-      },
-    ],
-  });
-  await db.activityLog.create({
-    data: { userId: admin.id, action: "CREATE", entityType: "CourseTeacher", entityId: request.courseId },
-  });
-
-  refresh(request.courseId, request.course.slug);
-  return { ok: true, message: "Approved." };
+  return approveCourseTeacherRequestCore(admin, requestId);
 }
 
 /** Admin: turn a request down, with a short reason the requesting mentor will see. */
 export async function rejectCourseTeacherRequest(requestId: string, reason: string): Promise<TeamResult> {
   const admin = await requireAdminUser();
-
-  const request = await db.courseTeacherRequest.findUnique({
-    where: { id: requestId },
-    include: { course: { select: { id: true, slug: true, title: true } } },
-  });
-  if (!request) return { ok: false, error: "That request no longer exists." };
-
-  const cleanReason = String(reason ?? "").trim().slice(0, 300);
-  const claim = await db.courseTeacherRequest.updateMany({
-    where: { id: requestId, status: "PENDING" },
-    data: {
-      status: "REJECTED",
-      reviewedById: admin.id,
-      reviewedAt: new Date(),
-      rejectionReason: cleanReason || null,
-    },
-  });
-  if (claim.count !== 1) return { ok: false, error: "That request was already reviewed." };
-
-  await db.notification.create({
-    data: {
-      userId: request.requestedById,
-      type: "SYSTEM",
-      title: "Co-mentor request declined",
-      body: `Your request to share "${request.course.title}" was declined${cleanReason ? `: ${cleanReason}` : "."}`,
-      linkUrl: `/mentor/missions/${request.courseId}/team`,
-    },
-  });
-
-  refresh(request.courseId, request.course.slug);
-  return { ok: true, message: "Declined." };
+  return rejectCourseTeacherRequestCore(admin, requestId, reason);
 }
