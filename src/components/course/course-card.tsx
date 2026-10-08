@@ -78,7 +78,7 @@ export function CourseCard({
       )}
 
       {thumbnail ? (
-        <div className="relative aspect-square w-full overflow-hidden border-b-2 border-border bg-muted">
+        <div className="relative aspect-video w-full overflow-hidden border-b-2 border-border bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element -- served by /api/files or Drive, sizes vary per upload */}
           <img
             src={thumbnail}
