@@ -544,14 +544,22 @@ export function VideoPlayer({
   // below `sm` uses a compact single-row bar; fullscreen (and sm+) keep
   // the full 44px touch targets.
   const compact = !isFullscreen;
-  const btnSize = compact ? "h-9 w-9 sm:h-11 sm:w-11" : "h-11 w-11";
+  // The floating glass/neon bar sits ON the picture, so on a phone it is
+  // slimmed down to leave most of the ~200px-tall video visible.
+  const slim = compact && skin !== "classic";
+  const btnSize = slim ? "h-8 w-8 sm:h-11 sm:w-11" : compact ? "h-9 w-9 sm:h-11 sm:w-11" : "h-11 w-11";
+  const playSize = slim ? "h-9 w-9 sm:h-11 sm:w-11" : btnSize;
   const iconBtn = cn(
     "flex shrink-0 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
     btnSize
   );
   const pillBtn = cn(
     "flex shrink-0 items-center gap-1 rounded-full text-xs font-bold text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
-    compact ? "h-9 min-w-9 px-2 sm:h-11 sm:min-w-11 sm:px-3" : "h-11 min-w-11 px-3"
+    slim
+      ? "h-8 min-w-8 px-1.5 sm:h-11 sm:min-w-11 sm:px-3"
+      : compact
+        ? "h-9 min-w-9 px-2 sm:h-11 sm:min-w-11 sm:px-3"
+        : "h-11 min-w-11 px-3"
   );
 
   return (
@@ -718,8 +726,8 @@ export function VideoPlayer({
                   compact ? "gap-0 px-2 pb-1.5 pt-6 sm:gap-1 sm:p-3 sm:pt-10" : "gap-1 p-3 pt-10"
                 )
               : cn(
-                  "inset-x-2 bottom-2 sm:inset-x-3 sm:bottom-3",
-                  compact ? "gap-0 px-2 py-0.5 sm:gap-1 sm:p-2" : "gap-1 p-2.5"
+                  "inset-x-1.5 bottom-1.5 sm:inset-x-3 sm:bottom-3",
+                  compact ? "gap-0 px-2 py-0 sm:gap-1 sm:p-2" : "gap-1 p-2.5"
                 ),
             isFullscreen &&
               skin === "classic" &&
@@ -750,7 +758,11 @@ export function VideoPlayer({
                 setSeekPreview(Number((e.target as HTMLInputElement).value));
               }}
               onChange={(e) => commitSeek(Number(e.target.value))}
-              className={cn("player-range min-w-0 flex-1 touch-none", compact && "player-range-compact")}
+              className={cn(
+                "player-range min-w-0 flex-1 touch-none",
+                compact && "player-range-compact",
+                slim && "player-range-slim"
+              )}
               style={{ "--fill": `${duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0}%` } as React.CSSProperties}
             />
             <span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-white/85 sm:w-12 sm:text-[11px]">
@@ -779,7 +791,7 @@ export function VideoPlayer({
                 className={cn(
                   "flex shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
                   skinStyle.playBtn,
-                  btnSize
+                  playSize
                 )}
               >
                 {isPlaying ? (
