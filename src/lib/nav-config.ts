@@ -81,7 +81,7 @@ export const heroNav: NavSection[] = [
       { label: "Calendar", href: "/calendar", icon: Calendar, prefetch: false },
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Support", href: "/support", icon: LifeBuoy, prefetch: false },
-      { label: "Settings", href: "/profile", icon: Settings },
+      { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
 ];

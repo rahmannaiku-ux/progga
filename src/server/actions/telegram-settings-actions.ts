@@ -23,6 +23,7 @@ export async function unlinkTelegramAction() {
   const user = await getCurrentUser();
   await unlinkByUserId(user.id);
   revalidatePath("/settings/telegram");
+  revalidatePath("/settings");
 }
 
 export async function getTelegramLinkStatusAction() {

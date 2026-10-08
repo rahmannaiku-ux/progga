@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, GraduationCap, Rocket, Trophy, User } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Rocket, Trophy, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // `match` lists the route prefixes that light a tab up. "Learn" owns the
@@ -25,7 +25,8 @@ const ITEMS: { label: string; href: string; icon: typeof Rocket; match: (pathnam
     icon: GraduationCap,
     match: (p) => under(p, "/exams") || under(p, "/results"),
   },
-  { label: "Profile", href: "/profile", icon: User, match: (p) => under(p, "/profile") },
+  // Profile is reached from the avatar menu ("View profile"), not the tab bar.
+  { label: "Settings", href: "/settings", icon: Settings, match: (p) => under(p, "/settings") },
 ];
 
 /** Label of the bottom-nav tab a pathname belongs to, or null (e.g. /notifications). */

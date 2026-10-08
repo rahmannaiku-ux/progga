@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { User, LogOut } from "lucide-react";
+import { User, Settings, LogOut } from "lucide-react";
 import { Avatar } from "@/components/shared/avatar";
 import { logoutAction } from "@/server/actions/auth-actions";
 
@@ -12,7 +12,7 @@ import { logoutAction } from "@/server/actions/auth-actions";
  * Account dropdown for the custom session. Deliberately self-contained
  * and prop-free — it doesn't need the viewer's name/avatar plumbed in
  * from every Topbar call site across (hero)/(mentor)/(admin); it only
- * offers "Profile" and "Sign out" (signing out goes to /login).
+ * offers "View profile", "Settings" and "Sign out" (signing out goes to /login).
  *
  * The viewer's photo is passed in as two plain strings resolved
  * server-side by the caller (Topbar / SiteHeader) — never a client-side
@@ -74,7 +74,16 @@ export function AccountMenu({
               className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground outline-none hover:bg-muted focus:bg-muted"
             >
               <User className="h-4 w-4" />
-              Profile
+              View profile
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/settings"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground outline-none hover:bg-muted focus:bg-muted"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Item

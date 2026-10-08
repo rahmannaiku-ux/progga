@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getLinkStatusForUser } from "@/server/actions/telegram-link-actions";
@@ -16,6 +17,8 @@ import { TelegramLinkPanel } from "@/components/gamification/telegram-link-panel
  */
 export default async function TelegramSettingsPage() {
   const user = await getCurrentUser();
+  // Students find this inside Settings.
+  if (user.role === "STUDENT") redirect("/settings#telegram");
   const status = await getLinkStatusForUser(user.id);
 
   const backHref = user.role === "TEACHER" ? "/mentor/dashboard" : user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? "/admin/dashboard" : "/dashboard";

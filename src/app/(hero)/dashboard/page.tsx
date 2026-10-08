@@ -278,9 +278,6 @@ export default async function HeroDashboardPage() {
               <h2 className="font-display text-sm font-bold text-foreground">
                 Your Progress
               </h2>
-              <Link href="/profile" className="inline-flex min-h-11 items-center text-xs font-bold text-primary">
-                View Full
-              </Link>
             </div>
             <div className="mt-3 flex items-center justify-between text-xs font-bold text-foreground">
               <span>Level {level}</span>
@@ -471,9 +468,6 @@ export default async function HeroDashboardPage() {
           <StaggerItem className="comic-panel bg-surface p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-sm font-bold text-foreground">Your Progress</h2>
-              <Link href="/profile" className="text-xs font-bold text-primary hover:text-primary/80">
-                View Full
-              </Link>
             </div>
 
             <div className="mt-4 flex items-center gap-3">

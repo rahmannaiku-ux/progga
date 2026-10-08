@@ -8,9 +8,6 @@ import { AnimatedProgressBar } from "@/components/gamification/animated-progress
 import { AchievementIcon } from "@/components/gamification/achievement-icon";
 import { ScoreTrendSparkline } from "@/components/gamification/score-trend-sparkline";
 import { StickerCollection } from "@/components/profile/sticker-collection";
-import { StudentDetailsCard } from "@/components/profile/student-details-card";
-import { SecurityCard } from "@/components/profile/security-card";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { DoodleStar } from "@/components/marketing/cartoon-doodles";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import { getStudentScoreTrend } from "@/server/services/exam-analytics";
@@ -98,40 +95,8 @@ export default async function ProfilePage() {
         </p>
       </StaggerItem>
 
-      {studentProfile && (
-        <StaggerItem>
-          <StudentDetailsCard
-            phone={user.phone}
-            email={user.email}
-            fatherPhone={studentProfile.fatherPhone}
-            motherPhone={studentProfile.motherPhone}
-            details={{
-              name: studentProfile.name ?? "",
-              district: studentProfile.district ?? "",
-              zipCode: studentProfile.zipCode ?? "",
-              collegeName: studentProfile.collegeName ?? "",
-              collegeEIIN: studentProfile.collegeEIIN ?? "",
-              hscBatch: studentProfile.hscBatch ?? "",
-              studyVersion: studentProfile.studyVersion ?? "",
-            }}
-          />
-        </StaggerItem>
-      )}
-
       <StaggerItem>
         <ProfileEditForm initialHeadline={user.headline ?? ""} initialBio={user.bio ?? ""} />
-      </StaggerItem>
-
-      <StaggerItem>
-        <SecurityCard />
-      </StaggerItem>
-
-      <StaggerItem className="comic-panel bg-surface p-5">
-        <h2 className="font-display text-sm font-bold text-foreground">Preferences</h2>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">Dark mode</span>
-          <ThemeToggle />
-        </div>
       </StaggerItem>
 
       <StaggerItem className="comic-panel bg-surface p-5">

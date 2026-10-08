@@ -12,7 +12,8 @@ describe("activeBottomTab", () => {
     ["/exams", "Exams"],
     ["/exams/abc", "Exams"],
     ["/results/abc", "Exams"],
-    ["/profile", "Profile"],
+    ["/settings", "Settings"],
+    ["/settings/telegram", "Settings"],
   ])("%s -> %s", (path, tab) => {
     expect(activeBottomTab(path)).toBe(tab);
   });
@@ -24,6 +25,7 @@ describe("activeBottomTab", () => {
 
   it("does not treat a look-alike prefix as a match", () => {
     expect(activeBottomTab("/examsfoo")).toBeNull();
-    expect(activeBottomTab("/profiles")).toBeNull();
+    expect(activeBottomTab("/settingsfoo")).toBeNull();
+    expect(activeBottomTab("/profile")).toBeNull();
   });
 });

@@ -45,7 +45,7 @@ export async function updateStudentProfileAction(input: EditableStudentProfileIn
     hscBatch: input.hscBatch,
     studyVersion: input.studyVersion,
   });
-  if (result.ok) revalidatePath("/profile");
+  if (result.ok) revalidatePath("/settings");
   return result;
 }
 
@@ -53,7 +53,7 @@ export async function updateStudentProfileAction(input: EditableStudentProfileIn
 export async function addStudentEmailAction(input: { email: string }) {
   const user = await requireAuth();
   const result = await addStudentEmail(user.id, input.email);
-  if (result.ok) revalidatePath("/profile");
+  if (result.ok) revalidatePath("/settings");
   return result;
 }
 
@@ -67,7 +67,7 @@ export async function requestPhoneChangeOtpAction(input: { phone: string }) {
 export async function confirmPhoneChangeAction(input: { phone: string; otp: string }) {
   const user = await requireAuth();
   const result = await confirmPhoneChange(user.id, input.phone, input.otp);
-  if (result.ok) revalidatePath("/profile");
+  if (result.ok) revalidatePath("/settings");
   return result;
 }
 
