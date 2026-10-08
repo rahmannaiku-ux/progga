@@ -14,6 +14,8 @@ import {
   Settings,
   Gauge,
   AlertTriangle,
+  Palette,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { youtubeEmbedHost } from "@/lib/cookie-consent";
@@ -41,6 +43,56 @@ const QUALITY_LABELS: Record<string, string> = {
   medium: "360p",
   small: "240p",
   tiny: "144p",
+};
+
+/**
+ * Player skins. "classic" is the original Proggaa look; the others restyle
+ * the controls only — playback logic is identical. The choice is remembered
+ * per device in localStorage.
+ */
+type PlayerSkin = "classic" | "glass" | "neon";
+
+const SKIN_STORAGE_KEY = "proggaa-player-skin";
+
+const SKINS: Record<
+  PlayerSkin,
+  {
+    label: string;
+    accent: string | null;
+    bar: string;
+    playBtn: string;
+    centerPlay: string;
+    menu: string;
+    menuActive: string;
+  }
+> = {
+  classic: {
+    label: "Classic",
+    accent: null,
+    bar: "bg-gradient-to-t from-black/75 via-black/30 to-transparent",
+    playBtn: "bg-xp text-xp-foreground shadow-md hover:brightness-105",
+    centerPlay: "sticker bg-primary/90 text-primary-foreground",
+    menu: "rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] shadow-2xl",
+    menuActive: "bg-xp text-xp-foreground",
+  },
+  glass: {
+    label: "Apple Glass",
+    accent: "#ffffff",
+    bar: "rounded-2xl border border-white/20 bg-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_8px_32px_rgb(0_0_0/0.35)] backdrop-blur-xl backdrop-saturate-150",
+    playBtn: "bg-white/90 text-black shadow-md hover:bg-white",
+    centerPlay: "rounded-full border border-white/30 bg-white/15 text-white shadow-lg backdrop-blur-xl",
+    menu: "rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-xl backdrop-saturate-150",
+    menuActive: "bg-white/25 text-white",
+  },
+  neon: {
+    label: "Neon",
+    accent: "#22d3ee",
+    bar: "rounded-2xl border border-cyan-400/50 bg-black/70 shadow-[0_0_24px_rgb(34_211_238/0.35)] backdrop-blur-md",
+    playBtn: "bg-cyan-400 text-black shadow-[0_0_14px_rgb(34_211_238/0.8)] hover:bg-cyan-300",
+    centerPlay: "rounded-full border-2 border-cyan-400 bg-black/60 text-cyan-300 shadow-[0_0_28px_rgb(34_211_238/0.7)] backdrop-blur-sm",
+    menu: "rounded-xl border border-cyan-400/50 bg-black/85 shadow-[0_0_20px_rgb(34_211_238/0.3)] backdrop-blur-md",
+    menuActive: "bg-cyan-400 text-black",
+  },
 };
 
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -132,6 +184,30 @@ export function VideoPlayer({
     useFullscreen(containerRef);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [showSkinMenu, setShowSkinMenu] = useState(false);
+  const [skin, setSkin] = useState<PlayerSkin>("classic");
+  const skinStyle = SKINS[skin];
+
+  // Read the saved skin after mount (not in the initial state) so the server
+  // and first client render agree.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SKIN_STORAGE_KEY);
+      if (saved === "classic" || saved === "glass" || saved === "neon") setSkin(saved);
+    } catch {
+      /* storage blocked — stay on classic */
+    }
+  }, []);
+
+  function handleSkinChange(next: PlayerSkin) {
+    setSkin(next);
+    setShowSkinMenu(false);
+    try {
+      window.localStorage.setItem(SKIN_STORAGE_KEY, next);
+    } catch {
+      /* not remembered, still applied */
+    }
+  }
   // Anti-DevTools: pause + cover the picture the moment DevTools is detected
   // (just before the redirect to /security/devtools). A deterrent only.
   const [shielded, setShielded] = useState(false);
@@ -182,30 +258,32 @@ export function VideoPlayer({
   // pointerdown (not click) so this fires before the target's own
   // click handler, matching how the menu buttons themselves toggle.
   useEffect(() => {
-    if (!showSpeedMenu && !showQualityMenu) return;
+    if (!showSpeedMenu && !showQualityMenu && !showSkinMenu) return;
     function handlePointerDown(e: PointerEvent) {
       if (menusRef.current && !menusRef.current.contains(e.target as Node)) {
         setShowSpeedMenu(false);
         setShowQualityMenu(false);
+        setShowSkinMenu(false);
       }
     }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [showSpeedMenu, showQualityMenu]);
+  }, [showSpeedMenu, showQualityMenu, showSkinMenu]);
 
   // Escape closes an open dropdown first (standard menu behavior).
   // Leaving fullscreen with Escape is handled by useFullscreen.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (showSpeedMenu || showQualityMenu) {
+      if (showSpeedMenu || showQualityMenu || showSkinMenu) {
         setShowSpeedMenu(false);
         setShowQualityMenu(false);
+        setShowSkinMenu(false);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [showSpeedMenu, showQualityMenu]);
+  }, [showSpeedMenu, showQualityMenu, showSkinMenu]);
 
   // Schedules the controls to fade out after 3s of inactivity â€” but only
   // while playing, with no menu open or seek in progress
@@ -213,9 +291,9 @@ export function VideoPlayer({
   // student's cursor/finger).
   const scheduleHide = useCallback(() => {
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    if (!isPlaying || showSpeedMenu || showQualityMenu || isSeeking) return;
+    if (!isPlaying || showSpeedMenu || showQualityMenu || showSkinMenu || isSeeking) return;
     hideTimeoutRef.current = setTimeout(() => setControlsVisible(false), 3000);
-  }, [isPlaying, showSpeedMenu, showQualityMenu, isSeeking]);
+  }, [isPlaying, showSpeedMenu, showQualityMenu, showSkinMenu, isSeeking]);
 
   // Called on every pointer move/tap/click inside the player â€” brings
   // the controls back immediately, then restarts the hide countdown.
@@ -482,6 +560,7 @@ export function VideoPlayer({
       onMouseMove={wakeControls}
       onTouchStart={wakeControls}
       onClick={wakeControls}
+      style={skinStyle.accent ? ({ "--player-accent": skinStyle.accent } as React.CSSProperties) : undefined}
       className={cn(
         "protected-content comic-panel relative overflow-hidden bg-surface p-0",
         // .comic-panel (globals.css) applies rounded-2xl, a visible
@@ -574,7 +653,8 @@ export function VideoPlayer({
             {!isPlaying && (
               <span
                 className={cn(
-                  "sticker flex items-center justify-center bg-primary/90 text-primary-foreground motion-reduce:transition-none",
+                  "flex items-center justify-center motion-reduce:transition-none",
+                  skinStyle.centerPlay,
                   compact ? "h-12 w-12 sm:h-16 sm:w-16" : "h-16 w-16"
                 )}
               >
@@ -630,10 +710,21 @@ export function VideoPlayer({
             // the very bottom so the white controls stay readable over any
             // video frame. It sits ON the video (not under it, as the old
             // white card did) and fades away while playing.
-            "absolute inset-x-0 bottom-0 z-20 flex flex-col bg-gradient-to-t from-black/75 via-black/30 to-transparent text-white transition-opacity duration-300",
-            compact ? "gap-0 px-2 pb-1.5 pt-6 sm:gap-1 sm:p-3 sm:pt-10" : "gap-1 p-3 pt-10",
+            "absolute z-20 flex flex-col text-white transition-opacity duration-300",
+            skinStyle.bar,
+            skin === "classic"
+              ? cn(
+                  "inset-x-0 bottom-0",
+                  compact ? "gap-0 px-2 pb-1.5 pt-6 sm:gap-1 sm:p-3 sm:pt-10" : "gap-1 p-3 pt-10"
+                )
+              : cn(
+                  "inset-x-2 bottom-2 sm:inset-x-3 sm:bottom-3",
+                  compact ? "gap-0 px-2 py-0.5 sm:gap-1 sm:p-2" : "gap-1 p-2.5"
+                ),
             isFullscreen &&
+              skin === "classic" &&
               "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
+            isFullscreen && skin !== "classic" && "mb-[env(safe-area-inset-bottom)]",
             controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         >
@@ -686,7 +777,8 @@ export function VideoPlayer({
                 title={isPlaying ? "Pause" : "Play"}
                 onClick={togglePlay}
                 className={cn(
-                  "flex shrink-0 items-center justify-center rounded-full bg-xp text-xp-foreground shadow-md hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
+                  "flex shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
+                  skinStyle.playBtn,
                   btnSize
                 )}
               >
@@ -750,6 +842,7 @@ export function VideoPlayer({
                   onClick={() => {
                     setShowSpeedMenu((v) => !v);
                     setShowQualityMenu(false);
+                    setShowSkinMenu(false);
                   }}
                   className={pillBtn}
                 >
@@ -759,7 +852,8 @@ export function VideoPlayer({
                   <div
                     role="menu"
                     className={cn(
-                      "absolute bottom-full right-0 z-10 mb-2 w-28 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl",
+                      "absolute bottom-full right-0 z-10 mb-2 w-28 overflow-y-auto overscroll-contain p-1.5",
+                      skinStyle.menu,
                       // The inline player clips overflow, so the menu must fit inside it.
                       compact ? "max-h-32 sm:max-h-64" : "max-h-[min(20rem,70vh)]"
                     )}
@@ -775,7 +869,7 @@ export function VideoPlayer({
                           "flex w-full items-center justify-center rounded-lg text-sm font-semibold",
                           compact ? "min-h-9 sm:min-h-11" : "min-h-11",
                           rate === playbackRate
-                            ? "bg-xp text-xp-foreground"
+                            ? skinStyle.menuActive
                             : "text-white hover:bg-white/15"
                         )}
                       >
@@ -801,6 +895,7 @@ export function VideoPlayer({
                   onClick={() => {
                     setShowQualityMenu((v) => !v);
                     setShowSpeedMenu(false);
+                    setShowSkinMenu(false);
                   }}
                   className={cn(pillBtn, "disabled:opacity-50")}
                 >
@@ -812,7 +907,8 @@ export function VideoPlayer({
                   <div
                     role="menu"
                     className={cn(
-                      "absolute bottom-full right-0 z-10 mb-2 w-28 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-[hsl(258_40%_12%)] p-1.5 shadow-2xl",
+                      "absolute bottom-full right-0 z-10 mb-2 w-28 overflow-y-auto overscroll-contain p-1.5",
+                      skinStyle.menu,
                       // The inline player clips overflow, so the menu must fit inside it.
                       compact ? "max-h-32 sm:max-h-64" : "max-h-[min(20rem,70vh)]"
                     )}
@@ -828,11 +924,57 @@ export function VideoPlayer({
                           "flex w-full items-center justify-center rounded-lg text-sm font-semibold",
                           compact ? "min-h-9 sm:min-h-11" : "min-h-11",
                           q === currentQuality
-                            ? "bg-xp text-xp-foreground"
+                            ? skinStyle.menuActive
                             : "text-white hover:bg-white/15"
                         )}
                       >
                         {QUALITY_LABELS[q] ?? q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Skin picker */}
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label="Player skin"
+                  aria-haspopup="menu"
+                  aria-expanded={showSkinMenu}
+                  title="Player skin"
+                  onClick={() => {
+                    setShowSkinMenu((v) => !v);
+                    setShowSpeedMenu(false);
+                    setShowQualityMenu(false);
+                  }}
+                  className={iconBtn}
+                >
+                  <Palette className="h-4.5 w-4.5" />
+                </button>
+                {showSkinMenu && (
+                  <div
+                    role="menu"
+                    className={cn("absolute bottom-full right-0 z-10 mb-2 w-40 p-1.5", skinStyle.menu)}
+                  >
+                    <p className="px-2 pb-1 pt-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
+                      Skin
+                    </p>
+                    {(Object.keys(SKINS) as PlayerSkin[]).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={key === skin}
+                        onClick={() => handleSkinChange(key)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-lg px-3 text-sm font-semibold",
+                          compact ? "min-h-9 sm:min-h-11" : "min-h-11",
+                          key === skin ? skinStyle.menuActive : "text-white hover:bg-white/15"
+                        )}
+                      >
+                        {SKINS[key].label}
+                        {key === skin && <Check className="h-4 w-4" />}
                       </button>
                     ))}
                   </div>

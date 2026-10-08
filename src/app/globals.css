@@ -747,7 +747,7 @@
   border-radius: 9999px;
   background: linear-gradient(
     to right,
-    hsl(var(--xp)) var(--fill, 0%),
+    var(--player-accent, hsl(var(--xp))) var(--fill, 0%),
     hsl(0 0% 100% / 0.3) var(--fill, 0%)
   );
 }
@@ -759,7 +759,7 @@
   margin-top: -6px;
   border-radius: 9999px;
   background: #fff;
-  border: 3px solid hsl(var(--xp));
+  border: 3px solid var(--player-accent, hsl(var(--xp)));
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
 }
 .player-range::-moz-range-track {
@@ -770,14 +770,14 @@
 .player-range::-moz-range-progress {
   height: 6px;
   border-radius: 9999px;
-  background: hsl(var(--xp));
+  background: var(--player-accent, hsl(var(--xp)));
 }
 .player-range::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border-radius: 9999px;
   background: #fff;
-  border: 3px solid hsl(var(--xp));
+  border: 3px solid var(--player-accent, hsl(var(--xp)));
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
 }
 /* Inline player on phones: a shorter hit area so the seek row doesn't eat
