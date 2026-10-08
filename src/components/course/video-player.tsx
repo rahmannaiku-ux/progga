@@ -47,7 +47,7 @@ const QUALITY_LABELS: Record<string, string> = {
 
 /**
  * Player skins. "classic" is the original Proggaa look; the others restyle
- * the controls only — playback logic is identical. The choice is remembered
+ * the controls only â€” playback logic is identical. The choice is remembered
  * per device in localStorage.
  */
 type PlayerSkin = "classic" | "glass" | "neon";
@@ -195,7 +195,7 @@ export function VideoPlayer({
       const saved = window.localStorage.getItem(SKIN_STORAGE_KEY);
       if (saved === "classic" || saved === "glass" || saved === "neon") setSkin(saved);
     } catch {
-      /* storage blocked — stay on classic */
+      /* storage blocked â€” stay on classic */
     }
   }, []);
 
@@ -955,7 +955,11 @@ export function VideoPlayer({
                 {showSkinMenu && (
                   <div
                     role="menu"
-                    className={cn("absolute bottom-full right-0 z-10 mb-2 w-40 p-1.5", skinStyle.menu)}
+                    className={cn(
+                      "absolute bottom-full right-0 z-10 mb-2 w-40 overflow-y-auto overscroll-contain p-1.5",
+                      compact ? "max-h-32 sm:max-h-64" : "max-h-[min(20rem,70vh)]",
+                      skinStyle.menu
+                    )}
                   >
                     <p className="px-2 pb-1 pt-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
                       Skin
