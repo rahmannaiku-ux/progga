@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
-import { PlayCircle, Award, Heart, LayoutGrid, Flame, BookOpen } from "lucide-react";
+import { PlayCircle, Award, Heart, LayoutGrid, Flame, BookOpen, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
@@ -10,6 +10,7 @@ import { AnimatedProgressBar } from "@/components/gamification/animated-progress
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
+import { mediaSrc } from "@/lib/media-url";
 
 const TABS = [
   { key: "all", label: "All Courses" },
@@ -40,6 +41,7 @@ export default async function MyCoursesPage({
             id: true,
             slug: true,
             title: true,
+            thumbnailUrl: true,
             category: { select: { name: true } },
             modules: {
               where: { isLiveContainer: false },
@@ -56,7 +58,7 @@ export default async function MyCoursesPage({
       orderBy: { createdAt: "desc" },
       include: {
         course: {
-          select: { id: true, slug: true, title: true, category: { select: { name: true } } },
+          select: { id: true, slug: true, title: true, thumbnailUrl: true, category: { select: { name: true } } },
         },
       },
     }),
@@ -118,9 +120,12 @@ export default async function MyCoursesPage({
                   key={w.id}
                   className="comic-panel flex items-center gap-4 bg-surface p-4"
                 >
-                  <span className="sticker flex h-12 w-12 shrink-0 items-center justify-center bg-accent text-accent-foreground">
-                    <Heart className="h-5 w-5" />
-                  </span>
+                  <CourseThumb
+                    src={mediaSrc(w.course.thumbnailUrl, 400)}
+                    title={w.course.title}
+                    className="aspect-video w-24 shrink-0 sm:w-32"
+                    icon={<Heart className="relative h-6 w-6 text-primary-foreground" />}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display font-bold text-foreground">{w.course.title}</p>
                     <p className="text-xs text-muted-foreground">{w.course.category?.name ?? "Course"}</p>
@@ -137,12 +142,14 @@ export default async function MyCoursesPage({
             visibleEnrollments.map((e) => (
               <StaggerItem
                 key={e.id}
-                className="comic-panel flex flex-col gap-4 bg-surface p-4 sm:flex-row sm:items-center"
+                className="comic-panel group relative flex flex-col gap-4 bg-surface p-3 sm:flex-row sm:items-center sm:p-4"
               >
-                <div className="relative flex h-20 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary sm:w-28">
-                  <div className="halftone-dots pointer-events-none absolute inset-0 opacity-25" />
-                  <PlayCircle className="relative h-7 w-7 text-primary-foreground" />
-                </div>
+                <CourseThumb
+                  src={mediaSrc(e.course.thumbnailUrl, 600)}
+                  title={e.course.title}
+                  className="aspect-video w-full sm:w-44"
+                  icon={<PlayCircle className="relative h-8 w-8 text-primary-foreground" />}
+                />
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -164,11 +171,16 @@ export default async function MyCoursesPage({
                   </div>
                 </div>
 
-                <Button asChild size="sm" variant={e.status === "COMPLETED" ? "outline" : "accent"} className="shrink-0">
-                  <Link href={resumeHrefs.get(e.id) ?? `/missions/${e.course.id}`}>
-                    {e.status === "COMPLETED" ? "Review" : "Continue"}
-                  </Link>
-                </Button>
+                <Link
+                  href={resumeHrefs.get(e.id) ?? `/missions/${e.course.id}`}
+                  aria-label={`${e.status === "COMPLETED" ? "Review" : "Resume"} ${e.course.title}`}
+                  className="inline-flex shrink-0 items-center justify-between gap-3 rounded-full border border-border bg-background/40 py-1.5 pl-4 pr-1.5 text-sm font-bold text-foreground transition-colors after:absolute after:inset-0 after:content-[''] group-hover:border-xp sm:justify-start"
+                >
+                  {e.status === "COMPLETED" ? "Review" : "Resume"}
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-xp text-xp-foreground transition-transform group-hover:translate-x-0.5">
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </Link>
               </StaggerItem>
             ))
           ) : (
@@ -190,6 +202,37 @@ export default async function MyCoursesPage({
         </StaggerItem>
       </div>
     </StaggerContainer>
+  );
+}
+
+function CourseThumb({
+  src,
+  title,
+  icon,
+  className,
+}: {
+  src: string | null;
+  title: string;
+  icon: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative flex items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-primary",
+        className
+      )}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- served by /api/files or Drive, sizes vary per upload
+        <img src={src} alt={title} loading="lazy" className="h-full w-full object-cover" />
+      ) : (
+        <>
+          <div className="halftone-dots pointer-events-none absolute inset-0 opacity-25" />
+          {icon}
+        </>
+      )}
+    </div>
   );
 }
 
