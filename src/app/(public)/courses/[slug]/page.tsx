@@ -119,7 +119,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
       <StaggerContainer className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           {/* Hero */}
-          <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-primary p-8">
+          <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-primary p-0">
             <DoodleStar className="pointer-events-none absolute -left-2 top-4 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
             <DoodleSparkle className="pointer-events-none absolute right-8 top-6 hidden h-8 w-8 opacity-70 sm:block" />
             {thumbnail && (
@@ -127,10 +127,10 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
               <img
                 src={thumbnail}
                 alt={course.title}
-                className="relative mb-5 aspect-square w-full max-w-sm rounded-2xl border-2 border-border object-cover"
+                className="relative aspect-video w-full border-b-2 border-border object-cover"
               />
             )}
-            <div className="relative">
+            <div className="relative p-6 sm:p-8">
               {course.category && (
                 <span className="w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold text-primary-foreground">
                   {course.category.name}
