@@ -150,6 +150,7 @@ export const adminNav: NavSection[] = [
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Activity Logs", href: "/admin/activity-logs", icon: FileClock, prefetch: false },
       { label: "Bug Reports", href: "/admin/bug-reports", icon: Bug, prefetch: false },
+      { label: "Community Reports", href: "/admin/community", icon: ShieldAlert, prefetch: false },
     ],
   },
   {

@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-10-13 — Proggaa Community
+The old Community page (a list of course discussion posts) is now a student social network at `/community`.
+Migration `20261013000000_proggaa_community` (additive only): 12 new tables, 5 enums, 5 `NotificationType` values and
+`User.communityPrivate`. It is NOT applied by this change; it runs with the next `prisma migrate deploy`.
+
+- **Feed** (`/community`): text / picture / question / poll posts, edit and delete your own, five reactions, comments
+  with one level of replies, sharing with attribution, saved posts, cursor paging. Tabs: For you, Following, Trending,
+  Questions.
+- **Profiles** (`/community/u/[id]`): bio, headline, level, streak, badges, posts, follow / unfollow, followers and
+  following, optional private profile. Never shows phone, email or grades.
+- **Groups** (`/community/groups`): create, edit (owner), join / leave, group feed, topic filter, owner-appointed
+  moderators who can remove posts and comments in their group.
+- **Discover** (`/community/discover`): search posts, people and groups; suggestions and trending when not searching.
+- **Messages** (`/community/messages`): one-to-one text chat, unread counts, polling every 8s while open. Students can
+  message people who follow them, and any mentor or admin.
+- **Notifications**: reactions, comments and replies, new followers, useful-answer marks and moderation decisions go
+  through the existing bell and `/notifications`, never for your own actions, repeats folded within six hours.
+- **Rewards**: only one thing earns XP, through the existing ledger: the asker of a question marking your answer as
+  useful (15 XP, once per question, three a day). Three new badges. Posting, reacting and voting earn nothing.
+- **Moderation**: report a post, comment or profile; admins decide at **Admin → Community Reports** (dismiss, hide,
+  delete, or suspend the account through the existing suspension). Decisions go to the audit log. An admin cannot
+  decide their own report or one about themselves.
+- Rules live in `src/lib/community/rules.ts`, reads in `src/server/services/community.ts`, writes in
+  `src/server/actions/community-actions.ts`, `message-actions.ts` and `community-moderation-actions.ts`.
+- Tests: `src/lib/community/rules.test.ts` (always runs) and `src/server/actions/community.integration.test.ts`, which
+  runs the real actions against Postgres and is skipped unless `COMMUNITY_TEST_DATABASE_URL` points at a local database.
+- The Patrol Q&A threads (`DiscussionPost`) are unchanged. The Community respects the existing `community` feature
+  switch.
+
 ## 2026-10-12 — Mission intro video
 - A mentor can paste a YouTube link as a mission's intro video (new mission form and Builder → details), saved in
   the existing `Course.trailerYoutubeId` column. No migration.

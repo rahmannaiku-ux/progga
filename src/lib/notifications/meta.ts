@@ -9,6 +9,9 @@ import {
   Megaphone,
   Award,
   Video,
+  Heart,
+  UserPlus,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import type { NotificationType } from "@prisma/client";
@@ -36,6 +39,11 @@ export const NOTIFICATION_TYPE_META: Record<
   PAYMENT_VERIFIED: { icon: Wallet, color: "text-accent", tag: "Payment" },
   PAYMENT_REJECTED: { icon: Wallet, color: "text-danger", tag: "Payment" },
   LIVE_CLASS_REMINDER: { icon: Video, color: "text-danger", tag: "Live class" },
+  COMMUNITY_REACTION: { icon: Heart, color: "text-danger", tag: "Community" },
+  COMMUNITY_COMMENT: { icon: MessageSquare, color: "text-primary", tag: "Community" },
+  COMMUNITY_FOLLOW: { icon: UserPlus, color: "text-accent", tag: "Community" },
+  COMMUNITY_ANSWER: { icon: Award, color: "text-xp", tag: "Community" },
+  COMMUNITY_MODERATION: { icon: ShieldAlert, color: "text-danger", tag: "Moderation" },
 };
 
 export function notificationTimeAgo(date: Date) {

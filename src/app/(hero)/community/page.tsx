@@ -1,180 +1,72 @@
 import Link from "next/link";
-import { EmptyState } from "@/components/shared/empty-state";
-import { MessageSquare, Trophy } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { db } from "@/lib/db/client";
-import { ProggyMascot } from "@/components/marketing/proggy-mascot";
-import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
-import { NewPostComposer } from "@/components/gamification/new-post-composer";
-import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
-import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
+import { cn } from "@/lib/utils";
+import { displayName } from "@/lib/community/rules";
+import { Feed } from "@/components/community/feed";
+import { CommunitySidebar } from "@/components/community/sidebar";
+import { getFeedPage, getSidebar, getTopHelpers, type FeedScope } from "@/server/services/community";
 
-function timeAgo(date: Date) {
-  const mins = Math.floor((Date.now() - date.getTime()) / 60_000);
-  if (mins < 60) return `${Math.max(mins, 0)}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
+export const metadata = { title: "Community" };
 
-export default async function CommunityPage() {
+const TABS = [
+  { key: "for-you", label: "For you", scope: { type: "all" } },
+  { key: "following", label: "Following", scope: { type: "following" } },
+  { key: "trending", label: "Trending", scope: { type: "trending" } },
+  { key: "questions", label: "Questions", scope: { type: "questions" } },
+] as const satisfies readonly { key: string; label: string; scope: FeedScope }[];
+
+const EMPTY: Record<(typeof TABS)[number]["key"], { title: string; body: string }> = {
+  "for-you": { title: "The community is quiet", body: "Write the first post. Ask a question, share a win, or start a poll." },
+  following: { title: "Nothing from the people you follow yet", body: "Follow some heroes or join a study group and their posts will show up here." },
+  trending: { title: "Nothing is trending yet", body: "Posts with the most reactions and comments in the last two weeks appear here." },
+  questions: { title: "No questions yet", body: "Stuck on something? Ask it. Marking a useful answer earns the helper XP." },
+};
+
+/** Proggaa Community: the feed. */
+export default async function CommunityFeedPage({ searchParams }: { searchParams: { tab?: string } }) {
   const user = await getCurrentUser();
+  const tab = TABS.find((t) => t.key === searchParams.tab) ?? TABS[0];
 
-  const [posts, topContributors, myEnrollments] = await Promise.all([
-    db.discussionPost.findMany({
-      where: { parentId: null, isHidden: false },
-      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-      take: 20,
-      include: {
-        user: { select: { firstName: true, lastName: true } },
-        // Lesson-scoped posts (from a lesson's Q&A thread) carry lesson;
-        // general mission-level posts (from this page's composer) carry
-        // course directly. Exactly one of the two is set — see the
-        // DiscussionPost model comment in schema.prisma.
-        lesson: {
-          select: {
-            group: {
-              select: {
-                chapter: {
-                  select: { module: { select: { course: { select: { id: true, slug: true, title: true } } } } },
-                },
-              },
-            },
-          },
-        },
-        course: { select: { id: true, slug: true, title: true } },
-        _count: { select: { replies: true } },
-      },
-    }),
-    db.heroStats.findMany({
-      orderBy: { xp: "desc" },
-      take: 5,
-      include: { user: { select: { firstName: true, lastName: true } } },
-    }),
-    db.enrollment.findMany({
-      where: { userId: user.id },
-      select: { course: { select: { id: true, title: true } } },
-    }),
+  const [initial, sidebar, helpers] = await Promise.all([
+    getFeedPage(user, tab.scope),
+    getSidebar(user),
+    getTopHelpers(),
   ]);
 
-  const myCourses = myEnrollments.map((e) => e.course);
-  const myCourseIds = new Set(myCourses.map((c) => c.id));
-
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-      <StaggerContainer>
-        <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
-          <DoodleStar className="pointer-events-none absolute -left-2 -top-2 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
-          <DoodleSparkle className="pointer-events-none absolute right-20 top-4 hidden h-8 w-8 opacity-70 sm:block" />
-          <div className="relative flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="font-display text-2xl font-extrabold text-foreground sm:text-3xl">
-                Join the Proggaa <span className="text-primary">community!</span>
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Learn together. Grow together.
-              </p>
-            </div>
-            <ProggyMascot state="encouraging" className="h-20 w-20 shrink-0" />
-          </div>
-        </StaggerItem>
+    <div className="gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_290px]">
+      <div className="min-w-0 space-y-4">
+        <h1 className="sr-only">Proggaa Community</h1>
+        <div role="tablist" aria-label="Feed" className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((t) => (
+            <Link
+              key={t.key}
+              href={t.key === "for-you" ? "/community" : `/community?tab=${t.key}`}
+              role="tab"
+              aria-selected={t.key === tab.key}
+              className={cn(
+                "flex h-10 shrink-0 items-center rounded-full px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                t.key === tab.key ? "bg-xp text-xp-foreground" : "bg-surface text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </div>
 
-        <StaggerItem className="mt-4">
-          <NewPostComposer myCourses={myCourses} />
-        </StaggerItem>
+        <Feed
+          key={tab.key}
+          scope={tab.scope}
+          initial={initial}
+          composer={{ me: { name: displayName(user), avatarUrl: user.avatarUrl } }}
+          emptyTitle={EMPTY[tab.key].title}
+          emptyBody={EMPTY[tab.key].body}
+        />
+      </div>
 
-        <StaggerContainer className="mt-4 space-y-3">
-          {posts.map((p) => {
-            const course = p.course ?? p.lesson?.group.chapter.module.course;
-            if (!course) return null;
-            // Community posts surface from every course's discussion, not
-            // just courses the viewer is enrolled in. Linking a
-            // non-enrolled course straight into the /missions/* player
-            // would just bounce off its enrollment gate — send those to
-            // the public course page instead (see the same fix on the
-            // search page for the fuller rationale).
-            const missionHref = myCourseIds.has(course.id)
-              ? `/missions/${course.id}`
-              : `/courses/${course.slug}`;
-            return (
-              <StaggerItem key={p.id}>
-                <Link
-                  href={missionHref}
-                  prefetch={false}
-                  className="hover-glow-card comic-panel flex items-start gap-3 bg-surface p-4"
-                >
-                  <span className="sticker flex h-10 w-10 shrink-0 items-center justify-center bg-accent/15 font-display text-sm font-extrabold text-accent">
-                    {p.user.firstName[0]}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-sm font-bold text-foreground">{p.content}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {p.user.firstName} {p.user.lastName} · {course.title} · {timeAgo(p.createdAt)}
-                    </p>
-                  </div>
-                  <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground">
-                    <MessageSquare className="h-3.5 w-3.5" /> {p._count.replies}
-                  </span>
-                </Link>
-              </StaggerItem>
-            );
-          })}
-
-          {posts.length === 0 && (
-            <EmptyState
-              title="No discussions yet"
-              body={
-                myCourses.length > 0
-                  ? "Post above, or open a Patrol and ask in its Q&A thread."
-                  : "Enroll in a Mission to join its discussion."
-              }
-              action={myCourses.length > 0 ? undefined : { href: "/courses", label: "Browse Missions" }}
-            />
-          )}
-        </StaggerContainer>
-      </StaggerContainer>
-
-      <StaggerContainer className="space-y-4">
-        <StaggerItem className="comic-panel bg-surface p-5">
-          <h2 className="flex items-center gap-1.5 font-display text-sm font-bold text-foreground">
-            <Trophy className="h-4 w-4 fill-xp text-xp" /> Top contributors
-          </h2>
-          <ul className="mt-3 space-y-2.5">
-            {topContributors.map((c, i) => {
-              const { level } = xpProgressWithinLevel(c.xp);
-              return (
-                <li key={c.id} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-foreground">
-                    <span className="font-mono text-xs font-bold text-muted-foreground">#{i + 1}</span>
-                    <span>
-                      {c.user.firstName} {c.user.lastName}
-                      <span className="ml-1.5 text-[10px] font-semibold text-muted-foreground">
-                        Lvl {level}
-                      </span>
-                    </span>
-                  </span>
-                  <span className="font-mono text-xs font-bold text-xp">{c.xp.toLocaleString("en-US")} XP</span>
-                </li>
-              );
-            })}
-          </ul>
-        </StaggerItem>
-
-        <StaggerItem className="comic-panel bg-surface p-5 text-center">
-          <ProggyMascot state="thinking" className="mx-auto h-16 w-16" />
-          <p className="mt-2 font-display text-sm font-bold text-foreground">Need help?</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Ask a question above and a fellow hero — or a mentor — will jump in.
-          </p>
-        </StaggerItem>
-
-        <StaggerItem className="comic-panel bg-surface p-5 text-center">
-          <p className="text-xs text-muted-foreground">
-            You can also head to any lesson page in a mission you're enrolled in — every lesson has its own
-            discussion thread too.
-          </p>
-        </StaggerItem>
-      </StaggerContainer>
+      <div className="mt-6 xl:mt-0">
+        <CommunitySidebar {...sidebar} helpers={helpers} />
+      </div>
     </div>
   );
 }

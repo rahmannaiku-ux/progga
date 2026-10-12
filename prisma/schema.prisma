@@ -199,6 +199,12 @@ enum NotificationType {
   PAYMENT_VERIFIED
   PAYMENT_REJECTED
   LIVE_CLASS_REMINDER
+  // Proggaa Community
+  COMMUNITY_REACTION
+  COMMUNITY_COMMENT
+  COMMUNITY_FOLLOW
+  COMMUNITY_ANSWER
+  COMMUNITY_MODERATION
 }
 
 enum ActivityAction {
@@ -599,6 +605,26 @@ model User {
   liveClassesStarted LiveClass[]        @relation("LiveClassStartedBy")
   liveClassesEnded   LiveClass[]        @relation("LiveClassEndedBy")
   liveAttendances    LiveClassAttendance[]
+
+  // Proggaa Community
+  // When true, only followers see this person's posts and they are left
+  // out of "people to follow". Their name and avatar stay visible.
+  communityPrivate       Boolean                @default(false)
+  communityPosts         CommunityPost[]
+  communityComments      CommunityComment[]
+  communityReactions     CommunityReaction[]
+  communityPollVotes     CommunityPollVote[]
+  communitySavedPosts    CommunitySavedPost[]
+  communityFollowing     CommunityFollow[]      @relation("CommunityFollower")
+  communityFollowers     CommunityFollow[]      @relation("CommunityFollowed")
+  communityGroupsOwned   CommunityGroup[]
+  communityMemberships   CommunityGroupMember[]
+  conversationsAsA       Conversation[]         @relation("ConversationUserA")
+  conversationsAsB       Conversation[]         @relation("ConversationUserB")
+  messagesSent           Message[]
+  communityReportsMade   CommunityReport[]      @relation("CommunityReportReporter")
+  communityReportsAbout  CommunityReport[]      @relation("CommunityReportTargetUser")
+  communityReportsReviewed CommunityReport[]    @relation("CommunityReportReviewer")
 
   @@index([role])
   @@index([email])
@@ -2360,4 +2386,273 @@ model BugReportImage {
   createdAt   DateTime  @default(now())
 
   @@index([bugReportId])
+}
+
+// ---------------------------------------------------------------------
+// PROGGAA COMMUNITY — the student social network at /community.
+//
+// Separate from DiscussionPost (the Q&A thread under a Patrol): these
+// posts belong to a person and optionally a study group, not a lesson.
+// Counts (reactions, comments, votes, members, followers) are never
+// stored: they are read with _count, and the unique constraints below
+// are what stop a double reaction / vote / follow / membership, so the
+// numbers can't drift under concurrent requests.
+// ---------------------------------------------------------------------
+
+enum CommunityPostKind {
+  POST
+  QUESTION
+  POLL
+}
+
+enum CommunityReactionType {
+  LIKE
+  LOVE
+  CELEBRATE
+  INSIGHTFUL
+  CURIOUS
+}
+
+enum CommunityGroupRole {
+  OWNER
+  MODERATOR
+  MEMBER
+}
+
+enum CommunityReportTarget {
+  POST
+  COMMENT
+  PROFILE
+}
+
+enum CommunityReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+model CommunityPost {
+  id        String            @id @default(cuid())
+  authorId  String
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  // Posted inside a study group; null = on the author's own timeline.
+  groupId   String?
+  group     CommunityGroup?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  kind      CommunityPostKind @default(POST)
+  content   String            @db.Text
+  // A same-origin /api/files/<uploadId> path from the COMMUNITY_IMAGE
+  // upload context. Never an arbitrary URL (checked on write).
+  imageUrl  String?
+  // A repost: the post being shared. SetNull so a share survives its
+  // original being deleted (it then shows "original post removed").
+  sharedPostId String?
+  sharedPost   CommunityPost?  @relation("CommunityPostShares", fields: [sharedPostId], references: [id], onDelete: SetNull)
+  shares       CommunityPost[] @relation("CommunityPostShares")
+  // QUESTION only: the comment the asker marked as the useful answer.
+  acceptedCommentId String?    @unique
+  acceptedComment   CommunityComment? @relation("CommunityAcceptedAnswer", fields: [acceptedCommentId], references: [id], onDelete: SetNull)
+  // POLL only: when voting stops (null = open-ended).
+  pollClosesAt DateTime?
+  // Moderation. A hidden post is gone for everyone but its author and staff.
+  isHidden     Boolean         @default(false)
+  hiddenReason String?
+  editedAt  DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  comments    CommunityComment[]
+  reactions   CommunityReaction[]
+  pollOptions CommunityPollOption[]
+  pollVotes   CommunityPollVote[]
+  savedBy     CommunitySavedPost[]
+  reports     CommunityReport[]
+
+  @@index([createdAt])
+  @@index([authorId, createdAt])
+  @@index([groupId, createdAt])
+  @@index([kind, createdAt])
+  @@index([sharedPostId])
+}
+
+model CommunityComment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  // One level of threading: a reply points at a top-level comment.
+  parentId  String?
+  parent    CommunityComment?  @relation("CommunityCommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   CommunityComment[] @relation("CommunityCommentThread")
+  content   String   @db.Text
+  isHidden  Boolean  @default(false)
+  hiddenReason String?
+  editedAt  DateTime?
+  createdAt DateTime @default(now())
+
+  acceptedFor CommunityPost?   @relation("CommunityAcceptedAnswer")
+  reports     CommunityReport[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+  @@index([authorId])
+}
+
+model CommunityReaction {
+  id        String   @id @default(cuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      CommunityReactionType @default(LIKE)
+  createdAt DateTime @default(now())
+
+  // One reaction per person per post; changing it updates this row.
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model CommunityPollOption {
+  id     String @id @default(cuid())
+  postId String
+  post   CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  label  String
+  order  Int
+  votes  CommunityPollVote[]
+
+  @@index([postId])
+}
+
+model CommunityPollVote {
+  id       String @id @default(cuid())
+  postId   String
+  post     CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  optionId String
+  option   CommunityPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  // One vote per person per poll.
+  @@unique([postId, userId])
+  @@index([optionId])
+}
+
+model CommunitySavedPost {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId   String
+  post     CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt])
+}
+
+model CommunityFollow {
+  id          String @id @default(cuid())
+  followerId  String
+  follower    User   @relation("CommunityFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User   @relation("CommunityFollowed", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}
+
+model CommunityGroup {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String   @db.Text
+  // Free-text subject label used for filtering, e.g. "Physics".
+  topic       String
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members CommunityGroupMember[]
+  posts   CommunityPost[]
+
+  @@index([topic])
+  @@index([createdAt])
+}
+
+model CommunityGroupMember {
+  id       String @id @default(cuid())
+  groupId  String
+  group    CommunityGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     CommunityGroupRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+// A direct conversation between exactly two people. userAId is always
+// the smaller id of the pair, so the unique constraint means one
+// conversation per pair whichever of them starts it.
+model Conversation {
+  id      String @id @default(cuid())
+  userAId String
+  userA   User   @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId String
+  userB   User   @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  // When each side last opened the conversation; anything newer from the
+  // other person is unread.
+  userALastReadAt DateTime @default(now())
+  userBLastReadAt DateTime @default(now())
+  lastMessageAt   DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  messages Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId, lastMessageAt])
+  @@index([userBId, lastMessageAt])
+}
+
+model Message {
+  id             String @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body           String @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model CommunityReport {
+  id         String @id @default(cuid())
+  reporterId String
+  reporter   User   @relation("CommunityReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType CommunityReportTarget
+  // Exactly one of these is set, matching targetType.
+  postId       String?
+  post         CommunityPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId    String?
+  comment      CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  targetUserId String?
+  targetUser   User?             @relation("CommunityReportTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  // Same value as whichever id above is set: lets one unique constraint
+  // stop the same person reporting the same thing twice.
+  targetKey  String
+  reason     String
+  details    String? @db.Text
+  status     CommunityReportStatus @default(OPEN)
+  reviewedById String?
+  reviewedBy   User?   @relation("CommunityReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNote   String? @db.Text
+  reviewedAt   DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([reporterId, targetType, targetKey])
+  @@index([status, createdAt])
 }

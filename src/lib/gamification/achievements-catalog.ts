@@ -114,6 +114,31 @@ export const ACHIEVEMENT_CATALOG: AchievementDef[] = [
     xpBonus: 200,
     rarity: "legendary",
   },
+  // Proggaa Community. Unlocked in server/services/community-rewards.ts.
+  {
+    key: "community-first-post",
+    name: "Hello, Community",
+    description: "Share your first post in the Proggaa Community.",
+    iconKey: "award",
+    xpBonus: 0,
+    rarity: "common",
+  },
+  {
+    key: "community-first-helpful-answer",
+    name: "Helping Hand",
+    description: "Have an answer of yours marked useful by the hero who asked.",
+    iconKey: "award",
+    xpBonus: 0,
+    rarity: "rare",
+  },
+  {
+    key: "community-trusted-helper",
+    name: "Trusted Helper",
+    description: "Have ten of your answers marked useful by other heroes.",
+    iconKey: "award",
+    xpBonus: 50,
+    rarity: "epic",
+  },
 ];
 
 export const ACHIEVEMENT_ICONS: Record<string, string> = Object.fromEntries(
