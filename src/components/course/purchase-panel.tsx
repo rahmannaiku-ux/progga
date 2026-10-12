@@ -149,12 +149,12 @@ export function PurchasePanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       {/* Price display — reacts to whichever is currently in effect:
           an applied coupon, or the admin discount already baked into
           basePrice when no coupon has been applied. */}
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="font-mono text-3xl font-extrabold text-foreground">
+        <span className="font-mono text-2xl font-extrabold text-foreground lg:text-3xl">
           {isFree ? "Free" : formatMoney(display.finalCents, currency)}
         </span>
         {!isFree && display.isDiscounted && (
@@ -188,16 +188,22 @@ export function PurchasePanel({
 
       {!isFree && !applied && (
         <div>
-          <label className="mb-1.5 block text-xs font-bold text-muted-foreground">
+          {/* On a phone the panel floats over the page, so it stays short:
+              the placeholder does the label's job there. */}
+          <label htmlFor="coupon-code" className="mb-1.5 hidden text-xs font-bold text-muted-foreground lg:block">
             Have a coupon?
           </label>
           <div className="flex gap-2">
             <input
+              id="coupon-code"
               type="text"
+              aria-label="Coupon code"
+              autoCapitalize="characters"
+              autoComplete="off"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApply())}
-              placeholder="Enter coupon code"
+              placeholder="Coupon code"
               className="h-11 min-w-0 flex-1 rounded-xl border border-border/60 bg-surface px-4 text-base text-foreground placeholder:normal-case focus:outline-none focus:ring-2 focus:ring-accent"
               disabled={applying}
             />

@@ -948,3 +948,23 @@
 .lp-fill {
   width: var(--fill, 100%);
 }
+
+/* A panel that floats at the bottom of the screen on phones (the purchase
+   panel on a mission page) sets --sheet-room to its own height. The page
+   gets that much room at the bottom, so the footer can scroll clear of it. */
+@media (max-width: 1023px) {
+  body:has([data-floating-sheet]) {
+    padding-bottom: 13.5rem;
+  }
+  body:has([data-floating-sheet][style*="9.5rem"]) {
+    padding-bottom: 9.5rem;
+  }
+  body:has([data-floating-sheet][style*="6.5rem"]) {
+    padding-bottom: 6.5rem;
+  }
+}
+@media print {
+  body:has([data-floating-sheet]) {
+    padding-bottom: 0;
+  }
+}

@@ -10,7 +10,6 @@ import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodle
 import { mediaSrc } from "@/lib/media-url";
 import { PurchasePanel } from "@/components/course/purchase-panel";
 import { CourseHeroMedia } from "@/components/course/course-hero-media";
-import { MobileEnrollBar } from "@/components/course/mobile-enroll-bar";
 import { CourseTeachersShowcase, type CourseTeacherEntry } from "@/components/course/course-teachers-showcase";
 
 const levelLabel: Record<string, string> = {
@@ -136,10 +135,16 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
 
   const mentorName = `${course.teacher.firstName} ${course.teacher.lastName}`.trim();
   const alreadyEnrolled = Boolean(enrollment);
-  const showEnrollBar = !alreadyEnrolled && pendingPayment?.status !== "AWAITING_VERIFICATION";
+  // On phones the purchase panel floats at the bottom of the screen, so the
+  // whole page (footer included) needs room underneath to scroll clear of
+  // it: more when the panel carries the price and coupon field, less when
+  // it is a single button (already enrolled, or a payment being checked).
+  // globals.css turns this into bottom padding on the page.
+  const fullPanel = !alreadyEnrolled && pendingPayment?.status !== "AWAITING_VERIFICATION";
+  const sheetRoom = fullPanel && !course.isFree ? "13.5rem" : fullPanel ? "9.5rem" : "6.5rem";
 
   return (
-    <div className={`container py-6 sm:py-14 ${showEnrollBar ? "pb-24 lg:pb-14" : ""}`}>
+    <div className="container py-6 sm:py-14">
       <StaggerContainer className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           {/* Hero */}
@@ -198,44 +203,43 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
           </StaggerItem>
         </div>
 
-        {/* Purchase panel */}
+        {/* Purchase panel: a sticky side card on desktop, a sheet floating
+            at the bottom of the screen on phones. */}
         <StaggerItem>
-          <div id="enroll" className="comic-panel-bold sticky top-6 scroll-mt-6 space-y-5 bg-surface p-6">
-            {!course.isFree && price.isDiscounted && (
-              <Badge variant="accent" className="w-fit">
-                <Tag className="mr-1 h-3 w-3" />
-                {price.percentOff ? `${price.percentOff}% off` : `${formatMoney(price.amountOffCents, course.currency)} off`}
-              </Badge>
-            )}
-            <PurchasePanel
-              courseId={course.id}
-              currency={course.currency}
-              basePrice={price}
-              isFree={course.isFree}
-              alreadyEnrolled={alreadyEnrolled}
-              pendingPaymentId={pendingPayment?.id ?? null}
-              pendingPaymentAwaiting={pendingPayment?.status === "AWAITING_VERIFICATION"}
-              missionHref={`/missions/${course.id}`}
-              signedIn={Boolean(viewer)}
-              loginHref={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
-            />
-            <p className="text-center text-xs text-muted-foreground">
-              {course._count.enrollments} hero{course._count.enrollments === 1 ? "" : "es"} already enrolled
-            </p>
+          <div
+            data-floating-sheet
+            style={{ "--sheet-room": sheetRoom } as React.CSSProperties}
+            className="comic-panel-bold fixed inset-x-0 bottom-0 z-40 rounded-none rounded-t-[1.75rem] border-0 border-t-2 bg-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_28px_hsl(var(--border)/0.22)] lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-6 lg:z-auto lg:rounded-[1.75rem] lg:border-2 lg:p-6 lg:shadow-[4px_4px_0_hsl(var(--border)/0.85)] print:static"
+          >
+            <span aria-hidden="true" className="mx-auto mb-2.5 block h-1 w-10 rounded-full bg-border/25 lg:hidden" />
+            <div className="mx-auto max-w-xl space-y-3 lg:max-w-none lg:space-y-5">
+              {!course.isFree && price.isDiscounted && fullPanel && (
+                <Badge variant="accent" className="w-fit">
+                  <Tag className="mr-1 h-3 w-3" />
+                  {price.percentOff ? `${price.percentOff}% off` : `${formatMoney(price.amountOffCents, course.currency)} off`}
+                </Badge>
+              )}
+              <PurchasePanel
+                courseId={course.id}
+                currency={course.currency}
+                basePrice={price}
+                isFree={course.isFree}
+                alreadyEnrolled={alreadyEnrolled}
+                pendingPaymentId={pendingPayment?.id ?? null}
+                pendingPaymentAwaiting={pendingPayment?.status === "AWAITING_VERIFICATION"}
+                missionHref={`/missions/${course.id}`}
+                signedIn={Boolean(viewer)}
+                loginHref={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
+              />
+              {/* The stat tiles already say this on a phone. */}
+              <p className="hidden text-center text-xs text-muted-foreground lg:block">
+                {course._count.enrollments} hero{course._count.enrollments === 1 ? "" : "es"} already enrolled
+              </p>
+            </div>
           </div>
         </StaggerItem>
       </StaggerContainer>
 
-      {showEnrollBar && (
-        <MobileEnrollBar
-          targetId="enroll"
-          priceLabel={course.isFree ? "Free" : formatMoney(price.finalCents, course.currency)}
-          originalPriceLabel={
-            !course.isFree && price.isDiscounted ? formatMoney(price.originalCents, course.currency) : null
-          }
-          cta={course.isFree ? "Enroll free" : "Enroll now"}
-        />
-      )}
     </div>
   );
 }
