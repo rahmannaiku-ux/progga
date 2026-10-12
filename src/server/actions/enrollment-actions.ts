@@ -11,7 +11,7 @@ import { isFeatureEnabled } from "@/lib/config/feature-flags";
 // PHASE 5.5: both actions below are reachable directly from the PUBLIC
 // (unauthenticated-browsable) /courses/[slug] page — see
 // src/app/(public)/courses/[slug]/page.tsx, which renders
-// EnrollButton/PurchasePanel without ever going through the (hero)
+// PurchasePanel without ever going through the (hero)
 // layout's profile gate. That's a real bypass of the mandatory
 // first-login profile requirement for a signed-in-but-incomplete
 // student, not a hypothetical one — requireCompletedProfile() (not the

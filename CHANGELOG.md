@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 — Cleanup
+- Removed four files nothing imported (`enroll-button.tsx`, `daily-goals-widget.tsx`, `fade-in.tsx`, `lib/motion.ts`)
+  and ten packages no file used (framer-motion, react-hook-form, @hookform/resolvers, date-fns and six Radix packages).
+- The progress bars in the landing page previews were stuck empty: they waited for `FadeIn`, which the page stopped
+  using. They now show their fill straight away.
+- `sitemap.xml` is built per request, so a newly published mission or post appears without a redeploy.
+
 ## 2026-10-12 — Domain: prooggaa.com
 - **https://prooggaa.com** is now the canonical production address, defined once in `src/lib/site-url.ts`. Page
   metadata, `sitemap.xml`, `robots.txt`, the purchase-SMS invoice link and certificate QR codes all read it from there,

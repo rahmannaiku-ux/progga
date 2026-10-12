@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 import { db } from "@/lib/db/client";
 import { siteUrl } from "@/lib/site-url";
 
+// Built per request, so newly published missions and posts show up without
+// a redeploy, and so compiling the app never needs a database.
+export const dynamic = "force-dynamic";
+
 const BASE_URL = siteUrl();
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
