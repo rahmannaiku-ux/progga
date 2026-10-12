@@ -5,7 +5,8 @@ import {
   checkLevelAchievements,
   checkStreakAchievements,
 } from "@/lib/gamification/check-achievements";
-import { dhakaDateKey } from "@/lib/timezone";
+import { nextStreak } from "@/lib/gamification/streak";
+import { dhakaStartOfDay } from "@/lib/timezone";
 
 /**
  * Awards XP exactly once per (sourceType, sourceId, rewardType, userId).
@@ -84,8 +85,14 @@ export async function awardLessonCompletionXp(userId: string, lessonId: string) 
   });
 }
 
-/** Updates the daily streak: +1 if the last activity was yesterday,
- * reset to 1 if it's been longer, unchanged if already logged today. */
+/**
+ * Counts today (Bangladesh time) towards the daily streak: +1 if the last
+ * counted day was yesterday, back to 1 after a longer gap, unchanged if
+ * today is already counted. Called once a day when a student opens the app
+ * (see getOrCreateHeroStats) and again when they finish a patrol.
+ *
+ * Returns the updated row, or null when nothing changed.
+ */
 export async function updateStreak(userId: string) {
   const stats = await db.heroStats.upsert({
     where: { userId },
@@ -93,34 +100,30 @@ export async function updateStreak(userId: string) {
     update: {},
   });
 
-  // Bangladesh calendar day, not the server's local day — Vercel
-  // functions run in UTC regardless of region, so a plain
-  // `new Date(); setHours(0,0,0,0)` here would mark "today" using
-  // UTC's midnight, up to 6 hours off from Dhaka's. See dhakaDateKey's
-  // comment in lib/timezone.ts.
-  const today = new Date(`${dhakaDateKey(new Date())}T00:00:00+06:00`);
-  const last = stats.lastActivityDate
-    ? new Date(`${dhakaDateKey(stats.lastActivityDate)}T00:00:00+06:00`)
-    : null;
+  const currentStreak = nextStreak(stats);
+  if (currentStreak === null) return null;
 
-  let currentStreak = stats.currentStreak;
-  if (!last) {
-    currentStreak = 1;
-  } else {
-    const dayDiff = Math.round((today.getTime() - last.getTime()) / 86_400_000);
-    if (dayDiff === 1) currentStreak += 1;
-    else if (dayDiff > 1) currentStreak = 1;
-    // dayDiff === 0: already logged today, streak unchanged
-  }
+  // Bangladesh calendar day, not the server's local day: Vercel functions
+  // run in UTC, so the server's own midnight is up to 6 hours off Dhaka's.
+  const today = dhakaStartOfDay();
 
-  await db.heroStats.update({
-    where: { userId },
+  // The "not counted today yet" condition is part of the write itself, so
+  // two requests arriving together on a new day can't both add a day.
+  const { count } = await db.heroStats.updateMany({
+    where: { userId, OR: [{ lastActivityDate: null }, { lastActivityDate: { lt: today } }] },
     data: {
       currentStreak,
       longestStreak: Math.max(currentStreak, stats.longestStreak),
       lastActivityDate: today,
     },
   });
+  if (count === 0) return null;
 
   await checkStreakAchievements(userId, currentStreak);
+  return {
+    ...stats,
+    currentStreak,
+    longestStreak: Math.max(currentStreak, stats.longestStreak),
+    lastActivityDate: today,
+  };
 }

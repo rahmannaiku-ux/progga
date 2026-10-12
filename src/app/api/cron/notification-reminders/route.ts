@@ -189,7 +189,7 @@ async function notifyStreaksAtRisk(now: Date): Promise<number> {
     .map((s) => ({
       userId: s.userId,
       title: "Your streak is at risk",
-      body: `Keep your ${s.currentStreak}-day streak alive — finish a patrol before midnight.`,
+      body: `Keep your ${s.currentStreak}-day streak alive — open Proggaa before midnight.`,
       linkUrl: "/dashboard",
     }));
   return createNotificationsOnce("STREAK_RISK", items, { since: today });

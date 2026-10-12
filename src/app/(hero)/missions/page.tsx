@@ -246,7 +246,7 @@ export default async function MissionsPage({
               {stats.currentStreak} {stats.currentStreak === 1 ? "Day" : "Days"}
             </p>
             <p className="mt-1 text-xs text-primary-foreground/70">
-              Complete missions daily to keep your streak alive!
+              Come back every day to keep your streak alive!
             </p>
           </StaggerItem>
 

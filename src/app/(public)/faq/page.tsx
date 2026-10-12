@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: "Can I lose my streak?",
-    a: "Streaks track consecutive days with at least one completed patrol or encounter. Miss a day and the streak resets to zero — your XP and completed missions are never affected.",
+    a: "Your streak counts the days in a row you open Proggaa while signed in. Miss a day and it starts again from one the next time you come back — your XP and completed missions are never affected.",
   },
   {
     q: "I'm an instructor — how do I publish a mission?",
