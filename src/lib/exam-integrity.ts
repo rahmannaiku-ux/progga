@@ -12,12 +12,10 @@ import type { ExamRiskLevel } from "@prisma/client";
 // PHASE 14 is explicit: no single event automatically means cheating.
 // This function only ever produces REVIEW / HIGH_RISK signals from
 // accumulated counts — it never itself sets DISQUALIFIED. Disqualification
-// stays an explicit rule (existing tab-switch threshold, or a
+// stays an explicit rule (the exam's own tabSwitchLimit, or a
 // teacher-configured fullscreenExitAction = AUTO_DISQUALIFY), applied by
-// the caller, same as before this feature existed.
+// the caller.
 // ---------------------------------------------------------------------
-
-export const TAB_SWITCH_DISQUALIFY_THRESHOLD = 3;
 
 // Points-based scoring — deliberately simple and inspectable (a
 // teacher can read this file and understand exactly why an attempt is

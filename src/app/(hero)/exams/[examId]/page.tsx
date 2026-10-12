@@ -9,6 +9,8 @@ import { ExamAnalysis } from "@/components/course/exam-analysis";
 import { CalendarClock, CheckCircle2, Clock3, ListChecks, RotateCcw, ShieldAlert, Target } from "lucide-react";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { examCourseTitle, getAvailability } from "@/lib/exam-display";
+import { attemptDeadline, canRevealAnswers, isAttemptExpired, seededShuffle } from "@/lib/exam-attempt";
+import { closeAttempt } from "@/server/services/attempt-grading";
 import { getAssessmentAnalytics } from "@/server/services/exam-analytics";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { buildAttemptBreakdown } from "@/server/services/attempt-breakdown";
@@ -26,7 +28,7 @@ export default async function EncounterPage({
     include: {
       questionLinks: {
         orderBy: { order: "asc" },
-        include: { question: { include: { options: true } } },
+        include: { question: { include: { options: { orderBy: { order: "asc" } } } } },
       },
       lesson: {
         select: {
@@ -69,7 +71,7 @@ export default async function EncounterPage({
   // turns out missing we redirect and simply don't use `attempts`; no
   // authorization semantics change, just one fewer sequential round trip
   // on every encounter view.
-  const [enrollment, attempts] = await Promise.all([
+  const [enrollment, loadedAttempts] = await Promise.all([
     db.enrollment.findUnique({
       where: { userId_courseId: { userId: user.id, courseId } },
     }),
@@ -79,6 +81,18 @@ export default async function EncounterPage({
     }),
   ]);
   if (!enrollment) redirect(courseSlug ? `/courses/${courseSlug}` : `/missions/${courseId}`);
+
+  // The timer ran out while the student was away: close the attempt now,
+  // so they land on their result instead of an exam they can't answer.
+  let attempts = loadedAttempts;
+  const running = attempts[0];
+  if (running?.status === "IN_PROGRESS" && isAttemptExpired(running, assessment)) {
+    await closeAttempt(running.id, { expired: true });
+    attempts = await db.assessmentAttempt.findMany({
+      where: { assessmentId: assessment.id, userId: user.id },
+      orderBy: { attemptNumber: "desc" },
+    });
+  }
 
   if (!assessment.publishedAt) {
     return (
@@ -129,15 +143,21 @@ export default async function EncounterPage({
                 type: q.type,
                 prompt: q.prompt,
                 points: q.points,
-                options: q.options.map((o) => ({ id: o.id, label: o.label })),
+                // Shuffled per attempt (same order on every refresh).
+                // True/False keeps its natural order.
+                options: (assessment.shuffleOptions && (q.type === "MCQ" || q.type === "MULTIPLE_SELECT")
+                  ? seededShuffle(q.options, `${latest.id}:${q.id}`)
+                  : q.options
+                ).map((o) => ({ id: o.id, label: o.label })),
                 numericUnit: q.numericUnit,
               }))}
               savedAnswers={savedAnswers}
-              timeLimitSeconds={assessment.timeLimitSeconds}
-              startedAt={latest.startedAt.toISOString()}
+              deadlineAt={attemptDeadline(latest, assessment)?.toISOString() ?? null}
+              serverNow={new Date().toISOString()}
               autoSubmitOnExpiry={assessment.autoSubmitOnExpiry}
               fullscreenRequired={assessment.fullscreenRequired}
               tabSwitchDetection={assessment.tabSwitchDetection}
+              tabSwitchLimit={assessment.tabSwitchLimit}
               lockAnswersAfterSelection={assessment.lockAnswersAfterSelection}
               detectCopyPaste={assessment.detectCopyPaste}
               detectScreenshotAttempts={assessment.detectScreenshotAttempts}
@@ -153,9 +173,14 @@ export default async function EncounterPage({
   // SUBMITTED / GRADED → results
   // ------------------------------------------------------------------
   if (latest && (latest.status === "SUBMITTED" || latest.status === "GRADED")) {
-    const answers = await db.questionAnswer.findMany({
-      where: { attemptId: latest.id },
-      include: { question: { include: { options: true } } },
+    const answers = await db.questionAnswer.findMany({ where: { attemptId: latest.id } });
+    const showBreakdown = canRevealAnswers({
+      showResultsInstantly: assessment.showResultsInstantly,
+      revealAnswersAfterClose: assessment.revealAnswersAfterClose,
+      isLiveExam: assessment.isLiveExam,
+      accessClosesAt: assessment.accessClosesAt,
+      attemptsRemaining,
+      hasPassed: attempts.some((a) => a.isPassed),
     });
 
     const breakdown = buildAttemptBreakdown(latest.selectedQuestionIds, answers, questionsById);
@@ -194,7 +219,8 @@ export default async function EncounterPage({
             isPassed={latest.isPassed}
             passPercentage={assessment.passPercentage}
             wasDisqualified={latest.wasDisqualified}
-            showBreakdown={assessment.showResultsInstantly}
+            showBreakdown={showBreakdown}
+            answersHiddenUntilClose={assessment.showResultsInstantly && !showBreakdown}
             breakdown={breakdown}
             attemptsRemaining={attemptsRemaining}
             timeTakenSeconds={
@@ -211,7 +237,7 @@ export default async function EncounterPage({
           </StaggerItem>
         )}
 
-        {attemptsRemaining > 0 && !latest.isPassed && (
+        {attemptsRemaining > 0 && !latest.isPassed && getAvailability(assessment) !== "closed" && (
           <StaggerItem className="mt-6">
             <StartAttemptButton assessmentId={assessment.id} label="Retry encounter" />
           </StaggerItem>
@@ -227,7 +253,13 @@ export default async function EncounterPage({
   const xpReward = assessment.kind === "EXAM" ? XP_REWARDS.EXAM_PASSED : XP_REWARDS.QUIZ_PASSED;
   const securityFeatures: string[] = [];
   if (assessment.fullscreenRequired) securityFeatures.push("Fullscreen required");
-  if (assessment.tabSwitchDetection) securityFeatures.push("Tab switching is monitored");
+  if (assessment.tabSwitchDetection) {
+    securityFeatures.push(
+      assessment.tabSwitchLimit > 0
+        ? `Leaving the exam page ${assessment.tabSwitchLimit} time${assessment.tabSwitchLimit === 1 ? "" : "s"} ends your attempt`
+        : "Leaving the exam page is recorded"
+    );
+  }
   if (assessment.lockAnswersAfterSelection) securityFeatures.push("Answers lock once selected");
   if (assessment.detectCopyPaste) securityFeatures.push("Copy/paste is monitored");
   if (assessment.detectScreenshotAttempts) securityFeatures.push("Screenshot attempts are monitored");

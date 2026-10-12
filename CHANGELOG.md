@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-12 — Exams: correct scores, no lost work, fairer rules, mentor tools
+Migration `20261012000000_exam_fairness_and_extra_time` adds `Assessment.tabSwitchLimit` (default 3),
+`shuffleOptions`, `revealAnswersAfterClose`, `AssessmentAttempt.extraTimeSeconds` and the `MENTOR_ACTION`
+integrity event. All additive.
+
+- **Scoring.** Grading moved to `server/services/attempt-grading.ts`, shared by submit, time-up, manual grading and
+  regrade. Every question counts towards the maximum (a blank written answer no longer inflates the percentage), an
+  attempt with nothing left to grade gets its result instead of waiting forever, coins are paid after manual grading
+  too, and a disqualified attempt keeps its score but cannot pass or earn rewards.
+- **Results don't change when a question is edited.** Each answer stores the question it was graded on
+  (`lib/exam-attempt.ts`), and grading and the result page read that copy.
+- **Starting an exam works in production.** `startAttempt`, `saveAnswer` and `submitAttempt` return their result
+  instead of throwing, so the student sees the real message ("no attempts left", "not open yet").
+- **Answers aren't lost.** The exam page shows saved / saving / not saved, retries a failed save, and lets a failed
+  submit be retried. The countdown follows the server's clock.
+- **Time-up is enforced by the server.** An attempt whose time ran out is closed when the student or mentor next
+  opens it, and by `/api/cron/notification-reminders`.
+- **Fairness.** Per-exam tab-switch limit (0 = record only; under two seconds away is ignored), optional per-student
+  option shuffle, optional "hide correct answers until the exam closes", Bangla digits accepted in typed answers.
+- **Mentor tools.** Edit a question, regrade an exam, add time to a running attempt, reopen a finished one, clear a
+  disqualification, and download results as CSV (results page).
+
 ## 2026-10-12 — Cleanup
 - Removed four files nothing imported (`enroll-button.tsx`, `daily-goals-widget.tsx`, `fade-in.tsx`, `lib/motion.ts`)
   and ten packages no file used (framer-motion, react-hook-form, @hookform/resolvers, date-fns and six Radix packages).

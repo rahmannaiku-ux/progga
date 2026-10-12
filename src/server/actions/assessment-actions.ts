@@ -9,14 +9,17 @@ import {
   assessmentCreateSchema,
   assessmentUpdateSchema,
   questionCreateSchema,
+  questionUpdateSchema,
   validateQuestionBusinessRules,
 } from "@/lib/validation/assessment";
 import { buildQuestionCreateData } from "@/server/services/question-bank";
-import { awardXp } from "@/lib/gamification/award-xp";
-import { checkEncounterAchievements } from "@/lib/gamification/check-achievements";
-import { XP_REWARDS } from "@/lib/gamification/xp-curve";
-import { isPassing, summarizeAttemptScore } from "@/lib/grading";
-import { createNotificationOnce } from "@/lib/notifications/dedupe";
+import { extraTimeForMinutesFromNow } from "@/lib/exam-attempt";
+import {
+  logIntegrityEvent,
+  recomputeRisk,
+  regradeAssessment,
+  settleAttempt,
+} from "@/server/services/attempt-grading";
 import { requireMentorUser } from "./require-user";
 import { parseOptionalDhakaInput } from "@/lib/timezone";
 
@@ -124,6 +127,9 @@ export async function createAssessment(formData: FormData) {
     negativeMarkingRatio: formData.get("negativeMarkingRatio") || 0,
     fullscreenRequired: formData.get("fullscreenRequired") === "on",
     tabSwitchDetection: formData.get("tabSwitchDetection") === "on",
+    tabSwitchLimit: formData.get("tabSwitchLimit") || 3,
+    shuffleOptions: formData.get("shuffleOptions") === "on",
+    revealAnswersAfterClose: formData.get("revealAnswersAfterClose") === "on",
     lockAnswersAfterSelection: formData.get("lockAnswersAfterSelection") === "on",
     detectCopyPaste: formData.get("detectCopyPaste") === "on",
     detectScreenshotAttempts: formData.get("detectScreenshotAttempts") === "on",
@@ -162,6 +168,9 @@ export async function createAssessment(formData: FormData) {
       negativeMarkingRatio: data.negativeMarkingRatio,
       fullscreenRequired: data.fullscreenRequired,
       tabSwitchDetection: data.tabSwitchDetection,
+      tabSwitchLimit: data.tabSwitchLimit,
+      shuffleOptions: data.shuffleOptions,
+      revealAnswersAfterClose: data.revealAnswersAfterClose,
       lockAnswersAfterSelection: data.lockAnswersAfterSelection,
       detectCopyPaste: data.detectCopyPaste,
       detectScreenshotAttempts: data.detectScreenshotAttempts,
@@ -201,6 +210,9 @@ export async function updateAssessment(assessmentId: string, formData: FormData)
       negativeMarkingRatio: formData.get("negativeMarkingRatio") || 0,
       fullscreenRequired: formData.get("fullscreenRequired") === "on",
       tabSwitchDetection: formData.get("tabSwitchDetection") === "on",
+      tabSwitchLimit: formData.get("tabSwitchLimit") || 3,
+      shuffleOptions: formData.get("shuffleOptions") === "on",
+      revealAnswersAfterClose: formData.get("revealAnswersAfterClose") === "on",
       lockAnswersAfterSelection: formData.get("lockAnswersAfterSelection") === "on",
       detectCopyPaste: formData.get("detectCopyPaste") === "on",
       detectScreenshotAttempts: formData.get("detectScreenshotAttempts") === "on",
@@ -236,6 +248,9 @@ export async function updateAssessment(assessmentId: string, formData: FormData)
       negativeMarkingRatio: data.negativeMarkingRatio,
       fullscreenRequired: data.fullscreenRequired,
       tabSwitchDetection: data.tabSwitchDetection,
+      tabSwitchLimit: data.tabSwitchLimit,
+      shuffleOptions: data.shuffleOptions,
+      revealAnswersAfterClose: data.revealAnswersAfterClose,
       lockAnswersAfterSelection: data.lockAnswersAfterSelection,
       detectCopyPaste: data.detectCopyPaste,
       detectScreenshotAttempts: data.detectScreenshotAttempts,
@@ -356,6 +371,9 @@ export async function duplicateAssessment(assessmentId: string) {
         negativeMarkingRatio: original.negativeMarkingRatio,
         fullscreenRequired: original.fullscreenRequired,
         tabSwitchDetection: original.tabSwitchDetection,
+        tabSwitchLimit: original.tabSwitchLimit,
+        shuffleOptions: original.shuffleOptions,
+        revealAnswersAfterClose: original.revealAnswersAfterClose,
         maxAttempts: original.maxAttempts,
         lockAnswersAfterSelection: original.lockAnswersAfterSelection,
         detectCopyPaste: original.detectCopyPaste,
@@ -621,70 +639,253 @@ export async function gradeWrittenAnswer(input: {
     },
   });
 
-  await recomputeAttemptIfFullyGraded(answer.attempt.id);
+  // Finalises the attempt (score, pass/fail, XP, coins, notification)
+  // once no written answer is left waiting.
+  await settleAttempt(answer.attempt.id, { notify: true });
   revalidatePath(`/mentor/grading/exams`);
 }
 
-async function recomputeAttemptIfFullyGraded(attemptId: string) {
-  const answers = await db.questionAnswer.findMany({
-    where: { attemptId },
-    include: { question: { select: { points: true, type: true } } },
+// ---------------------------------------------------------------------
+// EDIT A QUESTION
+// ---------------------------------------------------------------------
+
+type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; error: string };
+
+/**
+ * Edits a bank question in place. Results that already exist are not
+ * touched: each answer keeps its own copy of the question it was graded
+ * on. To apply a corrected answer key to finished attempts, the mentor
+ * runs "Regrade" afterwards.
+ */
+export async function updateQuestion(input: unknown): Promise<ActionResult<{ needsRegrade: boolean }>> {
+  const user = await requireMentorUser("Only mentors can author encounters.");
+
+  const parsed = questionUpdateSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? "Invalid question" };
+  const data = parsed.data;
+
+  const question = await db.question.findUnique({
+    where: { id: data.questionId },
+    include: { options: true, _count: { select: { answers: true } } },
+  });
+  if (!question) return { ok: false, error: "Question not found." };
+  try {
+    await assertOwnsCourse(question.courseId, user.id, user.role);
+  } catch {
+    return { ok: false, error: "You don't have access to this mission." };
+  }
+
+  const usesOptions = ["MCQ", "MULTIPLE_SELECT", "TRUE_FALSE", "FILL_IN_BLANK"].includes(question.type);
+  const existingIds = new Set(question.options.map((o) => o.id));
+  const submitted = usesOptions ? data.options : [];
+  if (submitted.some((o) => o.id && !existingIds.has(o.id))) {
+    return { ok: false, error: "One of those options doesn't belong to this question." };
+  }
+  const keptIds = new Set(submitted.map((o) => o.id).filter((id): id is string => Boolean(id)));
+  const removedIds = question.options.filter((o) => !keptIds.has(o.id)).map((o) => o.id);
+
+  if (usesOptions) {
+    const correctCount = submitted.filter((o) => o.isCorrect).length;
+    if (question.type === "FILL_IN_BLANK") {
+      if (submitted.length < 1) return { ok: false, error: "Add at least one acceptable answer." };
+    } else {
+      if (submitted.length < 2) return { ok: false, error: "Choice questions need at least two options." };
+      if (correctCount === 0) return { ok: false, error: "Mark at least one option as correct." };
+      if ((question.type === "MCQ" || question.type === "TRUE_FALSE") && correctCount !== 1) {
+        return { ok: false, error: "This question type has exactly one correct option." };
+      }
+    }
+    if (question.type === "TRUE_FALSE" && (removedIds.length > 0 || submitted.some((o) => !o.id))) {
+      return { ok: false, error: "A True / False question keeps its two options." };
+    }
+    // Recorded answers point at option ids, so an option students may
+    // have picked can't disappear.
+    if (removedIds.length > 0 && question._count.answers > 0) {
+      return {
+        ok: false,
+        error: "Students have already answered this question, so its options can be reworded but not removed.",
+      };
+    }
+  }
+  if (question.type === "NUMERICAL" && data.numericAnswer === undefined) {
+    return { ok: false, error: "Numerical questions need a correct answer value." };
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.question.update({
+      where: { id: question.id },
+      data: {
+        prompt: data.prompt,
+        points: data.points,
+        explanation: data.explanation || null,
+        topic: data.topic || null,
+        difficulty: data.difficulty,
+        ...(question.type === "NUMERICAL"
+          ? {
+              numericAnswer: data.numericAnswer,
+              numericTolerance: data.numericTolerance,
+              numericUnit: data.numericUnit || null,
+            }
+          : {}),
+      },
+    });
+    if (!usesOptions) return;
+    if (removedIds.length > 0) await tx.questionOption.deleteMany({ where: { id: { in: removedIds } } });
+    for (const [order, option] of submitted.entries()) {
+      // Every listed answer of a fill-in-the-blank is an accepted one.
+      const isCorrect = question.type === "FILL_IN_BLANK" ? true : option.isCorrect;
+      // True / False labels are fixed; only which one is correct can change.
+      const label = question.type === "TRUE_FALSE" ? undefined : option.label;
+      if (option.id) {
+        await tx.questionOption.update({ where: { id: option.id }, data: { label, isCorrect, order } });
+      } else {
+        await tx.questionOption.create({
+          data: { questionId: question.id, label: option.label, isCorrect, order },
+        });
+      }
+    }
   });
 
-  const stillPending = answers.some(
-    (a) =>
-      (a.question.type === "ESSAY" || a.question.type === "SHORT_ANSWER") &&
-      a.gradedAt === null
-  );
-  if (stillPending) return;
+  const finishedAnswers = await db.questionAnswer.count({
+    where: { questionId: question.id, attempt: { status: { in: ["SUBMITTED", "GRADED"] } } },
+  });
 
-  const { rawScore, maxScore, percentage } = summarizeAttemptScore(
-    answers.map((a) => ({ pointsAwarded: a.pointsAwarded ?? 0, questionPoints: a.question.points }))
-  );
+  revalidateMissionPage(`/${question.courseId}/assessments/${data.assessmentId}`);
+  revalidateMissionPage(`/${question.courseId}/question-bank`);
+  return { ok: true, needsRegrade: finishedAnswers > 0 };
+}
 
-  const attemptWithAssessment = await db.assessmentAttempt.findUnique({
+// ---------------------------------------------------------------------
+// MENTOR TOOLS FOR ATTEMPTS: regrade, more time, reopen, overturn
+// ---------------------------------------------------------------------
+
+/** Loads an attempt after checking the caller may manage its exam. */
+async function loadManagedAttempt(attemptId: string) {
+  const user = await requireMentorUser("Only mentors can manage exam attempts.");
+  const attempt = await db.assessmentAttempt.findUnique({
     where: { id: attemptId },
-    select: { assessment: { select: { passPercentage: true } } },
+    include: { assessment: { select: { id: true, timeLimitSeconds: true, autoSubmitOnExpiry: true } } },
   });
+  if (!attempt) return { ok: false as const, error: "Attempt not found." };
+  try {
+    const courseId = await assertOwnsAssessment(attempt.assessmentId, user.id, user.role);
+    return { ok: true as const, attempt, courseId };
+  } catch {
+    return { ok: false as const, error: "You don't have access to this exam." };
+  }
+}
 
-  const isPassed = isPassing(percentage, attemptWithAssessment?.assessment.passPercentage ?? 60);
+function revalidateAttemptPages(courseId: string, assessmentId: string) {
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}/results`);
+  revalidateMissionPage(`/${courseId}/assessments/${assessmentId}`);
+  revalidatePath(`/exams/${assessmentId}`);
+  revalidatePath("/mentor/live-exams");
+}
+
+/**
+ * Re-marks every finished attempt of this exam against the questions as
+ * they are now. For after a wrong answer key was fixed.
+ */
+export async function regradeAssessmentAttempts(
+  assessmentId: string
+): Promise<ActionResult<{ attempts: number; changed: number }>> {
+  const user = await requireMentorUser("Only mentors can manage exam attempts.");
+  let courseId: string;
+  try {
+    courseId = await assertOwnsAssessment(assessmentId, user.id, user.role);
+  } catch {
+    return { ok: false, error: "You don't have access to this exam." };
+  }
+  const result = await regradeAssessment(assessmentId);
+  revalidateAttemptPages(courseId, assessmentId);
+  return { ok: true, ...result };
+}
+
+function parseMinutes(minutes: number): number | null {
+  const value = Math.round(Number(minutes));
+  return Number.isFinite(value) && value >= 1 && value <= 600 ? value : null;
+}
+
+/** Gives a running attempt more time (a power cut, a dropped connection). */
+export async function extendAttemptTime(attemptId: string, minutes: number): Promise<ActionResult> {
+  const loaded = await loadManagedAttempt(attemptId);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+  const { attempt, courseId } = loaded;
+  const extra = parseMinutes(minutes);
+  if (!extra) return { ok: false, error: "Enter between 1 and 600 minutes." };
+  if (attempt.status !== "IN_PROGRESS") return { ok: false, error: "This attempt is no longer in progress." };
+  if (!attempt.assessment.timeLimitSeconds) return { ok: false, error: "This exam has no time limit to extend." };
 
   await db.assessmentAttempt.update({
     where: { id: attemptId },
-    data: {
-      status: "GRADED",
-      rawScore,
-      maxScore,
-      percentage,
-      isPassed,
-    },
+    data: { extraTimeSeconds: { increment: extra * 60 } },
   });
+  await logIntegrityEvent(attemptId, "MENTOR_ACTION", { note: `added ${extra} more minutes` });
+  revalidateAttemptPages(courseId, attempt.assessmentId);
+  return { ok: true };
+}
 
-  const attemptWithUser = await db.assessmentAttempt.findUnique({
-    where: { id: attemptId },
-    select: { userId: true, assessment: { select: { kind: true, title: true } } },
-  });
-  if (attemptWithUser) {
-    // The result only now exists for the student (it was waiting on
-    // manual grading). Once per attempt — re-grading an answer must not
-    // notify again.
-    await createNotificationOnce("GRADE_POSTED", {
-      userId: attemptWithUser.userId,
-      title: "Exam graded",
-      body: `Your result for "${attemptWithUser.assessment.title}" is ready: ${Math.round(percentage)}%.`,
-      linkUrl: `/results/${attemptId}`,
-    });
-    if (isPassed) {
-      await awardXp(
-        attemptWithUser.userId,
-        attemptWithUser.assessment.kind === "EXAM" ? XP_REWARDS.EXAM_PASSED : XP_REWARDS.QUIZ_PASSED,
-        {
-          type: "ASSESSMENT_ATTEMPT",
-          id: attemptId,
-          rewardType: attemptWithUser.assessment.kind === "EXAM" ? "EXAM_PASSED" : "QUIZ_PASSED",
-        }
-      );
-    }
-    await checkEncounterAchievements(attemptWithUser.userId, { isPassed, percentage });
+/**
+ * Puts a finished attempt back in progress with `minutes` on the clock,
+ * keeping the answers already given. Only a student's latest attempt can
+ * be reopened, so they never have two running at once.
+ */
+export async function reopenAttempt(attemptId: string, minutes: number): Promise<ActionResult> {
+  const loaded = await loadManagedAttempt(attemptId);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+  const { attempt, courseId } = loaded;
+  const extra = parseMinutes(minutes);
+  if (!extra) return { ok: false, error: "Enter between 1 and 600 minutes." };
+  if (attempt.status !== "SUBMITTED" && attempt.status !== "GRADED") {
+    return { ok: false, error: "Only a finished attempt can be reopened." };
   }
+  const newer = await db.assessmentAttempt.count({
+    where: { assessmentId: attempt.assessmentId, userId: attempt.userId, attemptNumber: { gt: attempt.attemptNumber } },
+  });
+  if (newer > 0) return { ok: false, error: "The student has a newer attempt. Only their latest can be reopened." };
+
+  await db.$transaction([
+    // Marks are cleared so the reopened attempt is graded afresh when it
+    // closes; a locked answer stays locked.
+    db.questionAnswer.updateMany({
+      where: { attemptId },
+      data: { isCorrect: null, pointsAwarded: null, gradedAt: null },
+    }),
+    db.assessmentAttempt.update({
+      where: { id: attemptId },
+      data: {
+        status: "IN_PROGRESS",
+        submittedAt: null,
+        timeSpentSec: null,
+        rawScore: null,
+        maxScore: null,
+        percentage: null,
+        isPassed: null,
+        wasDisqualified: false,
+        // A tab-switch count already at the limit would end it again at once.
+        tabSwitchCount: 0,
+        extraTimeSeconds: extraTimeForMinutesFromNow(attempt, attempt.assessment, extra),
+      },
+    }),
+  ]);
+  await logIntegrityEvent(attemptId, "MENTOR_ACTION", { note: `reopened the attempt for ${extra} minutes` });
+  await recomputeRisk(attemptId);
+  revalidateAttemptPages(courseId, attempt.assessmentId);
+  return { ok: true };
+}
+
+/** A mentor decides a disqualification was unfair: the score counts again. */
+export async function clearDisqualification(attemptId: string): Promise<ActionResult> {
+  const loaded = await loadManagedAttempt(attemptId);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+  const { attempt, courseId } = loaded;
+  if (!attempt.wasDisqualified) return { ok: false, error: "This attempt isn't disqualified." };
+  if (attempt.status === "IN_PROGRESS") return { ok: false, error: "This attempt is still in progress." };
+
+  await db.assessmentAttempt.update({ where: { id: attemptId }, data: { wasDisqualified: false } });
+  await logIntegrityEvent(attemptId, "MENTOR_ACTION", { note: "cleared the disqualification" });
+  await recomputeRisk(attemptId);
+  await settleAttempt(attemptId, { notify: true });
+  revalidateAttemptPages(courseId, attempt.assessmentId);
+  return { ok: true };
 }

@@ -9,6 +9,7 @@ import {
   upcomingWindow,
 } from "@/lib/notifications/reminder-rules";
 import { dhakaStartOfDay, formatDhakaDateTime } from "@/lib/timezone";
+import { closeExpiredAttempts, settleStuckAttempts } from "@/server/services/attempt-grading";
 
 const MODULE_COURSE = { select: { module: { select: { courseId: true } } } } as const;
 
@@ -16,7 +17,8 @@ const MODULE_COURSE = { select: { module: { select: { courseId: true } } } } as 
  * GET /api/cron/notification-reminders
  * Sends the scheduled in-app reminders: EXAM_REMINDER (live exam about to
  * open), ASSIGNMENT_DUE (challenge due soon) and STREAK_RISK (evening,
- * nothing logged today). Schedule it every 15-30 minutes; it is safe to
+ * nothing logged today). It also closes exam attempts whose time ran out
+ * (see closeExpiredAttempts). Schedule it every 15-30 minutes; it is safe to
  * run as often as you like because every reminder is deduplicated (see
  * lib/notifications/dedupe.ts). Protected by CRON_SECRET exactly like
  * /api/cron/live-class-reminders.
@@ -46,13 +48,18 @@ export async function GET(req: Request) {
     }
   };
 
-  const [exams, assignments, streaks] = await Promise.all([
+  const [exams, assignments, streaks, expiredAttempts, settledAttempts] = await Promise.all([
     run("exam reminders", () => notifyUpcomingExams(now)),
     run("assignment reminders", () => notifyDueAssignments(now)),
     run("streak risk", () => notifyStreaksAtRisk(now)),
+    // Not reminders, but they need the same regular tick: exam attempts
+    // whose time ran out with nobody on the page get closed and scored,
+    // and attempts with nothing left for a mentor to grade get a result.
+    run("expired exam attempts", () => closeExpiredAttempts({}, now)),
+    run("stuck exam attempts", () => settleStuckAttempts()),
   ]);
 
-  return NextResponse.json({ exams, assignments, streaks });
+  return NextResponse.json({ exams, assignments, streaks, expiredAttempts, settledAttempts });
 }
 
 /**

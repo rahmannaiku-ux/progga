@@ -8,6 +8,7 @@ import { isCourseMentor } from "@/lib/auth/course-access";
 import { getMissionsBase } from "@/lib/mission-paths";
 import { Badge } from "@/components/ui/badge";
 import { QuestionForm } from "@/components/mentor-dashboard/question-form";
+import { EditQuestionForm } from "@/components/mentor-dashboard/edit-question-form";
 import { AssessmentPublishToggle } from "@/components/mentor-dashboard/assessment-publish-toggle";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { MentorExamAnalysis } from "@/components/mentor-dashboard/mentor-exam-analysis";
@@ -40,7 +41,11 @@ export default async function AssessmentEditorPage({
     include: {
       questionLinks: {
         orderBy: { order: "asc" },
-        include: { question: { include: { options: true } } },
+        include: {
+          question: {
+            include: { options: { orderBy: { order: "asc" } }, _count: { select: { answers: true } } },
+          },
+        },
       },
       course: { select: { id: true, title: true, teacherId: true } },
       chapter: { select: { id: true, title: true, module: { select: { title: true } } } },
@@ -290,6 +295,12 @@ export default async function AssessmentEditorPage({
               ["fullscreenRequired", "Require fullscreen", assessment.fullscreenRequired],
               ["tabSwitchDetection", "Detect tab switching", assessment.tabSwitchDetection],
               ["showResultsInstantly", "Show results instantly", assessment.showResultsInstantly],
+              ["shuffleOptions", "Shuffle answer options for each student", assessment.shuffleOptions],
+              [
+                "revealAnswersAfterClose",
+                "Hide correct answers until the exam closes",
+                assessment.revealAnswersAfterClose,
+              ],
             ].map(([name, label, checked]) => (
               <label key={name as string} className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" name={name as string} defaultChecked={checked as boolean} />
@@ -316,6 +327,23 @@ export default async function AssessmentEditorPage({
                   {label as string}
                 </label>
               ))}
+            </div>
+            <div className="mt-4">
+              <label className="mb-1.5 block text-xs font-medium text-foreground">
+                Times a student may leave the exam page before the attempt ends (only applies when
+                "Detect tab switching" is on; 0 = record it but never end the attempt)
+              </label>
+              <input
+                type="number"
+                name="tabSwitchLimit"
+                defaultValue={assessment.tabSwitchLimit}
+                min={0}
+                max={20}
+                className="h-10 w-full max-w-xs rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground md:text-sm"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Being away for under two seconds (a notification, a dimmed screen) is not counted.
+              </p>
             </div>
             <div className="mt-4">
               <label className="mb-1.5 block text-xs font-medium text-foreground">
@@ -416,7 +444,7 @@ export default async function AssessmentEditorPage({
             return (
               <div key={q.id} className="glass-panel p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground">
                       Q{i + 1} · {q.type.replace("_", " ")} · {q.points} pt
                       {q.points === 1 ? "" : "s"}
@@ -450,6 +478,23 @@ export default async function AssessmentEditorPage({
                         </ul>
                       )
                     )}
+                    <EditQuestionForm
+                      assessmentId={assessment.id}
+                      hasAnswers={q._count.answers > 0}
+                      question={{
+                        id: q.id,
+                        type: q.type,
+                        prompt: q.prompt,
+                        points: q.points,
+                        explanation: q.explanation,
+                        topic: q.topic,
+                        difficulty: q.difficulty,
+                        numericAnswer: q.numericAnswer,
+                        numericTolerance: q.numericTolerance,
+                        numericUnit: q.numericUnit,
+                        options: q.options.map((o) => ({ id: o.id, label: o.label, isCorrect: o.isCorrect })),
+                      }}
+                    />
                   </div>
                   <div className="flex shrink-0 items-start gap-2">
                     <div className="flex flex-col gap-1">

@@ -25,6 +25,7 @@ export function AttemptResults({
   passPercentage,
   wasDisqualified,
   showBreakdown,
+  answersHiddenUntilClose = false,
   breakdown,
   attemptsRemaining,
   timeTakenSeconds,
@@ -37,6 +38,8 @@ export function AttemptResults({
   passPercentage: number;
   wasDisqualified: boolean;
   showBreakdown: boolean;
+  /** The answers exist but stay hidden while the exam can still be taken. */
+  answersHiddenUntilClose?: boolean;
   breakdown: AnswerBreakdown[];
   attemptsRemaining: number;
   /** Submit time minus start time, when both are known. */
@@ -58,8 +61,8 @@ export function AttemptResults({
           role="alert"
           className="flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
         >
-          <AlertTriangle className="h-4 w-4 shrink-0" /> This attempt was auto-submitted due to repeated tab
-          switching.
+          <AlertTriangle className="h-4 w-4 shrink-0" /> This attempt was ended early and disqualified for
+          breaking the exam rules, so it doesn't count as a pass. Your mentor can review it.
         </div>
       )}
 
@@ -132,6 +135,12 @@ export function AttemptResults({
             )}
           </dl>
         </section>
+      )}
+
+      {answersHiddenUntilClose && !pendingReview && (
+        <p className="comic-panel bg-surface p-4 text-sm text-muted-foreground">
+          The correct answers will appear here once this exam has closed.
+        </p>
       )}
 
       {showAnalysis && (

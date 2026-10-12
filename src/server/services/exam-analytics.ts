@@ -596,6 +596,8 @@ function describeIntegrityEvent(type: string, metadata: Record<string, unknown> 
       return "Unusually fast completion";
     case "DISQUALIFIED":
       return `Disqualified (${metadata?.reason ?? "rule triggered"})`;
+    case "MENTOR_ACTION":
+      return `Mentor: ${metadata?.note ?? "changed this attempt"}`;
     default:
       return type;
   }

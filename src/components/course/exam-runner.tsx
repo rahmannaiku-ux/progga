@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, Clock, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Check, Clock, Loader2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   saveAnswer,
@@ -16,7 +16,9 @@ import {
   recordScreenshotAttempt,
   recordConnectionEvent,
   checkSessionFingerprint,
+  getAttemptClock,
 } from "@/server/actions/attempt-actions";
+import { TAB_SWITCH_MIN_AWAY_SECONDS } from "@/lib/exam-attempt";
 import { Button } from "@/components/ui/button";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { ExamWatermark } from "@/components/exam/exam-watermark";
@@ -43,6 +45,12 @@ type SavedAnswer = {
 // Tuned to keep write volume low on a long exam per PHASE 24.
 const TIME_FLUSH_INTERVAL_MS = 15_000;
 const SESSION_CHECK_INTERVAL_MS = 45_000;
+// How often the countdown is re-synced with the server's clock, and how
+// often an answer that failed to save is tried again.
+const CLOCK_SYNC_INTERVAL_MS = 60_000;
+const SAVE_RETRY_INTERVAL_MS = 5_000;
+
+type AnswerValue = { selectedOptionIds: string[]; textAnswer: string };
 
 function ChoiceOption({
   index,
@@ -99,11 +107,12 @@ export function ExamRunner({
   examTitle,
   questions,
   savedAnswers,
-  timeLimitSeconds,
-  startedAt,
+  deadlineAt,
+  serverNow,
   autoSubmitOnExpiry,
   fullscreenRequired,
   tabSwitchDetection,
+  tabSwitchLimit = 3,
   lockAnswersAfterSelection = false,
   detectCopyPaste = false,
   detectScreenshotAttempts = false,
@@ -114,11 +123,15 @@ export function ExamRunner({
   examTitle: string;
   questions: Question[];
   savedAnswers: SavedAnswer[];
-  timeLimitSeconds: number | null;
-  startedAt: string;
+  /** When this attempt's time runs out (server time), or null if untimed. */
+  deadlineAt: string | null;
+  /** The server's clock when the page was rendered. */
+  serverNow: string;
   autoSubmitOnExpiry: boolean;
   fullscreenRequired: boolean;
   tabSwitchDetection: boolean;
+  /** Times a student may leave the page before the attempt ends; 0 = only recorded. */
+  tabSwitchLimit?: number;
   lockAnswersAfterSelection?: boolean;
   detectCopyPaste?: boolean;
   detectScreenshotAttempts?: boolean;
@@ -127,7 +140,7 @@ export function ExamRunner({
   const router = useRouter();
   const answerMap = new Map(savedAnswers.map((a) => [a.questionId, a]));
 
-  const [answers, setAnswers] = useState<Record<string, { selectedOptionIds: string[]; textAnswer: string }>>(
+  const [answers, setAnswers] = useState<Record<string, AnswerValue>>(
     () =>
       Object.fromEntries(
         questions.map((q) => {
@@ -153,13 +166,21 @@ export function ExamRunner({
   );
   const [lockToast, setLockToast] = useState<string | null>(null);
 
-  const [remaining, setRemaining] = useState<number | null>(() => {
-    if (!timeLimitSeconds) return null;
-    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-    return Math.max(0, timeLimitSeconds - elapsed);
-  });
-  const [tick, setTick] = useState(0);
+  // The countdown follows the SERVER's clock: the deadline is a server
+  // time, and `clockOffset` is how far this device's clock is from the
+  // server's. A phone set to the wrong time still shows the right time left.
+  const clockOffset = useRef(new Date(serverNow).getTime() - Date.now());
+  const deadlineMs = useRef<number | null>(deadlineAt ? new Date(deadlineAt).getTime() : null);
+  const secondsLeft = useCallback(() => {
+    if (deadlineMs.current === null) return null;
+    return Math.max(0, Math.ceil((deadlineMs.current - (Date.now() + clockOffset.current)) / 1000));
+  }, []);
+  const [remaining, setRemaining] = useState<number | null>(secondsLeft);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // "saved": the server has every answer. "saving": one is on its way.
+  // "error": one could not be sent and is being retried.
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [tabWarning, setTabWarning] = useState<string | null>(null);
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
   const [contentHidden, setContentHidden] = useState(false);
@@ -170,7 +191,7 @@ export function ExamRunner({
   const [marked, setMarked] = useState<Set<string>>(
     () => new Set(savedAnswers.filter((a) => a.markedForReview).map((a) => a.questionId))
   );
-  const hasSubmitted = useRef(false);
+  const isSubmitting = useRef(false);
 
   const answeredCount = questions.filter((q) => {
     const a = answers[q.id];
@@ -178,34 +199,85 @@ export function ExamRunner({
   }).length;
   const unansweredCount = questions.length - answeredCount;
 
-  async function doSubmit(disqualified = false) {
-    if (hasSubmitted.current) return;
-    hasSubmitted.current = true;
+  async function doSubmit() {
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     setSubmitting(true);
-    await flushPendingSaves(); // don't grade before the last debounced keystrokes land
-    await submitAttempt(attemptId, disqualified ? { disqualified: true } : undefined);
-    router.refresh();
+    setSubmitError(null);
+    try {
+      // Don't grade before the last answers have landed. If one still
+      // can't be sent, stop here: submitting now would grade without it.
+      const allSaved = await flushPendingSaves();
+      if (!allSaved) throw new Error("unsaved answers");
+      const res = await submitAttempt(attemptId);
+      if (res.ok) {
+        router.refresh(); // stays on "Submitting..." until the result page replaces this one
+        return;
+      }
+      setSubmitError(res.error);
+    } catch {
+      setSubmitError("Couldn't submit. Check your connection and try again — your answers are still here.");
+    }
+    isSubmitting.current = false;
+    setSubmitting(false);
   }
 
-  // Timer / auto-submit
+  // Countdown. Recomputed from the deadline each second rather than
+  // decremented: timers stop while a phone is locked or the tab is in the
+  // background, which would otherwise leave it behind the real clock.
   useEffect(() => {
-    if (remaining === null) return;
-    if (remaining <= 0) {
-      if (autoSubmitOnExpiry) doSubmit();
-      return;
-    }
-    // Recomputed from the start time rather than decremented: timers stop
-    // while a phone is locked or the tab is in the background, which would
-    // otherwise leave the on-screen countdown behind the real clock.
-    const t = setTimeout(() => {
-      if (!timeLimitSeconds) return;
-      const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-      setRemaining(Math.max(0, timeLimitSeconds - elapsed));
-      setTick((n) => n + 1); // keep the loop going even if the value didn't change
-    }, 1000);
-    return () => clearTimeout(t);
+    if (deadlineMs.current === null) return;
+    const t = setInterval(() => setRemaining(secondsLeft()), 1000);
+    return () => clearInterval(t);
+  }, [secondsLeft]);
+
+  // Time's up: submit, and keep trying if the connection drops. (The
+  // server closes the attempt on its own soon after the deadline, so a
+  // student who can't get through still gets a result.)
+  const timeIsUp = remaining !== null && remaining <= 0;
+  useEffect(() => {
+    if (!timeIsUp || !autoSubmitOnExpiry) return;
+    void doSubmit();
+    const retry = setInterval(() => void doSubmit(), SAVE_RETRY_INTERVAL_MS);
+    return () => clearInterval(retry);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remaining, tick]);
+  }, [timeIsUp, autoSubmitOnExpiry]);
+
+  // Keep the clock honest: re-read the deadline and the server time now
+  // and then, and whenever the page comes back. This picks up extra time
+  // a mentor added, and leaves the page if the attempt was closed.
+  useEffect(() => {
+    let cancelled = false;
+    function sync() {
+      const askedAt = Date.now();
+      getAttemptClock(attemptId)
+        .then((clock) => {
+          if (cancelled || !clock) return;
+          if (!clock.inProgress) {
+            router.refresh();
+            return;
+          }
+          // Halfway through the round trip is the best guess for "now".
+          const midpoint = (askedAt + Date.now()) / 2;
+          clockOffset.current = new Date(clock.serverNow).getTime() - midpoint;
+          deadlineMs.current = clock.deadlineAt ? new Date(clock.deadlineAt).getTime() : null;
+          setRemaining(secondsLeft());
+        })
+        .catch(() => {});
+    }
+    const i = setInterval(sync, CLOCK_SYNC_INTERVAL_MS);
+    function onVisible() {
+      if (!document.hidden) sync();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", sync);
+    return () => {
+      cancelled = true;
+      clearInterval(i);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", sync);
+    };
+  }, [attemptId, router, secondsLeft]);
 
   // Fullscreen enforcement (PHASE 7) — requests fullscreen, and now
   // also listens for the browser's own fullscreenchange event so an
@@ -241,23 +313,36 @@ export function ExamRunner({
     };
   }, [fullscreenRequired, attemptId, router]);
 
-  // Tab-switch detection (PHASE 6)
+  // Tab-switch detection. Reported when the student comes BACK, with how
+  // long they were away, so a glance at a notification or a screen that
+  // dimmed for a moment is not counted against them.
   useEffect(() => {
     if (!tabSwitchDetection) return;
+    let hiddenAt: number | null = null;
     function onVisibilityChange() {
       if (document.hidden) {
-        recordTabSwitch(attemptId).then((res) => {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt === null) return;
+      const awaySeconds = (Date.now() - hiddenAt) / 1000;
+      hiddenAt = null;
+      if (awaySeconds < TAB_SWITCH_MIN_AWAY_SECONDS) return;
+      recordTabSwitch(attemptId, awaySeconds)
+        .then((res) => {
           if (!res) return;
           if (res.disqualified) {
-            setTabWarning("Too many tab switches — this attempt has been submitted.");
+            setTabWarning("You left the exam page too many times. This attempt has been submitted.");
             router.refresh();
-          } else {
+          } else if (res.limit > 0) {
             setTabWarning(
-              `Tab switch detected (${res.tabSwitchCount}). Repeated switches will end your attempt.`
+              `You left the exam page (${res.tabSwitchCount} of ${res.limit}). At ${res.limit} your attempt ends.`
             );
+          } else {
+            setTabWarning("Leaving the exam page is recorded for your mentor.");
           }
-        });
-      }
+        })
+        .catch(() => {});
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -444,42 +529,106 @@ export function ExamRunner({
   // inputs (radio/checkbox) call updateAnswer directly without the
   // debounce flag — those are already discrete, low-frequency clicks.
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const pendingSaves = useRef<Record<string, { selectedOptionIds: string[]; textAnswer: string }>>({});
+  const pendingSaves = useRef<Record<string, AnswerValue>>({});
   const DEBOUNCE_MS = 500;
 
-  function commitSave(questionId: string, merged: { selectedOptionIds: string[]; textAnswer: string }) {
-    delete pendingSaves.current[questionId];
-    const willBeAnswered = merged.selectedOptionIds.length > 0 || merged.textAnswer.trim().length > 0;
-    return saveAnswer({
-      attemptId,
-      questionId,
-      selectedOptionIds: merged.selectedOptionIds,
-      textAnswer: merged.textAnswer,
-    })
-      .then(() => {
-        if (lockAnswersAfterSelection && willBeAnswered) {
-          setLocked((prevLocked) => new Set(prevLocked).add(questionId));
-        }
-      })
-      .catch(() => {
-        setLockToast("That answer is locked and can't be changed.");
-      });
+  // Answers the server has not confirmed yet, newest value per question.
+  // An entry leaves only when the server has answered for that exact
+  // value, so a save that fails (weak signal, a dropped request) stays
+  // here and is sent again instead of being lost.
+  const unsaved = useRef<Record<string, AnswerValue>>({});
+  const sending = useRef<Record<string, Promise<void>>>({});
+  const failed = useRef<Set<string>>(new Set());
+
+  function refreshSaveState() {
+    const waiting = Object.keys(unsaved.current);
+    setSaveState(waiting.length === 0 ? "saved" : waiting.some((q) => failed.current.has(q)) ? "error" : "saving");
   }
 
-  // Flushes any debounced text saves immediately and WAITS for them to
-  // land — called before submitting so (a) a student who submits right
-  // after typing never loses their last few characters to a pending
-  // debounce timer, and (b) grading never reads QuestionAnswer before
-  // that final save has actually been written.
-  const flushPendingSaves = useCallback(() => {
-    const pending: Promise<void>[] = [];
+  function sendAnswer(questionId: string): Promise<void> {
+    const running = sending.current[questionId];
+    if (running) return running;
+
+    const run = (async () => {
+      // Loops so a newer value typed while one was in flight goes out next.
+      while (unsaved.current[questionId]) {
+        const value = unsaved.current[questionId]!;
+        let res;
+        try {
+          res = await saveAnswer({ attemptId, questionId, ...value });
+        } catch {
+          failed.current.add(questionId); // no answer from the server: keep it and retry
+          return;
+        }
+        failed.current.delete(questionId);
+        if (unsaved.current[questionId] === value) delete unsaved.current[questionId];
+
+        if (res.ok) {
+          if (lockAnswersAfterSelection && (value.selectedOptionIds.length > 0 || value.textAnswer.trim().length > 0)) {
+            setLocked((prev) => new Set(prev).add(questionId));
+          }
+        } else if (res.code === "locked") {
+          setLocked((prev) => new Set(prev).add(questionId));
+          setLockToast(res.error);
+        } else if (res.code === "time_up" || res.code === "closed") {
+          // The attempt is over on the server; show its result.
+          unsaved.current = {};
+          router.refresh();
+          return;
+        } else {
+          setLockToast(res.error);
+        }
+      }
+    })().finally(() => {
+      delete sending.current[questionId];
+      refreshSaveState();
+    });
+    sending.current[questionId] = run;
+    return run;
+  }
+
+  function commitSave(questionId: string, merged: AnswerValue) {
+    delete pendingSaves.current[questionId];
+    unsaved.current[questionId] = merged;
+    failed.current.delete(questionId);
+    setSaveState((prev) => (prev === "error" ? prev : "saving"));
+    return sendAnswer(questionId);
+  }
+
+  // Sends everything not yet confirmed (including text still waiting on
+  // its debounce timer) and resolves to whether the server now has it all.
+  // Called before submitting so grading never runs ahead of the last save.
+  const flushPendingSaves = useCallback(async () => {
     for (const [questionId, timer] of Object.entries(debounceTimers.current)) {
       clearTimeout(timer);
       const merged = pendingSaves.current[questionId];
-      if (merged) pending.push(commitSave(questionId, merged));
+      if (merged) void commitSave(questionId, merged);
     }
     debounceTimers.current = {};
-    return Promise.all(pending);
+    failed.current.clear();
+    await Promise.all(Object.keys(unsaved.current).map((questionId) => sendAnswer(questionId)));
+    return Object.keys(unsaved.current).length === 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Retry answers that could not be sent: on a timer, and the moment the
+  // connection comes back.
+  useEffect(() => {
+    function retry() {
+      for (const questionId of [...failed.current]) void sendAnswer(questionId);
+    }
+    const i = setInterval(retry, SAVE_RETRY_INTERVAL_MS);
+    window.addEventListener("online", retry);
+    // Closing the tab with an unsent answer would lose it: ask first.
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (Object.keys(unsaved.current).length > 0 && !isSubmitting.current) e.preventDefault();
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      clearInterval(i);
+      window.removeEventListener("online", retry);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -599,6 +748,29 @@ export function ExamRunner({
             style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }}
           />
         </div>
+        <p
+          role="status"
+          className={cn(
+            "mt-1.5 flex items-center gap-1 text-[11px] font-semibold",
+            saveState === "error" ? "text-danger" : "text-muted-foreground"
+          )}
+        >
+          {saveState === "saved" && (
+            <>
+              <Check className="h-3 w-3" /> All answers saved
+            </>
+          )}
+          {saveState === "saving" && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+            </>
+          )}
+          {saveState === "error" && (
+            <>
+              <AlertTriangle className="h-3 w-3" /> Not saved yet. Retrying — keep this page open.
+            </>
+          )}
+        </p>
       </div>
 
       {/* Question navigator — a horizontally scrollable strip of numbered
@@ -761,9 +933,11 @@ export function ExamRunner({
                 {q.type === "NUMERICAL" && (
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
+                      // type="text", not "number": a number input refuses
+                      // Bangla digits, which grading accepts.
+                      type="text"
                       inputMode="decimal"
-                      step="any"
+                      autoComplete="off"
                       value={current.textAnswer}
                       disabled={isLocked}
                       onChange={(e) => updateAnswer(q.id, { textAnswer: e.target.value }, { debounce: true })}
@@ -792,6 +966,15 @@ export function ExamRunner({
         })}
       </StaggerContainer>
 
+      {submitError && (
+        <div
+          role="alert"
+          className="mt-6 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" /> {submitError}
+        </div>
+      )}
+
       {confirmingSubmit ? (
         <div className="comic-panel !bg-xp/10 mt-6 p-5 text-center">
           <p className="font-display text-base font-bold text-foreground">
@@ -816,7 +999,7 @@ export function ExamRunner({
               onClick={() => doSubmit()}
               className="min-h-[48px]"
             >
-              {submitting ? "Submitting..." : "Yes, submit now"}
+              {submitting ? "Submitting..." : submitError ? "Try again" : "Yes, submit now"}
             </Button>
             <Button
               type="button"

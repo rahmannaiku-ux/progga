@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { AttemptResults } from "@/components/course/attempt-results";
 import { ExamAnalysis } from "@/components/course/exam-analysis";
 import { getAssessmentAnalytics } from "@/server/services/exam-analytics";
+import { canRevealAnswers } from "@/lib/exam-attempt";
 import { buildAttemptBreakdown } from "@/server/services/attempt-breakdown";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { examCourseTitle } from "@/lib/exam-display";
@@ -25,7 +26,7 @@ export default async function ResultPage({ params }: { params: { resultId: strin
           course: { select: { title: true } },
           chapter: COURSE_TITLE,
           lesson: { select: { group: { select: { chapter: COURSE_TITLE } } } },
-          questionLinks: { include: { question: { include: { options: true } } } },
+          questionLinks: { include: { question: { include: { options: { orderBy: { order: "asc" } } } } } },
         },
       },
     },
@@ -35,10 +36,22 @@ export default async function ResultPage({ params }: { params: { resultId: strin
   const { assessment } = attempt;
   if (attempt.status === "IN_PROGRESS") redirect(`/exams/${assessment.id}`);
 
-  const [answers, attemptsUsed] = await Promise.all([
+  const [answers, ownAttempts] = await Promise.all([
     db.questionAnswer.findMany({ where: { attemptId: attempt.id } }),
-    db.assessmentAttempt.count({ where: { assessmentId: assessment.id, userId: user.id } }),
+    db.assessmentAttempt.findMany({
+      where: { assessmentId: assessment.id, userId: user.id },
+      select: { isPassed: true },
+    }),
   ]);
+  const attemptsRemaining = Math.max(0, assessment.maxAttempts - ownAttempts.length);
+  const showBreakdown = canRevealAnswers({
+    showResultsInstantly: assessment.showResultsInstantly,
+    revealAnswersAfterClose: assessment.revealAnswersAfterClose,
+    isLiveExam: assessment.isLiveExam,
+    accessClosesAt: assessment.accessClosesAt,
+    attemptsRemaining,
+    hasPassed: ownAttempts.some((a) => a.isPassed),
+  });
   const questionsById = new Map(assessment.questionLinks.map((l) => [l.questionId, l.question]));
   const breakdown = buildAttemptBreakdown(attempt.selectedQuestionIds, answers, questionsById);
   const courseTitle = examCourseTitle(assessment);
@@ -80,9 +93,10 @@ export default async function ResultPage({ params }: { params: { resultId: strin
           isPassed={attempt.isPassed}
           passPercentage={assessment.passPercentage}
           wasDisqualified={attempt.wasDisqualified}
-          showBreakdown={assessment.showResultsInstantly}
+          showBreakdown={showBreakdown}
+          answersHiddenUntilClose={assessment.showResultsInstantly && !showBreakdown}
           breakdown={breakdown}
-          attemptsRemaining={Math.max(0, assessment.maxAttempts - attemptsUsed)}
+          attemptsRemaining={attemptsRemaining}
           timeTakenSeconds={timeTakenSeconds}
         />
       </StaggerItem>

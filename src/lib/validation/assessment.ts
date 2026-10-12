@@ -16,6 +16,10 @@ const assessmentFieldsSchema = z.object({
   negativeMarkingRatio: z.coerce.number().min(0).max(1).default(0),
   fullscreenRequired: z.coerce.boolean().default(false),
   tabSwitchDetection: z.coerce.boolean().default(false),
+  // 0 = leaving the page is only recorded, never ends the attempt.
+  tabSwitchLimit: z.coerce.number().int().min(0).max(20).default(3),
+  shuffleOptions: z.coerce.boolean().default(false),
+  revealAnswersAfterClose: z.coerce.boolean().default(false),
   // PHASE 20 — Exam Integrity & Security settings. All additive, all
   // default false/WARNING so an existing exam's saved settings (and
   // any create/update call that omits these fields entirely) behave
@@ -148,4 +152,33 @@ export function validateQuestionBusinessRules(data: QuestionBankItemInput): stri
  */
 export const questionCreateSchema = questionBankItemSchema.extend({
   assessmentId: z.string().min(1),
+});
+
+/**
+ * Editing a question that already exists. The type can't change (answers
+ * already given would stop making sense), and each option carries its id
+ * so an existing option is updated in place rather than replaced: recorded
+ * answers point at option ids.
+ */
+export const questionUpdateSchema = z.object({
+  questionId: z.string().min(1),
+  assessmentId: z.string().min(1),
+  prompt: z.string().min(3, "Give the question a prompt"),
+  points: z.coerce.number().int().min(1).max(100),
+  explanation: z.string().max(1000).optional().or(z.literal("")),
+  topic: z.string().max(60).optional().or(z.literal("")),
+  difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
+  options: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        label: z.string().trim().min(1, "An option can't be empty").max(500),
+        isCorrect: z.boolean(),
+      })
+    )
+    .max(20)
+    .default([]),
+  numericAnswer: z.coerce.number().optional(),
+  numericTolerance: z.coerce.number().min(0).default(0),
+  numericUnit: z.string().max(20).optional().or(z.literal("")),
 });

@@ -12,6 +12,22 @@ export function isAutoGradable(type: QuestionType): boolean {
   return AUTO_GRADED_TYPES.includes(type);
 }
 
+const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
+
+/**
+ * Makes a typed answer comparable: Bangla digits become 0-9, runs of
+ * whitespace collapse to one space, and case is ignored. Students type
+ * "১২" as readily as "12", and a stray double space is not a wrong answer.
+ */
+export function normalizeTypedAnswer(value: string | null | undefined): string {
+  return (value ?? "")
+    .normalize("NFC")
+    .replace(/[০-৯]/g, (d) => String(BANGLA_DIGITS.indexOf(d)))
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export type GradableQuestion = {
   type: QuestionType;
   points: number;
@@ -57,16 +73,16 @@ export function gradeAutoGradableQuestion(
 
   let isCorrect: boolean;
   if (question.type === "FILL_IN_BLANK") {
-    const acceptable = question.options.map((o) => o.label.trim().toLowerCase());
-    const given = (answer?.textAnswer ?? "").trim().toLowerCase();
+    const acceptable = question.options.map((o) => normalizeTypedAnswer(o.label));
+    const given = normalizeTypedAnswer(answer?.textAnswer);
     isCorrect = given.length > 0 && acceptable.includes(given);
   } else if (question.type === "NUMERICAL") {
-    const given = answer?.textAnswer?.trim();
+    // Bangla digits ("১২.৫") are read as numbers too.
+    const given = normalizeTypedAnswer(answer?.textAnswer).replace(/\s/g, "");
     const givenNum = given ? Number(given) : NaN;
     const target = question.numericAnswer;
     const tolerance = question.numericTolerance ?? 0;
     isCorrect =
-      given !== undefined &&
       given !== "" &&
       !Number.isNaN(givenNum) &&
       target != null &&

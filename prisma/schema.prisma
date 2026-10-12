@@ -165,6 +165,10 @@ enum ExamIntegrityEventType {
   TIME_ANOMALY
 
   DISQUALIFIED
+
+  // Something a mentor did to the attempt (more time, reopened,
+  // disqualification cleared). metadata.note says what.
+  MENTOR_ACTION
 }
 
 enum AssignmentSubmissionStatus {
@@ -1142,6 +1146,14 @@ model Assessment {
   negativeMarkingRatio  Float          @default(0) // e.g. 0.25 = -1/4 per wrong answer
   fullscreenRequired    Boolean        @default(false)
   tabSwitchDetection    Boolean        @default(false)
+  // How many times a student may leave the exam page before the attempt
+  // is ended and marked disqualified. 0 = only record it, never end it.
+  tabSwitchLimit        Int            @default(3)
+  // Each student sees a choice question's options in their own order.
+  shuffleOptions        Boolean        @default(false)
+  // Keep the correct answers hidden while the exam can still be taken
+  // (see canRevealAnswers in lib/exam-attempt.ts).
+  revealAnswersAfterClose Boolean      @default(false)
   maxAttempts           Int            @default(1)
 
   // --- Exam Integrity & Security settings (all additive, all default
@@ -1297,6 +1309,8 @@ model AssessmentAttempt {
   startedAt      DateTime      @default(now())
   submittedAt    DateTime?
   timeSpentSec   Int?
+  // Time a mentor added on top of the exam's own limit, for this attempt only.
+  extraTimeSeconds Int         @default(0)
   tabSwitchCount Int           @default(0)
   wasDisqualified Boolean      @default(false)
   questionOrder  Json? // ordered array of Question IDs selected for this attempt

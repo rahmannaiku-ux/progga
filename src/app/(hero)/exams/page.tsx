@@ -1,3 +1,4 @@
+import { closeExpiredAttempts } from "@/server/services/attempt-grading";
 import { GraduationCap } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
@@ -16,6 +17,10 @@ const COURSE_TITLE = { select: { module: { select: { course: { select: { title: 
  */
 export default async function ExamsPage() {
   const user = await getCurrentUser();
+
+  // An exam whose timer ran out while the student was away shows its
+  // result here, not a "Continue" button into an exam that is over.
+  await closeExpiredAttempts({ userId: user.id });
 
   const enrollments = await db.enrollment.findMany({
     where: { userId: user.id },

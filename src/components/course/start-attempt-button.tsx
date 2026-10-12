@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { startAttempt } from "@/server/actions/attempt-actions";
-import { AttemptRedirectSignal } from "@/server/actions/attempt-redirect-signal";
 
 export function StartAttemptButton({
   assessmentId,
@@ -26,20 +25,22 @@ export function StartAttemptButton({
         onClick={() => {
           setError(null);
           startTransition(async () => {
+            // startAttempt returns where to go rather than redirecting
+            // on the server: a redirect() inside a Server Action hits a
+            // known Next.js 14 crash, and a thrown error loses its message
+            // in production.
             try {
-              await startAttempt(assessmentId);
-            } catch (e) {
-              // startAttempt throws this instead of calling redirect()
-              // server-side, to avoid a known Next.js 14 crash forwarding
-              // redirects across the Server Action boundary — see the
-              // comment on AttemptRedirectSignal. Navigate here instead.
-              if (e instanceof AttemptRedirectSignal) {
-                router.push(e.path);
+              const res = await startAttempt(assessmentId);
+              if (!res.ok) {
+                setError(res.error);
                 return;
               }
+              router.push(res.path);
+              router.refresh();
+            } catch (e) {
               const digest = (e as { digest?: string })?.digest;
               if (digest?.startsWith("NEXT_REDIRECT")) throw e;
-              setError(e instanceof Error ? e.message : "Something went wrong.");
+              setError("Couldn't start the exam. Check your connection and try again.");
             }
           });
         }}
