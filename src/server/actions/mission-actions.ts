@@ -78,6 +78,7 @@ export async function createCourse(formData: FormData) {
     isFree: formData.get("isFree") === "on",
     priceCents: formData.get("priceCents") || 0,
     thumbnailUrl: formData.get("thumbnailUrl") as string | null,
+    introVideoUrl: formData.get("introVideoUrl") as string | null,
   });
 
   // Optional co-teachers picked at creation time (see the multi-select
@@ -121,6 +122,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const user = await requireMentorUser(MENTOR_ONLY);
   const routine = formData.get("routineImageUrl");
   const thumbnail = formData.get("thumbnailUrl");
+  const introVideo = formData.get("introVideoUrl");
 
   // Only fields the form actually carries are changed; a blank picture removes it.
   await updateCourseCore(user, courseId, {
@@ -133,6 +135,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
     priceCents: formData.get("priceCents") || undefined,
     routineImageUrl: typeof routine === "string" ? routine : undefined,
     thumbnailUrl: typeof thumbnail === "string" ? thumbnail : undefined,
+    introVideoUrl: typeof introVideo === "string" ? introVideo : undefined,
   });
 }
 

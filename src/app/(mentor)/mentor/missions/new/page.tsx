@@ -60,6 +60,23 @@ export default async function NewMissionPage() {
         />
 
         <div>
+          <label htmlFor="introVideoUrl" className="mb-1.5 block text-sm font-medium text-foreground">
+            Intro video <span className="text-muted-foreground">(optional)</span>
+          </label>
+          <input
+            id="introVideoUrl"
+            name="introVideoUrl"
+            type="url"
+            inputMode="url"
+            placeholder="https://youtu.be/..."
+            className="h-11 w-full rounded-xl border border-border/60 bg-surface px-4 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            A YouTube link. Heroes can watch it on the mission page before they enroll.
+          </p>
+        </div>
+
+        <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">
             Description
           </label>

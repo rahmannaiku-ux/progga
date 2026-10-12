@@ -31,6 +31,7 @@ export default async function MissionBuilderPage({
       description: true,
       routineImageUrl: true,
       thumbnailUrl: true,
+      trailerYoutubeId: true,
       slug: true,
       status: true,
       level: true,
@@ -178,6 +179,24 @@ export default async function MissionBuilderPage({
             initialUrl={course.thumbnailUrl}
             maxSide={1200}
           />
+          <div>
+            <label htmlFor="introVideoUrl" className="mb-1.5 block text-xs font-medium text-foreground">
+              Intro video (YouTube link)
+            </label>
+            <input
+              id="introVideoUrl"
+              name="introVideoUrl"
+              type="url"
+              inputMode="url"
+              defaultValue={course.trailerYoutubeId ? `https://youtu.be/${course.trailerYoutubeId}` : ""}
+              placeholder="https://youtu.be/..."
+              className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Shown on the mission's public page so heroes can watch before they enroll. Leave it empty to show no
+              video.
+            </p>
+          </div>
           <ImageUploadField
             name="routineImageUrl"
             context="COURSE_ROUTINE"

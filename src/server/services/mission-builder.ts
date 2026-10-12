@@ -146,7 +146,21 @@ export type CourseCreateInput = {
   isFree: boolean;
   priceCents?: unknown;
   thumbnailUrl?: string | null;
+  /** YouTube link (or id) of the mission's intro video. Blank = none. */
+  introVideoUrl?: string | null;
 };
+
+/**
+ * Turns the intro-video field into a YouTube id: null for a blank field,
+ * and an error the mentor can read for a link that isn't a YouTube video.
+ */
+function introVideoId(value: string | null | undefined): string | null {
+  const link = (value ?? "").trim();
+  if (!link) return null;
+  const id = extractYoutubeId(link);
+  if (!id) throw new Error("The intro video doesn't look like a valid YouTube link.");
+  return id;
+}
 
 /** Creates a DRAFT Mission with `actor` as its main mentor. Returns the new id. */
 export async function createCourseCore(actor: BuilderActor, input: CourseCreateInput) {
@@ -162,6 +176,7 @@ export async function createCourseCore(actor: BuilderActor, input: CourseCreateI
   if (!parsed.success) throw new Error(firstError(parsed, "Invalid mission details"));
   const data = parsed.data;
   const thumbnailUrl = await checkedImageUrl(input.thumbnailUrl, "COURSE_THUMBNAIL", actor, null);
+  const trailerYoutubeId = introVideoId(input.introVideoUrl);
 
   const baseSlug = slugify(data.title) || "mission";
   let slug = baseSlug;
@@ -181,6 +196,7 @@ export async function createCourseCore(actor: BuilderActor, input: CourseCreateI
       priceCents: data.isFree ? 0 : data.priceCents,
       categoryId: data.categoryId || null,
       thumbnailUrl,
+      trailerYoutubeId,
       teacherId: actor.id,
       status: "DRAFT",
     },
@@ -209,6 +225,8 @@ export type CourseUpdateInput = {
   routineImageUrl?: string;
   /** Blank removes the picture. */
   thumbnailUrl?: string;
+  /** YouTube link (or id) of the intro video. Blank removes it. */
+  introVideoUrl?: string;
 };
 
 export async function updateCourseCore(actor: BuilderActor, courseId: string, input: CourseUpdateInput) {
@@ -241,10 +259,13 @@ export async function updateCourseCore(actor: BuilderActor, courseId: string, in
       ? await checkedImageUrl(input.thumbnailUrl, "COURSE_THUMBNAIL", actor, current.thumbnailUrl)
       : undefined;
 
+  const trailerYoutubeId = typeof input.introVideoUrl === "string" ? introVideoId(input.introVideoUrl) : undefined;
+
   await db.course.update({
     where: { id: courseId },
     data: {
       ...rest,
+      ...(trailerYoutubeId !== undefined ? { trailerYoutubeId } : {}),
       ...(subtitle !== undefined ? { subtitle: subtitle || null } : {}),
       ...(categoryId !== undefined ? { categoryId: categoryId || null } : {}),
       ...(routineImageUrl !== undefined ? { routineImageUrl } : {}),

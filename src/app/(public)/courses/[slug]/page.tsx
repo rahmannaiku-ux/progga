@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { BarChart3, Clock, Star, Globe2, Zap, Tag } from "lucide-react";
+import { BarChart3, Clock, Layers, Star, Globe2, Users, Zap, Tag } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { getCurrentUserOptional } from "@/lib/auth/current-user";
 import { computeDiscountedPriceCents } from "@/lib/payments/discount";
@@ -9,6 +9,8 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { mediaSrc } from "@/lib/media-url";
 import { PurchasePanel } from "@/components/course/purchase-panel";
+import { CourseHeroMedia } from "@/components/course/course-hero-media";
+import { MobileEnrollBar } from "@/components/course/mobile-enroll-bar";
 import { CourseTeachersShowcase, type CourseTeacherEntry } from "@/components/course/course-teachers-showcase";
 
 const levelLabel: Record<string, string> = {
@@ -38,6 +40,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
         subtitle: true,
         description: true,
         thumbnailUrl: true,
+        trailerYoutubeId: true,
         level: true,
         language: true,
         status: true,
@@ -114,22 +117,36 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
 
   const thumbnail = mediaSrc(course.thumbnailUrl, 1200);
 
+  // The headline numbers under the hero. Only what the mission really has.
+  const enrolled = course._count.enrollments;
+  const stats = [
+    { icon: Users, tint: "bg-xp/25 text-xp-ink", value: enrolled.toLocaleString("en-US"), label: enrolled === 1 ? "hero enrolled" : "heroes enrolled" },
+    { icon: BarChart3, tint: "bg-accent/15 text-accent", value: levelLabel[course.level] ?? course.level, label: "difficulty" },
+    ...(hours > 0 ? [{ icon: Clock, tint: "bg-primary/10 text-primary", value: `${hours}h`, label: "of patrols" }] : []),
+    ...(course._count.modules > 0
+      ? [{ icon: Layers, tint: "bg-primary/10 text-primary", value: String(course._count.modules), label: course._count.modules === 1 ? "operation" : "operations" }]
+      : []),
+    ...(typeof rating === "number"
+      ? [{ icon: Star, tint: "bg-xp/25 text-xp-ink", value: rating.toFixed(1), label: `${reviewCount} review${reviewCount === 1 ? "" : "s"}` }]
+      : []),
+    ...(course.xpReward > 0
+      ? [{ icon: Zap, tint: "bg-xp/25 text-xp-ink", value: `${course.xpReward} XP`, label: "on completion" }]
+      : []),
+  ].slice(0, 4);
+
+  const mentorName = `${course.teacher.firstName} ${course.teacher.lastName}`.trim();
+  const alreadyEnrolled = Boolean(enrollment);
+  const showEnrollBar = !alreadyEnrolled && pendingPayment?.status !== "AWAITING_VERIFICATION";
+
   return (
-    <div className="container py-10 sm:py-14">
+    <div className={`container py-6 sm:py-14 ${showEnrollBar ? "pb-24 lg:pb-14" : ""}`}>
       <StaggerContainer className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           {/* Hero */}
           <StaggerItem className="comic-panel halftone-dots relative overflow-hidden bg-primary p-0">
             <DoodleStar className="pointer-events-none absolute -left-2 top-4 hidden h-10 w-10 -rotate-12 opacity-70 sm:block" />
             <DoodleSparkle className="pointer-events-none absolute right-8 top-6 hidden h-8 w-8 opacity-70 sm:block" />
-            {thumbnail && (
-              // eslint-disable-next-line @next/next/no-img-element -- mentor-uploaded poster, dimensions vary per upload
-              <img
-                src={thumbnail}
-                alt={course.title}
-                className="relative block h-auto w-full border-b-2 border-border"
-              />
-            )}
+            <CourseHeroMedia thumbnail={thumbnail} videoId={course.trailerYoutubeId} title={course.title} />
             <div className="relative p-6 sm:p-8">
               {course.category && (
                 <span className="w-fit rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-bold text-primary-foreground">
@@ -142,34 +159,30 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
               {course.subtitle && (
                 <p className="mt-2 max-w-xl text-sm text-primary-foreground/85">{course.subtitle}</p>
               )}
-              <p className="mt-3 text-xs text-primary-foreground/70">
-                by {course.teacher.firstName} {course.teacher.lastName}
-              </p>
+              {mentorName && <p className="mt-3 text-xs text-primary-foreground/70">by {mentorName}</p>}
             </div>
           </StaggerItem>
 
-          {/* Quick facts */}
-          <StaggerItem className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            <Badge variant="accent">
-              <BarChart3 className="mr-1 h-3 w-3" />
-              {levelLabel[course.level] ?? course.level}
-            </Badge>
-            {hours > 0 && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" /> {hours}h · {course._count.modules} operations
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Globe2 className="h-4 w-4" /> {course.language.toUpperCase()}
-            </span>
-            {typeof rating === "number" && (
-              <span className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-xp text-xp" /> {rating.toFixed(1)} ({reviewCount})
-              </span>
-            )}
-            <span className="flex items-center gap-1 font-semibold text-xp-ink">
-              <Zap className="h-4 w-4" /> {course.xpReward} XP on completion
-            </span>
+          {/* Headline numbers */}
+          <StaggerItem>
+            <dl className="grid grid-cols-2 gap-3 sm:flex">
+              {stats.map((stat) => (
+                <div key={stat.label} className="comic-panel flex items-center gap-3 bg-surface p-3 last:odd:col-span-2 sm:min-w-0 sm:flex-1">
+                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${stat.tint}`}>
+                    <stat.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <dd className="truncate font-display text-base font-extrabold leading-tight text-foreground">
+                      {stat.value}
+                    </dd>
+                    <dt className="truncate text-[11px] text-muted-foreground">{stat.label}</dt>
+                  </div>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Globe2 className="h-3.5 w-3.5" aria-hidden="true" /> Taught in {course.language.toUpperCase()}
+            </p>
           </StaggerItem>
 
           {/* Description */}
@@ -187,7 +200,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
 
         {/* Purchase panel */}
         <StaggerItem>
-          <div className="comic-panel-bold sticky top-6 space-y-5 bg-surface p-6">
+          <div id="enroll" className="comic-panel-bold sticky top-6 scroll-mt-6 space-y-5 bg-surface p-6">
             {!course.isFree && price.isDiscounted && (
               <Badge variant="accent" className="w-fit">
                 <Tag className="mr-1 h-3 w-3" />
@@ -199,7 +212,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
               currency={course.currency}
               basePrice={price}
               isFree={course.isFree}
-              alreadyEnrolled={Boolean(enrollment)}
+              alreadyEnrolled={alreadyEnrolled}
               pendingPaymentId={pendingPayment?.id ?? null}
               pendingPaymentAwaiting={pendingPayment?.status === "AWAITING_VERIFICATION"}
               missionHref={`/missions/${course.id}`}
@@ -212,6 +225,17 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
           </div>
         </StaggerItem>
       </StaggerContainer>
+
+      {showEnrollBar && (
+        <MobileEnrollBar
+          targetId="enroll"
+          priceLabel={course.isFree ? "Free" : formatMoney(price.finalCents, course.currency)}
+          originalPriceLabel={
+            !course.isFree && price.isDiscounted ? formatMoney(price.originalCents, course.currency) : null
+          }
+          cta={course.isFree ? "Enroll free" : "Enroll now"}
+        />
+      )}
     </div>
   );
 }

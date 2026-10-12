@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 — Mission intro video
+- A mentor can paste a YouTube link as a mission's intro video (new mission form and Builder → details), saved in
+  the existing `Course.trailerYoutubeId` column. No migration.
+- Public mission page: the thumbnail gets a play button when there is an intro video and plays it in place (YouTube's
+  player loads only when pressed); without a video the thumbnail is unchanged. The quick facts became stat tiles, and
+  on phones a bar with the price and an Enroll button stays at the bottom until the purchase panel is on screen.
+
 ## 2026-10-12 — Exams: correct scores, no lost work, fairer rules, mentor tools
 Migration `20261012000000_exam_fairness_and_extra_time` adds `Assessment.tabSwitchLimit` (default 3),
 `shuffleOptions`, `revealAnswersAfterClose`, `AssessmentAttempt.extraTimeSeconds` and the `MENTOR_ACTION`
