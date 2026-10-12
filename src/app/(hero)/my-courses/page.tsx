@@ -123,7 +123,7 @@ export default async function MyCoursesPage({
                   <CourseThumb
                     src={mediaSrc(w.course.thumbnailUrl, 400)}
                     title={w.course.title}
-                    className="aspect-video w-24 shrink-0 sm:w-32"
+                    className="w-24 shrink-0 sm:w-32"
                     icon={<Heart className="relative h-6 w-6 text-primary-foreground" />}
                   />
                   <div className="min-w-0 flex-1">
@@ -147,7 +147,7 @@ export default async function MyCoursesPage({
                 <CourseThumb
                   src={mediaSrc(e.course.thumbnailUrl, 600)}
                   title={e.course.title}
-                  className="aspect-video w-full sm:w-44"
+                  className="w-full shrink-0 sm:w-44"
                   icon={<PlayCircle className="relative h-8 w-8 text-primary-foreground" />}
                 />
 
@@ -220,13 +220,14 @@ function CourseThumb({
     <div
       className={cn(
         "relative flex items-center justify-center overflow-hidden rounded-xl border-2 border-border",
-        src ? "bg-muted" : "bg-primary",
+        // An uploaded thumbnail keeps its own shape; only the placeholder needs a fixed one.
+        src ? "bg-muted" : "aspect-video bg-primary",
         className
       )}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- served by /api/files or Drive, sizes vary per upload
-        <img src={src} alt={title} loading="lazy" className="h-full w-full object-contain" />
+        <img src={src} alt={title} loading="lazy" className="block h-auto w-full" />
       ) : (
         <>
           <div className="halftone-dots pointer-events-none absolute inset-0 opacity-25" />

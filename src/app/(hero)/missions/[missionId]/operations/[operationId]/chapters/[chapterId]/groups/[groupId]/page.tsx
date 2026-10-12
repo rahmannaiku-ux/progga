@@ -110,12 +110,12 @@ export default async function LessonGroupLessonsPage({
                 key={lesson.id}
                 className="comic-panel relative flex items-center gap-3 bg-surface p-2.5 transition-colors hover:border-primary/50 sm:gap-4 sm:p-3"
               >
-                <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-xl border border-border/40 bg-muted sm:w-44">
+                <div className={cn("relative w-32 shrink-0 overflow-hidden rounded-xl border border-border/40 bg-muted sm:w-44", !uploadedThumb && "aspect-video")}>
                   {thumb ? (
                     // Plain <img>: Drive thumbnails come from changing Google hosts, which next/image can't allow-list.
-                    // Uploaded thumbnails are shown whole; YouTube's hqdefault has black bars baked in, so that one is cropped.
+                    // Uploaded thumbnails keep their own shape; YouTube's hqdefault has black bars baked in, so that one is cropped to 16:9.
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className={cn("h-full w-full", uploadedThumb ? "object-contain" : "object-cover")} />
+                    <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className={uploadedThumb ? "block h-auto w-full" : "h-full w-full object-cover"} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-primary/10">
                       <PlayCircle className="h-8 w-8 text-primary" />

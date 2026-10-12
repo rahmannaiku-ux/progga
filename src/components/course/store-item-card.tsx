@@ -48,8 +48,9 @@ export function StoreItemCard({
   return (
     <div className="comic-panel flex flex-col bg-surface p-4">
       {item.thumbnailUrl ? (
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
-          <Image src={item.thumbnailUrl} alt={item.title} fill unoptimized={isProxiedUpload(item.thumbnailUrl)} className="object-contain" />
+        <div className="w-full overflow-hidden rounded-xl bg-muted">
+          {/* width/height 0 + h-auto: the image is as wide as the card and keeps its own shape. */}
+          <Image src={item.thumbnailUrl} alt={item.title} width={0} height={0} sizes="(max-width: 640px) 100vw, 400px" unoptimized={isProxiedUpload(item.thumbnailUrl)} className="block h-auto w-full" />
         </div>
       ) : (
         <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-accent/10">

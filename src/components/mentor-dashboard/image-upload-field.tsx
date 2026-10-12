@@ -95,9 +95,9 @@ export function ImageUploadField({
       <input type="hidden" name={name} value={url} />
       <div className="flex items-center gap-3">
         {preview ? (
-          <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted">
+          <div className="relative h-16 max-w-[10rem] shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={preview} alt="" className="h-full w-full object-contain" />
+            <img src={preview} alt="" className="block h-full w-auto max-w-full object-contain" />
           </div>
         ) : null}
         <label

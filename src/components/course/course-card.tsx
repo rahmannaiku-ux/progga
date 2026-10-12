@@ -78,13 +78,13 @@ export function CourseCard({
       )}
 
       {thumbnail ? (
-        <div className="relative aspect-video w-full overflow-hidden border-b-2 border-border bg-muted">
+        <div className="relative w-full overflow-hidden border-b-2 border-border bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element -- served by /api/files or Drive, sizes vary per upload */}
           <img
             src={thumbnail}
             alt={course.title}
             loading="lazy"
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+            className="block h-auto w-full transition-transform duration-300 group-hover:scale-[1.03]"
           />
         </div>
       ) : (
