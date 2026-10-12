@@ -9,6 +9,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { HeroStatsBadge } from "@/components/gamification/hero-stats-badge";
 import { MobileHeroHud } from "@/components/gamification/mobile-hero-hud";
 import { NotificationBell } from "@/components/shared/notification-bell";
+import { NotificationWatcher } from "@/components/shared/notification-watcher";
 import { getNotificationFeed } from "@/server/services/notification-feed";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import { isMaintenanceBlocking } from "@/lib/maintenance";
@@ -127,6 +128,7 @@ export default async function HeroLayout({
             the bottom nav is gone. */}
         <main id="main-content" tabIndex={-1} className="relative flex-1 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 lg:pb-6 print:p-0">
           {/* The one place the anti-DevTools monitor is mounted for the app. */}
+          <NotificationWatcher initialUnread={notificationFeed.unreadCount} />
           <AntiDevToolsProvider enabled={devtoolsGuard}>
             <PageTransition>{children}</PageTransition>
           </AntiDevToolsProvider>

@@ -26,6 +26,10 @@ Migration `20261013000000_proggaa_community` (additive only): 12 new tables, 5 e
   `src/server/actions/community-actions.ts`, `message-actions.ts` and `community-moderation-actions.ts`.
 - Tests: `src/lib/community/rules.test.ts` (always runs) and `src/server/actions/community.integration.test.ts`, which
   runs the real actions against Postgres and is skipped unless `COMMUNITY_TEST_DATABASE_URL` points at a local database.
+- **Message notifications and pop-ups** (migration `20261013010000_community_message_notification`, one new
+  `NotificationType`): a direct message notifies its recipient, one unread notification per chat, cleared when they
+  open it. `NotificationWatcher` in the student layout checks every 25s while the tab is visible and pops up anything
+  new (of any type), then refreshes the bell.
 - The Patrol Q&A threads (`DiscussionPost`) are unchanged. The Community respects the existing `community` feature
   switch.
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { conversationPair, conversationSide, messageInputSchema } from "@/lib/community/rules";
+import { conversationPair, conversationSide, displayName, messageInputSchema } from "@/lib/community/rules";
 import { getConversation, type MessageDTO } from "@/server/services/community";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { requireActiveUser } from "./require-user";
@@ -105,6 +105,12 @@ export async function sendMessage(conversationId: string, body: string): Promise
       data: { lastMessageAt: now, ...(side === "A" ? { userALastReadAt: now } : { userBLastReadAt: now }) },
     }),
   ]);
+  await notifyNewMessage({
+    recipientId: side === "A" ? conversation.userBId : conversation.userAId,
+    senderName: displayName(user),
+    conversationId: conversation.id,
+    body: parsed.data.body,
+  });
   revalidatePath("/community/messages");
   return {
     ok: true,
@@ -134,11 +140,43 @@ export async function loadOlderMessages(
   return { ok: true, messages: conversation.messages, hasMore: conversation.hasMore };
 }
 
+/**
+ * Tells the other person a message arrived, through the normal
+ * notifications (bell, /notifications and the pop-up). One unread
+ * notification per conversation: further messages before they look update
+ * that one instead of stacking a new one per message.
+ */
+async function notifyNewMessage(input: { recipientId: string; senderName: string; conversationId: string; body: string }) {
+  const linkUrl = `/community/messages/${input.conversationId}`;
+  const data = {
+    title: `New message from ${input.senderName}`,
+    body: input.body.length > 140 ? `${input.body.slice(0, 140)}…` : input.body,
+  };
+  try {
+    const unread = await db.notification.findFirst({
+      where: { userId: input.recipientId, type: "COMMUNITY_MESSAGE", linkUrl, isRead: false },
+      select: { id: true },
+    });
+    if (unread) {
+      await db.notification.update({ where: { id: unread.id }, data: { ...data, createdAt: new Date() } });
+    } else {
+      await db.notification.create({ data: { userId: input.recipientId, type: "COMMUNITY_MESSAGE", linkUrl, ...data } });
+    }
+  } catch {
+    // The message itself was sent; a failed notification must not undo that.
+  }
+}
+
 async function markRead(conversationId: string, userId: string) {
   const now = new Date();
   // Each updateMany only matches if the caller is that side, so one of the two does nothing.
   await db.$transaction([
     db.conversation.updateMany({ where: { id: conversationId, userAId: userId }, data: { userALastReadAt: now } }),
     db.conversation.updateMany({ where: { id: conversationId, userBId: userId }, data: { userBLastReadAt: now } }),
+    // Opening the chat also clears its "new message" notification.
+    db.notification.updateMany({
+      where: { userId, type: "COMMUNITY_MESSAGE", linkUrl: `/community/messages/${conversationId}`, isRead: false },
+      data: { isRead: true },
+    }),
   ]);
 }

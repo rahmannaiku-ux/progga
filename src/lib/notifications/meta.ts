@@ -12,6 +12,7 @@ import {
   Heart,
   UserPlus,
   ShieldAlert,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import type { NotificationType } from "@prisma/client";
@@ -44,6 +45,7 @@ export const NOTIFICATION_TYPE_META: Record<
   COMMUNITY_FOLLOW: { icon: UserPlus, color: "text-accent", tag: "Community" },
   COMMUNITY_ANSWER: { icon: Award, color: "text-xp", tag: "Community" },
   COMMUNITY_MODERATION: { icon: ShieldAlert, color: "text-danger", tag: "Moderation" },
+  COMMUNITY_MESSAGE: { icon: MessageCircle, color: "text-accent", tag: "Message" },
 };
 
 export function notificationTimeAgo(date: Date) {

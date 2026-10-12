@@ -470,14 +470,30 @@ describe.skipIf(!isLocal)("Proggaa Community (integration)", () => {
       expect((await messages.sendMessage(cid, "   ")).ok).toBe(false);
       expect((await messages.sendMessage(cid, "a".repeat(2001))).ok).toBe(false);
 
+      // bo is notified once; a second message updates that notification instead of adding one.
+      const link = `/community/messages/${cid}`;
+      await messages.sendMessage(cid, "second message");
+      const notes = await db.notification.findMany({ where: { userId: users.bo.id, type: "COMMUNITY_MESSAGE", linkUrl: link } });
+      expect(notes).toHaveLength(1);
+      expect(notes[0]?.isRead).toBe(false);
+      expect(notes[0]?.body).toBe("second message");
+      expect(notes[0]?.title).toContain("ana");
+      expect(await db.notification.count({ where: { userId: users.ana.id, type: "COMMUNITY_MESSAGE" } })).toBe(0);
+
       // bo sees it as unread, then reads it.
       expect(await service.countUnreadConversations(users.bo.id)).toBe(1);
-      expect((await service.listConversations(users.bo.id))[0]?.unread).toBe(1);
+      expect((await service.listConversations(users.bo.id))[0]?.unread).toBe(2);
       as("bo");
       const polled = await messages.pollConversation(cid);
-      expect(polled.ok && polled.messages).toHaveLength(1);
+      expect(polled.ok && polled.messages).toHaveLength(2);
       expect(polled.ok && polled.messages[0]?.fromMe).toBe(false);
       expect(await service.countUnreadConversations(users.bo.id)).toBe(0);
+      // Opening the chat cleared its notification; the next message raises a fresh one.
+      expect(await db.notification.count({ where: { userId: users.bo.id, linkUrl: link, isRead: false } })).toBe(0);
+      as("ana");
+      await messages.sendMessage(cid, "third message");
+      expect(await db.notification.count({ where: { userId: users.bo.id, linkUrl: link, isRead: false } })).toBe(1);
+      as("bo");
 
       // cy is not in it: can't read, poll, page or send, and doesn't see it listed.
       as("cy");
@@ -486,7 +502,7 @@ describe.skipIf(!isLocal)("Proggaa Community (integration)", () => {
       expect((await messages.loadOlderMessages(cid, `${new Date().toISOString()}_abcdef12`)).ok).toBe(false);
       expect((await messages.sendMessage(cid, "let me in")).ok).toBe(false);
       expect(await service.listConversations(users.cy.id)).toHaveLength(0);
-      expect(await db.message.count({ where: { conversationId: cid } })).toBe(1);
+      expect(await db.message.count({ where: { conversationId: cid } })).toBe(3);
     });
 
     it("lets a student reach staff without being followed", async () => {
