@@ -6,10 +6,22 @@ import { Send, CheckCircle2, Clock, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
+import { TELEGRAM_BOT_URL, TELEGRAM_BOT_USERNAME } from "@/lib/telegram-link/bot";
 import {
   generateTelegramLinkTokenAction,
   unlinkTelegramAction,
 } from "@/server/actions/telegram-settings-actions";
+
+function OpenBotButton({ variant }: { variant: "accent" | "outline" }) {
+  return (
+    <Button asChild variant={variant} size="sm">
+      <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer">
+        <Send className="h-4 w-4" />
+        Open @{TELEGRAM_BOT_USERNAME}
+      </a>
+    </Button>
+  );
+}
 
 type LinkStatus =
   | { linked: true; telegramId: string; linkedAt: Date }
@@ -57,9 +69,12 @@ export function TelegramLinkPanel({ initialStatus }: { initialStatus: LinkStatus
         <p className="mt-2 text-sm text-muted-foreground">
           Linked since {formatDhakaDate(status.linkedAt)}. Your dashboard, exams, results, and notifications are available in the Proggaa Telegram bot.
         </p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={handleUnlink} disabled={isPending}>
-          {isPending ? "Unlinking..." : "Unlink Telegram"}
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <OpenBotButton variant="accent" />
+          <Button variant="outline" size="sm" onClick={handleUnlink} disabled={isPending}>
+            {isPending ? "Unlinking..." : "Unlink Telegram"}
+          </Button>
+        </div>
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       </div>
     );
@@ -77,9 +92,12 @@ export function TelegramLinkPanel({ initialStatus }: { initialStatus: LinkStatus
           <p className="mt-2 text-sm text-muted-foreground">
             Generate a one-time code, then send it to the Proggaa Telegram bot to connect your account.
           </p>
-          <Button variant="accent" size="sm" className="mt-4" onClick={handleGenerate} disabled={isPending}>
-            {isPending ? "Generating..." : "Generate code"}
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="accent" size="sm" onClick={handleGenerate} disabled={isPending}>
+              {isPending ? "Generating..." : "Generate code"}
+            </Button>
+            <OpenBotButton variant="outline" />
+          </div>
           {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         </>
       ) : (
@@ -106,15 +124,24 @@ export function TelegramLinkPanel({ initialStatus }: { initialStatus: LinkStatus
             {expiresAt && `Expires at ${formatDhakaTime(expiresAt)}`} — one-time use.
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-            <li>Open the Proggaa bot on Telegram.</li>
+            <li>
+              Open{" "}
+              <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">
+                @{TELEGRAM_BOT_USERNAME}
+              </a>{" "}
+              on Telegram.
+            </li>
             <li>
               Send <code className="rounded bg-background px-1">/link</code>.
             </li>
             <li>Paste this code when asked.</li>
           </ol>
-          <Button variant="outline" size="sm" onClick={handleGenerate} disabled={isPending}>
-            {isPending ? "Generating..." : "Generate a new code"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <OpenBotButton variant="accent" />
+            <Button variant="outline" size="sm" onClick={handleGenerate} disabled={isPending}>
+              {isPending ? "Generating..." : "Generate a new code"}
+            </Button>
+          </div>
         </div>
       )}
     </div>
