@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
+import { heroNav, mentorNav, adminNav, isNavItemActive } from "@/lib/nav-config";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { SiteLogo } from "@/components/marketing/site-logo";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
@@ -66,8 +66,7 @@ export function Sidebar({
             )}
             <ul className="space-y-1">
               {section.items.map((item) => {
-                const isActive =
-                  pathname === item.href || pathname?.startsWith(item.href + "/");
+                const isActive = isNavItemActive(item, pathname);
                 const Icon = item.icon;
                 return (
                   <li key={item.href}>

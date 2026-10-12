@@ -54,7 +54,20 @@ export type NavItem = {
    * enabled), since most items here ARE common destinations.
    */
   prefetch?: boolean;
+  /**
+   * Which pages light this item up. Without it, the item is active on its
+   * own `href` and everything beneath it.
+   */
+  match?: (pathname: string) => boolean;
 };
+
+const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(base + "/");
+
+/** Whether `item` is the nav entry for the page at `pathname`. */
+export function isNavItemActive(item: NavItem, pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return item.match ? item.match(pathname) : under(pathname, item.href);
+}
 
 export type NavSection = {
   title?: string;
@@ -65,8 +78,15 @@ export const heroNav: NavSection[] = [
   {
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { label: "My Courses", href: "/my-courses", icon: BookOpen },
-      { label: "Missions", href: "/missions", icon: Rocket },
+      // A course's own pages live at /missions/<id>/..., so they belong to
+      // "My Courses". "Missions" is only the daily/weekly tracker at /missions.
+      {
+        label: "My Courses",
+        href: "/my-courses",
+        icon: BookOpen,
+        match: (p) => under(p, "/my-courses") || (under(p, "/missions") && p !== "/missions"),
+      },
+      { label: "Missions", href: "/missions", icon: Rocket, match: (p) => p === "/missions" },
       { label: "Exams", href: "/exams", icon: GraduationCap },
       { label: "Results", href: "/results", icon: ClipboardList },
       { label: "Live Classes", href: "/live-classes", icon: Video },

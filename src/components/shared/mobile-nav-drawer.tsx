@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/shared/avatar";
 import { SiteLogo } from "@/components/marketing/site-logo";
-import { heroNav, mentorNav, adminNav } from "@/lib/nav-config";
+import { heroNav, mentorNav, adminNav, isNavItemActive } from "@/lib/nav-config";
 import { useMountTransition } from "@/hooks/use-mount-transition";
 
 const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNav };
@@ -198,8 +198,7 @@ export function MobileNavDrawer({
                     )}
                     <ul className="space-y-1.5">
                       {section.items.map((item) => {
-                        const isActive =
-                          pathname === item.href || pathname?.startsWith(item.href + "/");
+                        const isActive = isNavItemActive(item, pathname);
                         const Icon = item.icon;
                         return (
                           <li key={item.href}>
