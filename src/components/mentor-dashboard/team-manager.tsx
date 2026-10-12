@@ -256,8 +256,9 @@ function AddTeacherForm({
   return (
     <form
       key={formKey}
+      id="ask"
       action={(formData) => run(() => addCourseTeacher(courseId, formData), () => setFormKey((k) => k + 1))}
-      className="glass-panel space-y-3 p-5"
+      className="glass-panel scroll-mt-24 space-y-3 p-5"
     >
       <h2 className="font-display text-sm font-bold text-foreground">
         {isAdmin ? "Add a co-mentor" : "Ask for a co-mentor"}

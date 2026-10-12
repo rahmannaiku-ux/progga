@@ -344,6 +344,7 @@ function refreshTeam(courseId: string, slug: string) {
   revalidatePath(`/admin/missions/${courseId}/team`);
   revalidatePath(`/courses/${slug}`);
   revalidatePath("/admin/co-mentor-requests");
+  revalidatePath("/mentor/co-mentors");
 }
 
 /** Approve a request: gives the mentor access to the Mission. */

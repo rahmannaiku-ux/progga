@@ -29,6 +29,7 @@ function refresh(courseId: string, slug: string) {
   revalidateMissionPage(`/${courseId}/team`);
   revalidatePath(`/courses/${slug}`);
   revalidatePath("/admin/co-mentor-requests");
+  revalidatePath("/mentor/co-mentors");
 }
 
 /** Asks for (or, for an admin, directly makes) another mentor a co-mentor on this mission. */

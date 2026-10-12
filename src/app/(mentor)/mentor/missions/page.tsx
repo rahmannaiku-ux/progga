@@ -72,7 +72,7 @@ export default async function MentorMissionsPage() {
                   href={`/mentor/missions/${c.id}/team`}
                   className="rounded-full border border-border/60 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface"
                 >
-                  Team
+                  Co-mentors
                 </Link>
                 <span className="font-mono text-sm text-muted-foreground">
                   {c.isFree ? "Free" : formatMoney(c.priceCents)}

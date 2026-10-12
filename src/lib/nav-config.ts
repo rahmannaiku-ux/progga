@@ -92,6 +92,7 @@ export const mentorNav: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/mentor/dashboard", icon: LayoutDashboard },
       { label: "My Missions", href: "/mentor/missions", icon: Rocket },
+      { label: "Co-mentors", href: "/mentor/co-mentors", icon: Share2, prefetch: false },
       { label: "Live Classes", href: "/mentor/live-classes", icon: Video },
       { label: "Calendar", href: "/mentor/calendar", icon: Calendar },
       { label: "Heroes", href: "/mentor/students", icon: Users },

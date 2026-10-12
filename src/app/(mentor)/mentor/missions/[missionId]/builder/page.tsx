@@ -123,6 +123,12 @@ export default async function MissionBuilderPage({
       >
         Manage challenges (assignments) →
       </Link>
+      <Link
+        href={`${missionsBase}/${course.id}/team`}
+        className="mt-3 ml-4 inline-block text-sm font-medium text-accent hover:text-accent/80"
+      >
+        Co-mentors (share this mission) →
+      </Link>
 
       <div className="comic-panel mt-4 bg-surface p-4">
         <ExamsToggle courseId={course.id} enabled={course.examsEnabled} />
