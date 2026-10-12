@@ -1,5 +1,5 @@
 import { customAlphabet } from "nanoid";
-import { publicSiteUrl } from "@/lib/sms/messages";
+import { publicSiteUrl } from "@/lib/site-url";
 
 // No 0/O/1/I, so an ID read off a printed certificate is hard to mistype.
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

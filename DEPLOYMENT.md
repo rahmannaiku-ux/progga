@@ -44,10 +44,19 @@ Don't run `prisma db push` against production: it keeps no history and can drop 
 ## 3. Path A — Vercel
 
 1. Import the repo in Vercel (framework is auto-detected).
-2. Add every variable from `.env` under Project → Settings → Environment Variables (Production and Preview). Set `NEXT_PUBLIC_APP_URL` to the real domain.
+2. Add every variable from `.env` under Project → Settings → Environment Variables (Production and Preview). Set `NEXT_PUBLIC_APP_URL` to `https://prooggaa.com` (see "Domain" below).
 3. Deploy. The build migrates the DB (see §2).
-4. **Google OAuth:** add `https://<domain>/api/admin/storage/google/callback` and `https://<domain>/api/mentor/google-docs/callback` as redirect URIs, and set `GOOGLE_REDIRECT_URI` / `GOOGLE_DOCS_REDIRECT_URI` to match. Then connect the Drive account from Admin → Storage.
+4. **Google OAuth:** add `https://prooggaa.com/api/admin/storage/google/callback` and `https://prooggaa.com/api/mentor/google-docs/callback` as redirect URIs, and set `GOOGLE_REDIRECT_URI` / `GOOGLE_DOCS_REDIRECT_URI` to match. Then connect the Drive account from Admin → Storage.
 5. **argon2** is a native module. `next.config.mjs` already force-includes its prebuilt binaries in the Vercel trace, so don't remove that block.
+
+### Domain
+
+The canonical production address is **`https://prooggaa.com`** (https, apex host). It is defined once, in `src/lib/site-url.ts`, and everything that builds an absolute URL reads it from there: page metadata and canonical tags, `sitemap.xml`, `robots.txt`, the invoice link in the purchase SMS, and the QR code on certificates. Everything else in the app uses relative paths, so it follows whatever host it is served on.
+
+- **In the code:** a production build falls back to the canonical domain whenever `NEXT_PUBLIC_APP_URL` is missing, localhost, or a retired host. Pages opened on a retired host (`LEGACY_SITE_HOSTS`, currently `progga-zeta.vercel.app`) get a 308 to the same path and query string on `https://prooggaa.com`. `/api/*` is deliberately not redirected, so anything still calling the old host server-to-server keeps working until it is repointed. Preview deployments serve a `robots.txt` that blocks everything.
+- **In Vercel (Project → Settings → Domains):** `prooggaa.com` must be the primary domain. Add `www.prooggaa.com` and set it to redirect to `prooggaa.com`. Do this in Vercel, not in the code: the app has no `www` rule, so it cannot loop with whatever Vercel is set to.
+- **Sessions:** the session cookie belongs to the host that set it, so anyone signed in on the old address signs in once more on the new one.
+- **Elsewhere:** the Google OAuth redirect URIs (step 4), the Telegram bot's `PROGGAA_WEB_URL`, the base URL configured on each payment device, any external cron caller, and the sender domain in Resend all hold the site's address and have to be updated by hand.
 
 ### Cron jobs
 
@@ -95,8 +104,11 @@ Leaderboard resets (daily/weekly/monthly) are computed when the board is read, s
 4. Put a TLS reverse proxy in front of port 3000. For example, a Caddyfile:
 
    ```
-   yourdomain.com {
+   prooggaa.com {
        reverse_proxy localhost:3000
+   }
+   www.prooggaa.com {
+       redir https://prooggaa.com{uri} permanent
    }
    ```
 

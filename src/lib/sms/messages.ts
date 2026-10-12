@@ -5,6 +5,8 @@
  * never needs to know *why* it's sending a given string.
  */
 
+import { publicSiteUrl } from "@/lib/site-url";
+
 export function registrationOtpMessage(code: string): string {
   return `Proggaa verification code: ${code}. It expires in 5 minutes. Do not share this code with anyone.`;
 }
@@ -53,16 +55,6 @@ export function purchaseSuccessMessage({
       : `Paid: ${money(amountCents)}`;
   const invoice = invoiceUrl ? ` Invoice: ${invoiceUrl}` : "";
   return `${greeting} Your purchase of "${courseTitle}" on Proggaa is confirmed. ${price}. Ref: ${reference}. The course is now unlocked on your dashboard.${invoice}`;
-}
-
-/** Public site origin for links sent outside the app (SMS). Never localhost. */
-const DEFAULT_PUBLIC_SITE_URL = "https://progga-zeta.vercel.app";
-
-export function publicSiteUrl(envUrl: string | undefined = process.env.NEXT_PUBLIC_APP_URL): string {
-  const url = envUrl?.trim();
-  // A dev/local value (the .env.example default) would give students a dead link.
-  if (!url || /localhost|127\.0\.0\.1/.test(url)) return DEFAULT_PUBLIC_SITE_URL;
-  return url.replace(/\/+$/, "");
 }
 
 export function invoiceUrlFor(paymentId: string, baseUrl: string = publicSiteUrl()): string {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-12 — Domain: prooggaa.com
+- **https://prooggaa.com** is now the canonical production address, defined once in `src/lib/site-url.ts`. Page
+  metadata, `sitemap.xml`, `robots.txt`, the purchase-SMS invoice link and certificate QR codes all read it from there,
+  and a production build never emits a localhost or old-domain link even if `NEXT_PUBLIC_APP_URL` is wrong.
+- Pages opened on the old `progga-zeta.vercel.app` address redirect (308) to the same path and query string on the
+  new domain. `/api/*` is not redirected, so the Telegram bot, payment devices and cron callers keep working on the old
+  address until they are repointed.
+- Every page now has a canonical link and `og:url` for its own path. Vercel preview deployments block all crawlers.
+- Students signed in on the old address sign in once more on the new one. See DEPLOYMENT.md → Domain for the
+  dashboard settings that have to be changed by hand.
+
 ## 2026-10-01 — Batches removed
 - Removed the Batches feature: **Admin → Batches** (`/admin/batches`), its actions and validation, and the `Batch` /
   `BatchMember` tables. Migration `20261001000000_remove_batches` drops both tables (any existing batch rows are lost).

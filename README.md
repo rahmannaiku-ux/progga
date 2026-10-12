@@ -43,7 +43,7 @@ UPDATE "User" SET role = 'SUPER_ADMIN' WHERE phone = '+8801XXXXXXXXX';
 
 ### Environment variables
 
-`.env.example` documents every variable in detail. At a glance:
+`.env.example` documents every variable in detail. Production runs at **https://prooggaa.com**; that address lives in `src/lib/site-url.ts` (see DEPLOYMENT.md → Domain). At a glance:
 
 | Needed for | Variables |
 |---|---|

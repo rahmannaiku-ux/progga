@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SESSION_COOKIE_NAME, SESSION_TTL_DAYS } from "@/lib/auth/session-cookie-name";
+import { legacyHostRedirect } from "@/lib/site-url";
 
 // Kept in sync with PATHNAME_HEADER in src/lib/mission-paths.ts (not
 // imported: that module pulls in next/headers, which Edge middleware
@@ -149,6 +150,11 @@ function withRefreshedSession(req: NextRequest, res: NextResponse): NextResponse
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
+
+  // Pages opened on a retired domain move to the same path on the canonical
+  // one. API routes are left where they are (see legacyHostRedirect).
+  const canonicalUrl = legacyHostRedirect(req.headers.get("host"), req.method, pathname, req.nextUrl.search);
+  if (canonicalUrl) return NextResponse.redirect(canonicalUrl, 308);
 
   // Fast path: public, non-API pages (marketing, catalog, auth screens)
   // need neither a session check nor API rate limiting, so they can

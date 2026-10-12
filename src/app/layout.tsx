@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Baloo_2, Hind_Siliguri, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { getSiteBranding, hexToHslTriplet, primaryForegroundFor } from "@/lib/site-branding";
+import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { CookieConsentBanner } from "@/components/shared/cookie-consent-banner";
@@ -39,7 +40,7 @@ const bengali = Hind_Siliguri({
 // Numbers (XP counters, timers, exam clocks) use the system monospace stack
 // (see `fontFamily.mono` in tailwind.config.ts) — no third web font to load.
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const SITE_URL = siteUrl();
 // Matches SiteSettings.primaryColor's Prisma default. Saving *any*
 // admin setting (even an unrelated one, like payments) upserts this
 // same singleton row and fills in this default if it's never been set
@@ -83,6 +84,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase: new URL(SITE_URL),
+    // "./" resolves against each page's own path, so every page is its own
+    // canonical on the one production domain (never the homepage for all).
+    alternates: { canonical: "./" },
     title,
     description: DEFAULT_DESCRIPTION,
     icons: branding.faviconUrl ? { icon: branding.faviconUrl } : undefined,
@@ -90,6 +94,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: branding.siteName === "Proggaa" ? DEFAULT_TITLE : branding.siteName,
       description: DEFAULT_DESCRIPTION,
       siteName: branding.siteName,
+      url: "./",
       type: "website",
       locale: "en_US",
     },

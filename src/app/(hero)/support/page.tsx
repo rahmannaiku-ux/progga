@@ -47,7 +47,7 @@ export default async function SupportPage() {
       select: { id: true, title: true, status: true, adminNote: true, createdAt: true },
     }),
   ]);
-  const supportEmail = settings?.supportEmail ?? "support@proggaa.com";
+  const supportEmail = settings?.supportEmail ?? "support@prooggaa.com";
 
   return (
     <div className="mx-auto max-w-2xl">
