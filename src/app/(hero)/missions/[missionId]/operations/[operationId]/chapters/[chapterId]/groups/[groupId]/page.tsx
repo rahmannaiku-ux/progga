@@ -101,8 +101,9 @@ export default async function LessonGroupLessonsPage({
         <div className="space-y-2.5">
           {group.lessons.map((lesson) => {
             const isCompleted = completedIds.has(lesson.id);
+            const uploadedThumb = mediaSrc(lesson.thumbnailUrl);
             const thumb =
-              mediaSrc(lesson.thumbnailUrl) ??
+              uploadedThumb ??
               (lesson.youtubeVideoId ? `https://i.ytimg.com/vi/${lesson.youtubeVideoId}/hqdefault.jpg` : null);
             return (
               <div
@@ -112,8 +113,9 @@ export default async function LessonGroupLessonsPage({
                 <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-xl border border-border/40 bg-muted sm:w-44">
                   {thumb ? (
                     // Plain <img>: Drive thumbnails come from changing Google hosts, which next/image can't allow-list.
+                    // Uploaded thumbnails are shown whole; YouTube's hqdefault has black bars baked in, so that one is cropped.
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                    <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className={cn("h-full w-full", uploadedThumb ? "object-contain" : "object-cover")} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-primary/10">
                       <PlayCircle className="h-8 w-8 text-primary" />

@@ -127,7 +127,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
               <img
                 src={thumbnail}
                 alt={course.title}
-                className="relative aspect-video w-full border-b-2 border-border object-cover"
+                className="relative block h-auto w-full border-b-2 border-border"
               />
             )}
             <div className="relative p-6 sm:p-8">

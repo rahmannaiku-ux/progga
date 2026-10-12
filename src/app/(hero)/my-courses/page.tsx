@@ -219,13 +219,14 @@ function CourseThumb({
   return (
     <div
       className={cn(
-        "relative flex items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-primary",
+        "relative flex items-center justify-center overflow-hidden rounded-xl border-2 border-border",
+        src ? "bg-muted" : "bg-primary",
         className
       )}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- served by /api/files or Drive, sizes vary per upload
-        <img src={src} alt={title} loading="lazy" className="h-full w-full object-cover" />
+        <img src={src} alt={title} loading="lazy" className="h-full w-full object-contain" />
       ) : (
         <>
           <div className="halftone-dots pointer-events-none absolute inset-0 opacity-25" />

@@ -49,7 +49,7 @@ export function StoreItemCard({
     <div className="comic-panel flex flex-col bg-surface p-4">
       {item.thumbnailUrl ? (
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
-          <Image src={item.thumbnailUrl} alt={item.title} fill unoptimized={isProxiedUpload(item.thumbnailUrl)} className="object-cover" />
+          <Image src={item.thumbnailUrl} alt={item.title} fill unoptimized={isProxiedUpload(item.thumbnailUrl)} className="object-contain" />
         </div>
       ) : (
         <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-accent/10">

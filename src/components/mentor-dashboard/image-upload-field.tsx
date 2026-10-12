@@ -97,7 +97,7 @@ export function ImageUploadField({
         {preview ? (
           <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={preview} alt="" className="h-full w-full object-cover" />
+            <img src={preview} alt="" className="h-full w-full object-contain" />
           </div>
         ) : null}
         <label
