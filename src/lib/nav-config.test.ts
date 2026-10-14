@@ -13,6 +13,8 @@ describe("isNavItemActive (student nav)", () => {
     ["/missions", "Missions"],
     ["/exams/e1", "Exams"],
     ["/settings", "Settings"],
+    ["/wallet", "Wallet"],
+    ["/birthday", "Wallet"],
   ])("%s lights up only %s", (path, label) => {
     expect(activeHeroLabels(path)).toEqual([label]);
   });

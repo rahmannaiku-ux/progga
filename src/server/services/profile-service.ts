@@ -1,6 +1,7 @@
 import { db } from "@/lib/db/client";
 import { normalizeBangladeshPhone } from "@/lib/auth/phone";
 import { Prisma, type StudyVersion } from "@prisma/client";
+import { calendarDateToDb, parseDateOfBirth } from "@/lib/birthday/dates";
 
 /**
  * Phase 4 profile-completion service. Deliberately takes `userId` as a
@@ -24,6 +25,8 @@ export type CompleteStudentProfileInput = {
   motherPhone?: string;
   hscBatch: string;
   studyVersion: string;
+  /** "YYYY-MM-DD". Private: birthday greetings and rewards only. */
+  dateOfBirth: string;
 };
 
 export type CompleteStudentProfileResult =
@@ -47,7 +50,10 @@ function requiredText(value: string | undefined, label: string): string | null {
  * captured at completion except the parent phones, which are fixed once
  * set (shown on /profile, never editable there).
  */
-export type EditableStudentProfileInput = Omit<CompleteStudentProfileInput, "email" | "fatherPhone" | "motherPhone">;
+export type EditableStudentProfileInput = Omit<
+  CompleteStudentProfileInput,
+  "email" | "fatherPhone" | "motherPhone" | "dateOfBirth"
+>;
 
 type EditableStudentProfileData = {
   name: string;
@@ -115,8 +121,13 @@ function validateEditable(input: EditableStudentProfileInput): {
  * editable fields plus the parent phones. Returns either the
  * normalized, ready-to-persist data or a field-keyed error map.
  */
-function validate(input: CompleteStudentProfileInput):
-  | { ok: true; email: string; data: EditableStudentProfileData & { fatherPhone: string | null; motherPhone: string | null } }
+function validate(input: CompleteStudentProfileInput, now: Date):
+  | {
+      ok: true;
+      email: string;
+      dateOfBirth: Date;
+      data: EditableStudentProfileData & { fatherPhone: string | null; motherPhone: string | null };
+    }
   | { ok: false; fieldErrors: FieldErrors<CompleteStudentProfileInput> } {
   const editable = validateEditable(input);
   const fieldErrors: FieldErrors<CompleteStudentProfileInput> = { ...editable.fieldErrors };
@@ -151,9 +162,12 @@ function validate(input: CompleteStudentProfileInput):
     fieldErrors.motherPhone = message;
   }
 
-  if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
+  const dob = parseDateOfBirth(input.dateOfBirth, now);
+  if (!dob.ok) fieldErrors.dateOfBirth = dob.error;
 
-  return { ok: true, email, data: { ...editable.data, fatherPhone, motherPhone } };
+  if (Object.keys(fieldErrors).length > 0 || !dob.ok) return { ok: false, fieldErrors };
+
+  return { ok: true, email, dateOfBirth: calendarDateToDb(dob.date), data: { ...editable.data, fatherPhone, motherPhone } };
 }
 
 function emailInUse(): CompleteStudentProfileResult {
@@ -176,8 +190,12 @@ function emailInUse(): CompleteStudentProfileResult {
  * successful call just overwrites the same row with the same-shaped
  * data rather than erroring on an already-existing StudentProfile.
  */
-export async function completeStudentProfile(userId: string, input: CompleteStudentProfileInput): Promise<CompleteStudentProfileResult> {
-  const validated = validate(input);
+export async function completeStudentProfile(
+  userId: string,
+  input: CompleteStudentProfileInput,
+  now: Date = new Date()
+): Promise<CompleteStudentProfileResult> {
+  const validated = validate(input, now);
   if (!validated.ok) return { ok: false, reason: "validation", fieldErrors: validated.fieldErrors };
 
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
@@ -193,8 +211,14 @@ export async function completeStudentProfile(userId: string, input: CompleteStud
     await db.$transaction([
     db.studentProfile.upsert({
       where: { userId },
-      create: { userId, ...validated.data },
+      create: { userId, ...validated.data, dateOfBirth: validated.dateOfBirth, dateOfBirthSetAt: now },
       update: { ...validated.data },
+    }),
+    // Only fills a missing date of birth; one already on file (e.g. set by
+    // an admin) is never overwritten by re-submitting this form.
+    db.studentProfile.updateMany({
+      where: { userId, dateOfBirth: null },
+      data: { dateOfBirth: validated.dateOfBirth, dateOfBirthSetAt: now },
     }),
     db.user.update({ where: { id: userId }, data: { profileCompleted: true, email: validated.email } }),
   ]);
@@ -243,6 +267,34 @@ export async function addStudentEmail(userId: string, rawEmail: string): Promise
       return { ok: false, reason: "in_use", message: "That email is already used by another account." };
     }
     throw err;
+  }
+  return { ok: true };
+}
+
+export type SetDateOfBirthResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid" | "already_set" | "not_found"; message: string };
+
+/**
+ * Adds the date of birth for a student who doesn't have one yet (students
+ * who completed their profile before it was asked for). Set-once from the
+ * student's side, guarded on `dateOfBirth: null` so two tabs can't race:
+ * a date already on file can only be corrected by an admin, so nobody can
+ * move their birthday around to collect extra rewards.
+ */
+export async function setStudentDateOfBirth(userId: string, raw: string, now: Date = new Date()): Promise<SetDateOfBirthResult> {
+  const parsed = parseDateOfBirth(raw, now);
+  if (!parsed.ok) return { ok: false, reason: "invalid", message: parsed.error };
+
+  const profile = await db.studentProfile.findUnique({ where: { userId }, select: { dateOfBirth: true } });
+  if (!profile) return { ok: false, reason: "not_found", message: "We couldn't find your profile." };
+
+  const res = await db.studentProfile.updateMany({
+    where: { userId, dateOfBirth: null },
+    data: { dateOfBirth: calendarDateToDb(parsed.date), dateOfBirthSetAt: now },
+  });
+  if (res.count === 0) {
+    return { ok: false, reason: "already_set", message: "Your date of birth is already saved. Contact support to correct it." };
   }
   return { ok: true };
 }

@@ -206,6 +206,9 @@ enum NotificationType {
   COMMUNITY_ANSWER
   COMMUNITY_MODERATION
   COMMUNITY_MESSAGE
+  // Birthday rewards (see src/server/services/birthday.ts)
+  BIRTHDAY_REWARD
+  BIRTHDAY_REWARD_EXPIRING
 }
 
 enum ActivityAction {
@@ -583,6 +586,10 @@ model User {
   rewardEvents      RewardEvent[]
   coinTransactions  ProggyCoinTransaction[]
   coinPurchases     CoinPurchase[]
+  coinRewardLots    CoinRewardLot[]
+  birthdayRewards   BirthdayReward[]
+  pushSubscriptions PushSubscription[]
+  notificationDeliveries NotificationDelivery[]
   uploads           Upload[]
   bugReports        BugReport[]
   driveConnectionsMade GoogleDriveConnection[]
@@ -670,6 +677,16 @@ model StudentProfile {
   motherPhone      String? // at least one of father/mother required (app-enforced)
   hscBatch         String?
   studyVersion     StudyVersion?
+
+  // Private: used only for birthday greetings and the birthday coin
+  // reward, never shown on a public profile, feed, leaderboard or API.
+  // A plain calendar date (Postgres DATE, no time zone), so it can never
+  // drift a day the way a timestamp would. Nullable: students who
+  // finished their profile before it was asked for are prompted for it
+  // (non-blocking). Once set, only an admin can change it, so a student
+  // can't move their birthday around to collect extra rewards.
+  dateOfBirth      DateTime? @db.Date
+  dateOfBirthSetAt DateTime?
 }
 
 model RoleChangeLog {
@@ -1835,6 +1852,9 @@ enum CoinTransactionType {
   EXAM_REWARD // Assessment.coinReward, on a passing attempt
   STORE_PURCHASE // negative — spent on a CoinStoreItem
   ADMIN_ADJUSTMENT // manual admin correction, always carries a reason
+  BIRTHDAY_REWARD // 1,500 coins on the student's birthday; expires (see CoinRewardLot)
+  REWARD_EXPIRY // negative: unspent expiring reward coins removed at expiry
+  REFUND // positive: a spend given back (see refundCoinSpend)
 }
 
 model ProggyCoinTransaction {
@@ -1858,6 +1878,11 @@ model ProggyCoinTransaction {
   sourceId   String?
 
   createdAt DateTime @default(now())
+
+  // Set when this credit is an expiring reward (one lot per credit).
+  rewardLot       CoinRewardLot?
+  // Which expiring lots this debit drew from (empty for coins that never expire).
+  lotConsumptions CoinLotConsumption[]
 
   @@unique([sourceType, sourceId, type, userId])
   @@index([userId])
@@ -1918,6 +1943,147 @@ model CoinPurchase {
   @@unique([userId, itemId])
   @@index([userId])
   @@index([itemId])
+}
+
+// Expiring reward coins. HeroStats.coinBalance stays the ONE spendable
+// total (expiring coins included); a lot only remembers how much of that
+// total came from an expiring reward and is still unspent. Invariant,
+// kept by lib/gamification/coins.ts: coinBalance >= SUM(remaining) of
+// the student's unexpired lots. Every debit spends the earliest-expiring
+// lot first and records a CoinLotConsumption; at expiresAt whatever is
+// left is removed with a REWARD_EXPIRY ledger row (history is never
+// deleted). Coins that never expire are spent last and never touched by
+// expiry.
+enum CoinRewardLotKind {
+  BIRTHDAY
+}
+
+model CoinRewardLot {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          CoinRewardLotKind
+  // The credit that created these coins.
+  transactionId String                @unique
+  transaction   ProggyCoinTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  amount        Int // as granted
+  remaining     Int // unspent and unexpired; 0 once spent or expired
+  grantedAt     DateTime
+  expiresAt     DateTime
+  expiredAt     DateTime? // set once, by the expiry run
+  expiredAmount Int                   @default(0)
+  createdAt     DateTime              @default(now())
+
+  consumptions   CoinLotConsumption[]
+  birthdayReward BirthdayReward?
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model CoinLotConsumption {
+  id            String                @id @default(cuid())
+  lotId         String
+  lot           CoinRewardLot         @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  // The debit (negative ledger row) that spent these coins.
+  transactionId String
+  transaction   ProggyCoinTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  amount        Int
+  restored      Int                   @default(0) // put back into the lot by a refund
+  createdAt     DateTime              @default(now())
+
+  @@unique([lotId, transactionId])
+  @@index([transactionId])
+}
+
+// One row per student per birthday year: the database guarantee that the
+// birthday reward is granted once (unique userId+birthdayYear, and a
+// unique idempotency key). Created in the same transaction as its ledger
+// credit, lot, in-app notification and push-delivery outbox row.
+model BirthdayReward {
+  id                     String        @id @default(cuid())
+  userId                 String
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  birthdayYear           Int
+  idempotencyKey         String        @unique // "birthday:<userId>:<year>"
+  // The Dhaka calendar day celebrated (Feb 28 for a Feb 29 birthday in a non-leap year).
+  birthdayDate           DateTime      @db.Date
+  amount                 Int
+  grantedAt              DateTime
+  expiresAt              DateTime
+  lotId                  String        @unique
+  lot                    CoinRewardLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  // Full-screen celebration dismissed (on any device). Dismissing never affects the reward.
+  celebrationSeenAt      DateTime?
+  // Claimed once by whoever queues the "expires soon" reminder.
+  expiryReminderQueuedAt DateTime?
+  createdAt              DateTime      @default(now())
+
+  @@unique([userId, birthdayYear])
+  @@index([expiresAt])
+}
+
+// A browser/installed-app Web Push subscription (one per device the
+// student turned phone notifications on for). Only the endpoint and its
+// public keys are stored, nothing that could sign in as the student.
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  failureCount  Int       @default(0)
+
+  @@index([userId])
+}
+
+enum NotificationDeliveryChannel {
+  WEB_PUSH
+}
+
+// PENDING: queued, not tried yet (or waiting for a retry). ACCEPTED: at
+// least one push service accepted it for delivery, which is the most a
+// server can know; it is NOT proof the phone displayed it. FAILED: gave
+// up after retries. SKIPPED: nothing to send to (no device opted in, or
+// push isn't configured on the server).
+enum NotificationDeliveryStatus {
+  PENDING
+  ACCEPTED
+  FAILED
+  SKIPPED
+}
+
+// Outbox for external (phone) delivery of an in-app notification. One
+// row per (dedupeKey, channel): retries update the row, never add one.
+model NotificationDelivery {
+  id               String                      @id @default(cuid())
+  userId           String
+  user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationId   String?
+  dedupeKey        String
+  channel          NotificationDeliveryChannel
+  status           NotificationDeliveryStatus  @default(PENDING)
+  title            String
+  body             String
+  linkUrl          String?
+  attempts         Int                         @default(0)
+  lastAttemptAt    DateTime?
+  nextAttemptAt    DateTime?
+  // Lease so two workers never send the same row at once.
+  lockedUntil      DateTime?
+  acceptedAt       DateTime?
+  providerResponse String?                     @db.Text
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+
+  @@unique([dedupeKey, channel])
+  @@index([status, nextAttemptAt])
+  @@index([userId])
 }
 
 // One row per admin "Reset now" on the leaderboard. Resetting never

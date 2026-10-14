@@ -6,6 +6,9 @@ import { TelegramLinkPanel } from "@/components/gamification/telegram-link-panel
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { getLinkStatusForUser } from "@/server/actions/telegram-link-actions";
+import { PhoneNotificationsCard } from "@/components/profile/phone-notifications-card";
+import { dateOfBirthParts, dhakaCalendarDate, formatCalendarDate, toIsoDate } from "@/lib/birthday/dates";
+import { getVapidConfig } from "@/lib/push/web-push";
 
 /**
  * Account settings: contact and school details, password and sessions, the
@@ -14,10 +17,13 @@ import { getLinkStatusForUser } from "@/server/actions/telegram-link-actions";
  */
 export default async function SettingsPage() {
   const user = await getCurrentUser();
-  const [studentProfile, telegramStatus] = await Promise.all([
+  const [studentProfile, telegramStatus, pushDevices] = await Promise.all([
     db.studentProfile.findUnique({ where: { userId: user.id } }),
     getLinkStatusForUser(user.id),
+    db.pushSubscription.count({ where: { userId: user.id } }),
   ]);
+  const dob = dateOfBirthParts(studentProfile?.dateOfBirth);
+  const vapid = getVapidConfig();
 
   return (
     <StaggerContainer className="mx-auto max-w-2xl space-y-6">
@@ -35,6 +41,8 @@ export default async function SettingsPage() {
             email={user.email}
             fatherPhone={studentProfile.fatherPhone}
             motherPhone={studentProfile.motherPhone}
+            dateOfBirthLabel={dob ? formatCalendarDate(dob) : null}
+            maxDateOfBirth={toIsoDate(dhakaCalendarDate())}
             details={{
               name: studentProfile.name ?? "",
               district: studentProfile.district ?? "",
@@ -50,6 +58,10 @@ export default async function SettingsPage() {
 
       <StaggerItem>
         <SecurityCard />
+      </StaggerItem>
+
+      <StaggerItem id="phone-notifications" className="scroll-mt-24">
+        <PhoneNotificationsCard vapidPublicKey={vapid?.publicKey ?? null} deviceCount={pushDevices} />
       </StaggerItem>
 
       <StaggerItem id="telegram" className="scroll-mt-24 space-y-3">

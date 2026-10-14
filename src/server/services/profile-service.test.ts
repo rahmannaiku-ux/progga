@@ -9,6 +9,7 @@ const userFindFirst = vi.fn();
 const studentProfileUpsert = vi.fn();
 const studentProfileFindUnique = vi.fn();
 const studentProfileUpdate = vi.fn();
+const studentProfileUpdateMany = vi.fn();
 const userUpdate = vi.fn();
 const userUpdateMany = vi.fn();
 const transaction = vi.fn();
@@ -25,12 +26,16 @@ vi.mock("@/lib/db/client", () => ({
       upsert: (...args: unknown[]) => studentProfileUpsert(...args),
       findUnique: (...args: unknown[]) => studentProfileFindUnique(...args),
       update: (...args: unknown[]) => studentProfileUpdate(...args),
+      updateMany: (...args: unknown[]) => studentProfileUpdateMany(...args),
     },
     $transaction: (ops: Promise<unknown>[]) => transaction(ops),
   },
 }));
 
-const { completeStudentProfile, updateStudentProfile, addStudentEmail } = await import("./profile-service");
+const { completeStudentProfile, updateStudentProfile, addStudentEmail, setStudentDateOfBirth } = await import("./profile-service");
+
+// 2026-10-14 12:00 in Dhaka (06:00 UTC).
+const NOW = new Date("2026-10-14T06:00:00Z");
 
 const VALID_INPUT = {
   name: "Fahim Rahman",
@@ -43,6 +48,7 @@ const VALID_INPUT = {
   motherPhone: "",
   hscBatch: "2026",
   studyVersion: "BANGLA",
+  dateOfBirth: "2008-03-15",
 };
 
 beforeEach(() => {
@@ -51,6 +57,7 @@ beforeEach(() => {
   studentProfileUpsert.mockReset().mockResolvedValue({});
   studentProfileFindUnique.mockReset().mockResolvedValue({ id: "sp_1" });
   studentProfileUpdate.mockReset().mockResolvedValue({});
+  studentProfileUpdateMany.mockReset().mockResolvedValue({ count: 1 });
   userUpdate.mockReset().mockResolvedValue({});
   transaction.mockReset().mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
 });
@@ -209,8 +216,80 @@ describe("completeStudentProfile â€” persistence", () => {
   });
 });
 
+describe("completeStudentProfile — date of birth", () => {
+  it("is required", async () => {
+    const result = await completeStudentProfile("user_1", { ...VALID_INPUT, dateOfBirth: "" }, NOW);
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.reason === "validation") expect(result.fieldErrors.dateOfBirth).toMatch(/required/);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["2007-02-29", /exist/], // not a leap year
+    ["2008-13-01", /exist/],
+    ["2008-04-31", /exist/],
+    ["15/03/2008", /full date/],
+    ["1890-01-01", /valid year/],
+    ["2026-10-15", /future/], // tomorrow in Dhaka
+  ])("rejects %s", async (dateOfBirth, message) => {
+    const result = await completeStudentProfile("user_1", { ...VALID_INPUT, dateOfBirth }, NOW);
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.reason === "validation") expect(result.fieldErrors.dateOfBirth).toMatch(message);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("judges 'future' by the Dhaka date: at 01:00 Dhaka on Oct 15 (Oct 14 UTC), Oct 15 is today, not the future", async () => {
+    const result = await completeStudentProfile("user_1", { ...VALID_INPUT, dateOfBirth: "2026-10-15" }, new Date("2026-10-14T19:00:00Z"));
+    expect(result.ok).toBe(true);
+  });
+
+  it("stores it as a plain calendar date on a new profile", async () => {
+    await completeStudentProfile("user_1", VALID_INPUT, NOW);
+    const create = studentProfileUpsert.mock.calls[0]![0].create;
+    expect(create.dateOfBirth.toISOString()).toBe("2008-03-15T00:00:00.000Z");
+    expect(create.dateOfBirthSetAt).toEqual(NOW);
+  });
+
+  it("never overwrites a date of birth already on file (update branch omits it; fill-in is guarded on null)", async () => {
+    await completeStudentProfile("user_1", VALID_INPUT, NOW);
+    expect(studentProfileUpsert.mock.calls[0]![0].update).not.toHaveProperty("dateOfBirth");
+    expect(studentProfileUpdateMany).toHaveBeenCalledWith({
+      where: { userId: "user_1", dateOfBirth: null },
+      data: { dateOfBirth: new Date("2008-03-15T00:00:00Z"), dateOfBirthSetAt: NOW },
+    });
+  });
+});
+
+describe("setStudentDateOfBirth (existing students without one)", () => {
+  it("saves a valid date only when none is on file", async () => {
+    studentProfileFindUnique.mockResolvedValue({ dateOfBirth: null });
+    expect(await setStudentDateOfBirth("user_1", "2009-02-28", NOW)).toEqual({ ok: true });
+    expect(studentProfileUpdateMany).toHaveBeenCalledWith({
+      where: { userId: "user_1", dateOfBirth: null },
+      data: { dateOfBirth: new Date("2009-02-28T00:00:00Z"), dateOfBirthSetAt: NOW },
+    });
+  });
+
+  it("refuses to change a saved date (and loses a race safely)", async () => {
+    studentProfileFindUnique.mockResolvedValue({ dateOfBirth: new Date("2008-01-01T00:00:00Z") });
+    studentProfileUpdateMany.mockResolvedValue({ count: 0 });
+    expect(await setStudentDateOfBirth("user_1", "2008-05-05", NOW)).toMatchObject({ ok: false, reason: "already_set" });
+  });
+
+  it("rejects invalid and future dates without writing", async () => {
+    expect(await setStudentDateOfBirth("user_1", "2030-01-01", NOW)).toMatchObject({ ok: false, reason: "invalid" });
+    expect(await setStudentDateOfBirth("user_1", "2010-02-30", NOW)).toMatchObject({ ok: false, reason: "invalid" });
+    expect(studentProfileUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("returns not_found without a profile row", async () => {
+    studentProfileFindUnique.mockResolvedValue(null);
+    expect(await setStudentDateOfBirth("user_1", "2008-05-05", NOW)).toMatchObject({ ok: false, reason: "not_found" });
+  });
+});
+
 describe("updateStudentProfile", () => {
-  const { fatherPhone: _f, motherPhone: _m, email: _e, ...EDITABLE } = VALID_INPUT;
+  const { fatherPhone: _f, motherPhone: _m, email: _e, dateOfBirth: _d, ...EDITABLE } = VALID_INPUT;
 
   it("saves the editable fields, trimmed", async () => {
     const result = await updateStudentProfile("user_1", { ...EDITABLE, name: "  New Name  " });
@@ -220,11 +299,12 @@ describe("updateStudentProfile", () => {
     expect(data.collegeEIIN).toBeNull();
   });
 
-  it("never writes parent phones, even if a crafted request includes them", async () => {
-    await updateStudentProfile("user_1", { ...EDITABLE, fatherPhone: "01811111111", motherPhone: "01911111111" } as never);
+  it("never writes parent phones or the date of birth, even if a crafted request includes them", async () => {
+    await updateStudentProfile("user_1", { ...EDITABLE, fatherPhone: "01811111111", motherPhone: "01911111111", dateOfBirth: "2001-01-01" } as never);
     const data = studentProfileUpdate.mock.calls[0]![0].data;
     expect(data).not.toHaveProperty("fatherPhone");
     expect(data).not.toHaveProperty("motherPhone");
+    expect(data).not.toHaveProperty("dateOfBirth");
   });
 
   it("rejects invalid fields without writing", async () => {

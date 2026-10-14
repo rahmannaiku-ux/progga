@@ -6,6 +6,7 @@ import {
   completeStudentProfile,
   updateStudentProfile,
   addStudentEmail,
+  setStudentDateOfBirth,
   type CompleteStudentProfileInput,
   type EditableStudentProfileInput,
 } from "@/server/services/profile-service";
@@ -54,6 +55,20 @@ export async function addStudentEmailAction(input: { email: string }) {
   const user = await requireAuth();
   const result = await addStudentEmail(user.id, input.email);
   if (result.ok) revalidatePath("/settings");
+  return result;
+}
+
+/**
+ * Adds a missing date of birth (students who finished their profile before
+ * it was asked for). Set-once; same userId rule as above.
+ */
+export async function setDateOfBirthAction(input: { dateOfBirth: string }) {
+  const user = await requireAuth();
+  const result = await setStudentDateOfBirth(user.id, String(input?.dateOfBirth ?? ""));
+  if (result.ok) {
+    revalidatePath("/settings");
+    revalidatePath("/dashboard");
+  }
   return result;
 }
 

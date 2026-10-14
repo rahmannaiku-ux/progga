@@ -6,6 +6,7 @@ import { Lock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhoneField } from "@/components/auth/phone-field";
 import { OtpInput } from "@/components/auth/otp-input";
+import { AddDateOfBirthForm } from "@/components/profile/add-date-of-birth-form";
 import { cn } from "@/lib/utils";
 import { phoneChangeErrorMessage } from "@/lib/auth/error-messages";
 import {
@@ -95,12 +96,18 @@ export function StudentDetailsCard({
   details,
   fatherPhone,
   motherPhone,
+  dateOfBirthLabel,
+  maxDateOfBirth,
 }: {
   phone: string | null;
   email: string | null;
   details: EditableStudentProfileInput;
   fatherPhone: string | null;
   motherPhone: string | null;
+  /** Already formatted ("15 March 2008"), or null when none is on file. */
+  dateOfBirthLabel: string | null;
+  /** Today's Dhaka date, the latest date the picker allows. */
+  maxDateOfBirth: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -232,6 +239,19 @@ export function StudentDetailsCard({
         <PhoneChange currentPhone={phone} />
       </div>
 
+      <div id="date-of-birth" className="mt-3 scroll-mt-24 border-t border-border/10 pt-3">
+        {dateOfBirthLabel ? (
+          <dl>
+            <Row label="Date of birth (private)" value={dateOfBirthLabel} locked />
+          </dl>
+        ) : (
+          <div className="py-2">
+            <p className="mb-3 text-sm font-semibold text-foreground">Add your date of birth</p>
+            <AddDateOfBirthForm max={maxDateOfBirth} idPrefix="settings-dob" />
+          </div>
+        )}
+      </div>
+
       <div className="mt-3 border-t border-border/10 pt-3">
         <dl className="divide-y divide-border/10">
           <Row label="Email" value={email ?? ""} locked />
@@ -239,7 +259,7 @@ export function StudentDetailsCard({
           <Row label="Mother's phone" value={localPhone(motherPhone)} locked />
         </dl>
         <p className="mt-2 text-xs text-muted-foreground">
-          Parent phone numbers and your email can't be changed here. Contact support if one needs updating.
+          Parent phone numbers, your email and your date of birth can't be changed here. Contact support if one needs updating.
         </p>
       </div>
     </div>

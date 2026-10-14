@@ -97,6 +97,14 @@ export async function adminUpdateStudentAction(
     userData
   );
   const before = target.studentProfile;
+  // Compared as calendar dates; Date objects never compare equal with !==.
+  const { dateOfBirth: newDob, ...profileFields } = profileData;
+  const dobChanged =
+    newDob !== undefined && (before?.dateOfBirth?.toISOString() ?? null) !== (newDob?.toISOString() ?? null);
+  const profileWrite = {
+    ...profileFields,
+    ...(dobChanged ? { dateOfBirth: newDob, dateOfBirthSetAt: newDob ? new Date() : null } : {}),
+  };
   const changedProfile = changedKeys(
     {
       name: before?.name ?? null,
@@ -109,16 +117,19 @@ export async function adminUpdateStudentAction(
       hscBatch: before?.hscBatch ?? null,
       studyVersion: before?.studyVersion ?? null,
     },
-    profileData
+    profileFields
   );
+  // Changing a date of birth never grants a past birthday: rewards are only
+  // ever given for the current Dhaka day, once per year (see services/birthday).
+  if (dobChanged) changedProfile.push("dateOfBirth");
 
   try {
     await db.$transaction(async (tx) => {
       await tx.user.update({ where: { id: targetId }, data: userData });
       await tx.studentProfile.upsert({
         where: { userId: targetId },
-        create: { userId: targetId, ...profileData },
-        update: profileData,
+        create: { userId: targetId, ...profileWrite },
+        update: profileWrite,
       });
       if (Object.keys(s).length > 0) {
         const current = await tx.heroStats.findUnique({ where: { userId: targetId } });

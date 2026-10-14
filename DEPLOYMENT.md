@@ -70,6 +70,7 @@ There is **no `vercel.json` in the repo**, so schedule these in Vercel (add a `v
 | `/api/cron/live-class-sweep` | Sync `LiveClass` states with their schedule (start/end stragglers) | every 15–30 min |
 | `/api/cron/deliver-webhooks` | Deliver the outgoing payment-webhook outbox (only if `PAYMENT_WEBHOOK_URLS` is set) | every few minutes |
 | `/api/cron/prune-device-nonces` | Delete old payment-device replay-ledger rows | daily |
+| `/api/cron/birthday-rewards` | Birthday rewards: grant today's (Dhaka) 1,500-coin rewards, expire birthday coins after 30 days, queue "expires soon" reminders, send/retry phone push. Idempotent | hourly, e.g. `5 * * * *` (at minimum `5 18 * * *` = 00:05 Dhaka) |
 
 Example `vercel.json`. The Hobby plan allows only daily crons, so the 5-minute jobs need Pro or an external pinger such as cron-job.org:
 
@@ -81,12 +82,21 @@ Example `vercel.json`. The Hobby plan allows only daily crons, so the 5-minute j
     { "path": "/api/cron/notification-reminders", "schedule": "*/30 * * * *" },
     { "path": "/api/cron/live-class-sweep", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/deliver-webhooks", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/prune-device-nonces", "schedule": "30 20 * * *" }
+    { "path": "/api/cron/prune-device-nonces", "schedule": "30 20 * * *" },
+    { "path": "/api/cron/birthday-rewards", "schedule": "5 * * * *" }
   ]
 }
 ```
 
 Leaderboard resets (daily/weekly/monthly) are computed when the board is read, so they need no cron.
+
+### Birthday rewards and phone notifications
+
+- **Without the cron**, a student still gets their reward the first time they open Proggaa on their birthday (Dhaka date), and expired birthday coins are removed whenever that student next loads a page or spends coins (they can never be spent after expiry either way). What you lose: students who don't open Proggaa that day get no reward that year, nothing is pushed to phones at midnight, and expiry reminders only go out when the student visits.
+- **Phone notifications use Web Push** (free; no SMS). Generate a key pair once with `npx web-push generate-vapid-keys` and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (e.g. `mailto:support@prooggaa.com`); the Settings page hands the public key to the browser at runtime. Never rotate the pair casually: every saved subscription stops working.
+- Students opt in per device under **Settings → Phone notifications** (the browser asks for permission). Android Chrome/Edge/Firefox/Samsung Internet work directly; iPhone/iPad need iOS 16.4+ and Proggaa added to the Home Screen (the site ships a web app manifest for this). The site must be served over HTTPS.
+- Without the VAPID variables everything else still works: the in-app notification is created and the phone delivery row is recorded as `SKIPPED` ("not configured"), never as sent.
+- Delivery status lives in `NotificationDelivery`: `ACCEPTED` means the browser's push service accepted the message (Web Push gives no proof it was displayed), `PENDING` is queued or waiting for a retry (5 attempts with backoff), `FAILED` gave up, `SKIPPED` had no device or no configuration. Admins see it per student on the user page.
 
 ---
 

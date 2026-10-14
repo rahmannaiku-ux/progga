@@ -91,7 +91,9 @@ export const heroNav: NavSection[] = [
       { label: "Results", href: "/results", icon: ClipboardList },
       { label: "Live Classes", href: "/live-classes", icon: Video },
       { label: "Proggy Store", href: "/store", icon: Store },
-      { label: "Wallet", href: "/wallet", icon: Coins },
+      // The birthday rewards page (/birthday) is reached from the wallet,
+      // the dashboard banner and the birthday notification.
+      { label: "Wallet", href: "/wallet", icon: Coins, match: (p) => under(p, "/wallet") || under(p, "/birthday") },
       { label: "Community", href: "/community", icon: MessageCircle },
       { label: "Leaderboard", href: "/leaderboard", icon: Trophy },
       // "Certificates" in the reference design — this app calls the

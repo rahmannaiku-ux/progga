@@ -223,6 +223,16 @@ export function AdminStudentEditor({
             <Field id="as-zip" label="ZIP / postal code" value={values.zipCode} onChange={(v) => set("zipCode", v)} error={errors.zipCode} disabled={pending} />
             <Field id="as-college" label="College name" value={values.collegeName} onChange={(v) => set("collegeName", v)} error={errors.collegeName} disabled={pending} />
             <Field id="as-eiin" label="College EIIN" value={values.collegeEIIN} onChange={(v) => set("collegeEIIN", v)} error={errors.collegeEIIN} disabled={pending} />
+            <Field
+              id="as-dob"
+              label="Date of birth (private)"
+              type="date"
+              value={values.dateOfBirth ?? ""}
+              onChange={(v) => set("dateOfBirth", v)}
+              error={errors.dateOfBirth}
+              disabled={pending}
+              hint="Students can set this once; only admins can correct it. Changing it never grants a past birthday reward."
+            />
             <Field id="as-batch" label="HSC batch" inputMode="numeric" value={values.hscBatch} onChange={(v) => set("hscBatch", v)} error={errors.hscBatch} disabled={pending} hint="A year, e.g. 2026." />
             <Field id="as-father" label="Father's phone" type="tel" inputMode="tel" value={values.fatherPhone} onChange={(v) => set("fatherPhone", v)} error={errors.fatherPhone} disabled={pending} />
             <Field id="as-mother" label="Mother's phone" type="tel" inputMode="tel" value={values.motherPhone} onChange={(v) => set("motherPhone", v)} error={errors.motherPhone} disabled={pending} />

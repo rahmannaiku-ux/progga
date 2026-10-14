@@ -1,4 +1,5 @@
 import { normalizeBangladeshPhone } from "@/lib/auth/phone";
+import { calendarDateToDb, parseDateOfBirth } from "@/lib/birthday/dates";
 
 /**
  * What an admin may change on a student. Every field here is a plain string or
@@ -28,6 +29,8 @@ export type AdminStudentEditInput = {
   motherPhone: string;
   hscBatch: string;
   studyVersion: string;
+  /** "YYYY-MM-DD", "" to clear, or omitted to leave it as it is. */
+  dateOfBirth?: string;
 };
 
 /** Only sent when the admin actually changed them, so a stale form can't overwrite live progress. */
@@ -59,6 +62,8 @@ export type AdminStudentEditData = {
     motherPhone: string | null;
     hscBatch: string | null;
     studyVersion: "BANGLA" | "ENGLISH" | null;
+    /** undefined = not sent, leave unchanged. */
+    dateOfBirth?: Date | null;
   };
 };
 
@@ -120,6 +125,17 @@ export function parseAdminStudentEdit(
   const sv = String(input.studyVersion ?? "");
   if (sv !== "" && sv !== "BANGLA" && sv !== "ENGLISH") errors.studyVersion = "Choose Bangla, English or none.";
 
+  let dateOfBirth: Date | null | undefined;
+  if (input.dateOfBirth !== undefined) {
+    const raw = String(input.dateOfBirth ?? "").trim();
+    if (raw.length === 0) dateOfBirth = null;
+    else {
+      const parsed = parseDateOfBirth(raw);
+      if (parsed.ok) dateOfBirth = calendarDateToDb(parsed.date);
+      else errors.dateOfBirth = parsed.error;
+    }
+  }
+
   if (Object.keys(errors).length > 0 || !phone) return { ok: false, fieldErrors: errors };
 
   return {
@@ -146,6 +162,7 @@ export function parseAdminStudentEdit(
         motherPhone,
         hscBatch: orNull(hscBatch),
         studyVersion: sv === "" ? null : (sv as "BANGLA" | "ENGLISH"),
+        ...(dateOfBirth !== undefined ? { dateOfBirth } : {}),
       },
     },
   };

@@ -18,6 +18,8 @@ import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 import { AntiDevToolsProvider } from "@/components/security/anti-devtools-provider";
 import { isAntiDevToolsEnabledFor } from "@/lib/security/anti-devtools-config";
 import { studentNeedsProfileStep } from "@/lib/auth/profile-gate";
+import { runBirthdayChecksForUser } from "@/server/services/birthday";
+import { BirthdayCelebration } from "@/components/birthday/birthday-celebration";
 
 export default async function HeroLayout({
   children,
@@ -44,6 +46,12 @@ export default async function HeroLayout({
   if (studentNeedsProfileStep(user)) {
     redirect("/complete-profile");
   }
+
+  // Birthday reward + expiry of birthday coins for this student, before the
+  // coin balance is read below. Idempotent and never throws (the cron job
+  // does the same for everyone; this is the fallback if it isn't scheduled).
+  const birthday =
+    user.role === "STUDENT" ? await runBirthdayChecksForUser(user) : { celebration: null, needsDateOfBirth: false };
 
   const [stats, notificationFeed, devtoolsGuard] = await Promise.all([
     getOrCreateHeroStats(user.id),
@@ -129,6 +137,7 @@ export default async function HeroLayout({
         <main id="main-content" tabIndex={-1} className="relative flex-1 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 lg:pb-6 print:p-0">
           {/* The one place the anti-DevTools monitor is mounted for the app. */}
           <NotificationWatcher initialUnread={notificationFeed.unreadCount} />
+          {birthday.celebration && <BirthdayCelebration celebration={birthday.celebration} />}
           <AntiDevToolsProvider enabled={devtoolsGuard}>
             <PageTransition>{children}</PageTransition>
           </AntiDevToolsProvider>

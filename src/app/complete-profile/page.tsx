@@ -3,6 +3,7 @@ import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { CompleteProfileForm } from "@/components/auth/complete-profile-form";
 import { AddEmailForm } from "@/components/auth/add-email-form";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
+import { dhakaCalendarDate, toIsoDate } from "@/lib/birthday/dates";
 
 export const metadata = { title: "Complete your profile — Proggaa" };
 
@@ -48,7 +49,7 @@ export default async function CompleteProfilePage() {
         </p>
       </div>
 
-      <CompleteProfileForm />
+      <CompleteProfileForm maxDateOfBirth={toIsoDate(dhakaCalendarDate())} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PhoneField } from "@/components/auth/phone-field";
+import { DateOfBirthField } from "@/components/auth/date-of-birth-field";
 import { cn } from "@/lib/utils";
 import { completeStudentProfileAction } from "@/server/actions/student-profile-actions";
 import type { CompleteStudentProfileInput } from "@/server/services/profile-service";
@@ -21,6 +22,7 @@ const EMPTY: CompleteStudentProfileInput = {
   motherPhone: "",
   hscBatch: "",
   studyVersion: "",
+  dateOfBirth: "",
 };
 
 function TextField({
@@ -73,7 +75,8 @@ function TextField({
   );
 }
 
-export function CompleteProfileForm() {
+/** `maxDateOfBirth` is today's Dhaka date ("YYYY-MM-DD"), from the server. */
+export function CompleteProfileForm({ maxDateOfBirth }: { maxDateOfBirth: string }) {
   const router = useRouter();
   const [values, setValues] = useState<CompleteStudentProfileInput>(EMPTY);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -129,6 +132,14 @@ export function CompleteProfileForm() {
         required
         placeholder="you@example.com"
         disabled={isPending}
+      />
+
+      <DateOfBirthField
+        value={values.dateOfBirth}
+        onChange={(v) => set("dateOfBirth", v)}
+        error={fieldErrors.dateOfBirth}
+        disabled={isPending}
+        max={maxDateOfBirth}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

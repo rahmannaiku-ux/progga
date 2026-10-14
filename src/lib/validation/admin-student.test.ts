@@ -90,3 +90,22 @@ describe("parseAdminStudentStats", () => {
     expect(parseAdminStudentStats({ xp: 99_999_999 }).ok).toBe(false);
   });
 });
+
+describe("parseAdminStudentEdit — date of birth", () => {
+  it("leaves it untouched when the form doesn't send it", () => {
+    const res = parseAdminStudentEdit(base);
+    expect(res.ok && "dateOfBirth" in res.data.profile).toBe(false);
+  });
+
+  it("parses a valid date, clears on blank, rejects impossible or future dates", () => {
+    const set = parseAdminStudentEdit({ ...base, dateOfBirth: "2008-02-29" });
+    expect(set.ok && set.data.profile.dateOfBirth?.toISOString()).toBe("2008-02-29T00:00:00.000Z");
+    const cleared = parseAdminStudentEdit({ ...base, dateOfBirth: "" });
+    expect(cleared.ok && cleared.data.profile.dateOfBirth).toBeNull();
+    for (const bad of ["2009-02-29", "3000-01-01", "garbage"]) {
+      const res = parseAdminStudentEdit({ ...base, dateOfBirth: bad });
+      expect(res.ok).toBe(false);
+      if (!res.ok) expect(res.fieldErrors.dateOfBirth).toBeTruthy();
+    }
+  });
+});

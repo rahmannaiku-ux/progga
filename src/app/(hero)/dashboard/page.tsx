@@ -23,6 +23,7 @@ import { ExamPortalCard } from "@/components/exam/exam-portal-card";
 import { dhakaStartOfDay, dhakaGreeting } from "@/lib/timezone";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 import { getResumeLessonPath } from "@/server/services/lesson-resume";
+import { BirthdayDashboardSlot } from "@/components/birthday/birthday-dashboard-slot";
 
 const WEEKLY_QUIZ_TARGET_PCT = 80;
 const STUDY_GOAL_MINUTES = 30;
@@ -148,6 +149,7 @@ export default async function HeroDashboardPage() {
 
   return (
     <>
+      {user.role === "STUDENT" && <BirthdayDashboardSlot userId={user.id} firstName={user.firstName} />}
       {/* ══════════════════════════════════════════════════════════
           MOBILE (< lg) — purpose-built hierarchy, not a collapsed
           copy of the desktop grid. Reuses every value already

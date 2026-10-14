@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminBirthdaySection } from "@/components/admin-dashboard/admin-birthday-section";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
@@ -48,6 +49,7 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
           collegeEIIN: true,
           hscBatch: true,
           studyVersion: true,
+          dateOfBirth: true,
           fatherPhone: true,
           motherPhone: true,
           updatedAt: true,
@@ -160,11 +162,14 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
                 motherPhone: profile?.motherPhone ?? "",
                 hscBatch: profile?.hscBatch ?? "",
                 studyVersion: profile?.studyVersion ?? "",
+                dateOfBirth: profile?.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : "",
               }}
             />
           </div>
         </section>
       )}
+
+      {user.role === "STUDENT" && <AdminBirthdaySection userId={user.id} />}
 
       <section className="glass-panel mt-6 p-5">
         <h2 className="font-display text-lg font-bold text-foreground">Account</h2>
