@@ -20,16 +20,14 @@
     @apply border-border;
   }
 
-  html {
-    /* Global mobile-safety backstop, not a substitute for fixing
-       layouts — every known source of horizontal overflow in this
-       pass (fixed widths, oversized decorative elements, tables) was
-       fixed at the source. This only guards against anything missed:
-       clip rather than scroll, since an accidental sliver of
-       horizontal scroll is worse UX than invisibly clipping it. */
-    @apply overflow-x-clip;
-  }
-
+  /* Global mobile-safety backstop, not a substitute for fixing layouts:
+     clip any accidental horizontal overflow rather than scroll it. It goes
+     on <body> ONLY. With <html> left `visible`, the browser hands body's
+     overflow to the viewport, so when a dialog locks scrolling (Radix sets
+     `body { overflow: hidden }`) the viewport itself stops scrolling. An
+     overflow value on <html> breaks that hand-off: body then becomes its
+     own scroll box, and the sticky sidebar and top bar jump up by however
+     far the page was scrolled while the dialog is open. */
   body {
     @apply bg-background text-foreground antialiased overflow-x-clip;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
