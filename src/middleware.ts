@@ -161,13 +161,21 @@ function dinaaPage(req: NextRequest): NextResponse | null {
   if (pathname !== "/dinaa" && !pathname.startsWith("/dinaa/")) return null;
   const origin = process.env.DINAA_ORIGIN?.replace(/\/+$/, "");
   if (!origin) return new NextResponse("Not found", { status: 404 });
-  const locked = Date.now() < DINAA_UNLOCK;
+  // The owner can look at the unlocked page early with ?preview=<DINAA_PREVIEW_KEY>; a cookie on /dinaa then
+  // carries that through to the photos and the song. Without the variable set there is no preview at all.
+  const key = process.env.DINAA_PREVIEW_KEY;
+  const asked = req.nextUrl.searchParams.get("preview");
+  const previewing = !!key && (asked === key || req.cookies.get("dinaa_preview")?.value === key);
+  const locked = !previewing && Date.now() < DINAA_UNLOCK;
   let rest = pathname.slice("/dinaa".length).replace(/^\/+/, "");
   if (rest === "" || rest === "index.html") rest = locked ? "countdown.html" : "index.html";
   else if (locked && /^assets\/(photos|audio)\//.test(rest)) return new NextResponse("Not found", { status: 404 });
   const res = NextResponse.rewrite(new URL(`${origin}/${rest}${search}`));
   res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, noimageindex");
   if (rest.endsWith(".html")) res.headers.set("Cache-Control", "no-store");
+  if (key && asked === key) {
+    res.cookies.set("dinaa_preview", key, { httpOnly: true, secure: true, sameSite: "lax", path: "/dinaa", maxAge: 60 * 60 * 24 });
+  }
   return res;
 }
 
