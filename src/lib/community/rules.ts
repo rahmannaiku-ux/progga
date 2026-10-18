@@ -14,6 +14,22 @@ export const FEED_PAGE_SIZE = 10;
 export const COMMENTS_PAGE_SIZE = 30;
 export const MESSAGES_PAGE_SIZE = 30;
 
+// Reels: short vertical videos, stored in Google Drive.
+export const REEL_MAX_SECONDS = 90;
+export const REEL_MAX_BYTES = 150 * 1024 * 1024;
+export const REEL_MIME_TYPES = ["video/mp4", "video/webm", "video/quicktime"] as const;
+/**
+ * Bytes per upload request: under the hosting platform's 4.5 MB request
+ * cap, and a multiple of 256 KiB as Drive's resumable uploads require.
+ */
+export const REEL_CHUNK_BYTES = 3 * 1024 * 1024;
+export const REEL_CAPTION_MAX = 2200;
+
+/** A reel's video: a file this site stored in Drive (served from /api/files). */
+export function isCommunityVideoUrl(value: string): boolean {
+  return /^\/api\/files\/[A-Za-z0-9_-]{6,64}$/.test(value);
+}
+
 export const REACTION_TYPES = ["LIKE", "LOVE", "CELEBRATE", "INSIGHTFUL", "CURIOUS"] as const;
 export type ReactionType = (typeof REACTION_TYPES)[number];
 
@@ -51,7 +67,7 @@ const trimmed = (max: number, min = 1) => z.string().trim().min(min).max(max);
 
 export const postInputSchema = z
   .object({
-    kind: z.enum(["POST", "QUESTION", "POLL"]).default("POST"),
+    kind: z.enum(["POST", "QUESTION", "POLL", "REEL"]).default("POST"),
     content: z.string().trim().max(POST_MAX_LENGTH, `Keep it under ${POST_MAX_LENGTH} characters.`).default(""),
     imageUrl: z
       .string()
@@ -61,6 +77,12 @@ export const postInputSchema = z
     groupId: z.string().min(1).max(40).optional().or(z.literal("").transform(() => undefined)),
     sharedPostId: z.string().min(1).max(40).optional().or(z.literal("").transform(() => undefined)),
     pollOptions: z.array(z.string().trim().max(120, "Keep each option under 120 characters.")).default([]),
+    videoUrl: z
+      .string()
+      .refine(isCommunityVideoUrl, "The video didn't upload properly. Try again.")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    videoDurationSec: z.number().int().min(0).max(REEL_MAX_SECONDS + 5).optional(),
   })
   .superRefine((data, ctx) => {
     const options = cleanPollOptions(data.pollOptions);
@@ -73,6 +95,12 @@ export const postInputSchema = z
         ctx.addIssue({ code: "custom", message: `A poll can have at most ${POLL_MAX_OPTIONS} options.` });
       }
       if (data.sharedPostId) ctx.addIssue({ code: "custom", message: "A shared post can't also be a poll." });
+    } else if (data.kind === "REEL") {
+      if (!data.videoUrl) ctx.addIssue({ code: "custom", message: "Add a video for your reel." });
+      if (data.content.length > REEL_CAPTION_MAX) {
+        ctx.addIssue({ code: "custom", message: `Keep the caption under ${REEL_CAPTION_MAX} characters.` });
+      }
+      if (data.sharedPostId) ctx.addIssue({ code: "custom", message: "A reel can't share another post." });
     } else if (data.kind === "QUESTION") {
       if (data.content.length < 10) ctx.addIssue({ code: "custom", message: "Write your question in a little more detail." });
     } else if (!data.content && !data.imageUrl && !data.sharedPostId) {

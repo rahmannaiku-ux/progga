@@ -91,6 +91,10 @@ const SKIP_IP_RATE_LIMIT = [
   "/api/payment-bridge/",
   // Device routes are rate-limited per device id inside device-guard (a shared per-IP window would throttle a NAT'd phone fleet).
   "/api/payment/device/",
+  // A reel plays as many small Range requests and uploads as many 3 MB chunks; both routes check the
+  // signed-in user themselves (files: who may see it; reel chunks: only the uploader, only up to the declared size).
+  "/api/files/",
+  "/api/reels/upload/",
 ];
 
 /**

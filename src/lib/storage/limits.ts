@@ -32,6 +32,12 @@ export const UPLOAD_LIMITS: Record<UploadContext, { maxSizeBytes: number; allowe
     maxSizeBytes: 10 * 1024 * 1024,
     allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"],
   },
+  // Reels: sent straight to Drive in chunks (app/api/reels/upload), never
+  // through uploadUserFile, so the 4.5 MB request cap doesn't apply.
+  COMMUNITY_VIDEO: {
+    maxSizeBytes: 150 * 1024 * 1024,
+    allowedMimeTypes: ["video/mp4", "video/webm", "video/quicktime"],
+  },
   BUG_REPORT: {
     maxSizeBytes: 10 * 1024 * 1024,
     allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"],
@@ -105,6 +111,11 @@ const SIGNATURE_CHECKS: Record<string, (buf: Buffer) => boolean> = {
     buf.length >= 12 &&
     buf.subarray(0, 4).toString("latin1") === "RIFF" &&
     buf.subarray(8, 12).toString("latin1") === "WEBP",
+  // ISO media (MP4 / MOV): an "ftyp" box right at the start.
+  "video/mp4": (buf) => buf.length >= 12 && buf.subarray(4, 8).toString("latin1") === "ftyp",
+  "video/quicktime": (buf) =>
+    buf.length >= 12 && ["ftyp", "moov", "wide", "mdat", "free"].includes(buf.subarray(4, 8).toString("latin1")),
+  "video/webm": (buf) => buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3,
   "application/zip": (buf) =>
     buf.length >= 4 &&
     buf[0] === 0x50 &&
@@ -115,7 +126,7 @@ const SIGNATURE_CHECKS: Record<string, (buf: Buffer) => boolean> = {
   // it always falls through to the `true` default.
 };
 
-function matchesSignature(claimedType: string, buf: Buffer): boolean {
+export function matchesSignature(claimedType: string, buf: Buffer): boolean {
   const check = SIGNATURE_CHECKS[claimedType];
   return check ? check(buf) : true;
 }

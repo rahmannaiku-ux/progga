@@ -30,7 +30,8 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://utfs.io https://lh3.googleusercontent.com https://drive.google.com https://*.googleusercontent.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "media-src 'self' https://utfs.io",
+  // blob: lets "Create reel" preview the chosen video before it uploads.
+  "media-src 'self' blob: https://utfs.io",
   `connect-src 'self' https://uploadthing.com https://*.uploadthing.com https://utfs.io https://api.telegram.org ${streamConnectSrc}`.trim(),
   `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com https://docs.google.com https://drive.google.com`.trim(),
   "frame-ancestors 'self'",

@@ -35,11 +35,19 @@ const CATEGORY_FOLDER_NAME: Record<
   COURSE_ROUTINE: "course-images",
   LESSON_THUMBNAIL: "course-images",
   COURSE_THUMBNAIL: "course-images",
+  COMMUNITY_VIDEO: "reels",
 };
 
 const CATEGORY_FOLDER_DB_FIELD: Record<
   Exclude<UploadContext, "LESSON_RESOURCE">,
-  "profilePicturesFolderId" | "assignmentsFolderId" | "certificatesFolderId" | "communityFolderId" | "bugReportsFolderId" | "otherFolderId" | "courseMediaFolderId"
+    | "profilePicturesFolderId"
+  | "assignmentsFolderId"
+  | "certificatesFolderId"
+  | "communityFolderId"
+  | "bugReportsFolderId"
+  | "otherFolderId"
+  | "courseMediaFolderId"
+  | "reelsFolderId"
 > = {
   AVATAR: "profilePicturesFolderId",
   ASSIGNMENT_SUBMISSION: "assignmentsFolderId",
@@ -50,6 +58,7 @@ const CATEGORY_FOLDER_DB_FIELD: Record<
   COURSE_ROUTINE: "courseMediaFolderId",
   LESSON_THUMBNAIL: "courseMediaFolderId",
   COURSE_THUMBNAIL: "courseMediaFolderId",
+  COMMUNITY_VIDEO: "reelsFolderId",
 };
 
 export class DriveNotConnectedError extends Error {
@@ -163,7 +172,12 @@ async function getConnection() {
  * disconnect (cleared token) is picked up on the next call even from
  * another process that didn't run the connect/disconnect itself.
  */
-let cachedDrive: { tokenCipher: string; drive: drive_v3.Drive; connectionId: string } | null = null;
+let cachedDrive: {
+  tokenCipher: string;
+  drive: drive_v3.Drive;
+  auth: InstanceType<typeof google.auth.OAuth2>;
+  connectionId: string;
+} | null = null;
 
 /**
  * Returns an authenticated Drive client for the one connected account.
@@ -172,11 +186,15 @@ let cachedDrive: { tokenCipher: string; drive: drive_v3.Drive; connectionId: str
  * to be revoked/invalid — the most common real-world failure mode for
  * a long-lived server-side OAuth connection.
  */
-async function getAuthorizedDrive(): Promise<{ drive: drive_v3.Drive; connectionId: string }> {
+async function getAuthorizedDrive(): Promise<{
+  drive: drive_v3.Drive;
+  auth: InstanceType<typeof google.auth.OAuth2>;
+  connectionId: string;
+}> {
   const connection = await getConnection();
   const tokenCipher = connection.refreshTokenEncrypted!;
   if (cachedDrive && cachedDrive.tokenCipher === tokenCipher) {
-    return { drive: cachedDrive.drive, connectionId: cachedDrive.connectionId };
+    return { drive: cachedDrive.drive, auth: cachedDrive.auth, connectionId: cachedDrive.connectionId };
   }
 
   const client = getOAuthClient();
@@ -203,8 +221,8 @@ async function getAuthorizedDrive(): Promise<{ drive: drive_v3.Drive; connection
   }
 
   const drive = google.drive({ version: "v3", auth: client });
-  cachedDrive = { tokenCipher, drive, connectionId: connection.id };
-  return { drive, connectionId: connection.id };
+  cachedDrive = { tokenCipher, drive, auth: client, connectionId: connection.id };
+  return { drive, auth: client, connectionId: connection.id };
 }
 
 /**
@@ -301,6 +319,82 @@ export async function uploadToDrive({
   if (!res.data.id) throw new Error("Google Drive upload did not return a file ID.");
 
   return { driveFileId: res.data.id, size: Number(res.data.size ?? buffer.length) };
+}
+
+/**
+ * Opens a Drive resumable upload for a file too big to pass through one
+ * request to this server (a reel). Returns Google's session address; the
+ * bytes are then sent to it in chunks by putResumableChunk. The session
+ * only accepts exactly `size` bytes for this one new file, in the
+ * category's folder.
+ */
+export async function startResumableUpload({
+  context,
+  filename,
+  mimeType,
+  size,
+}: {
+  context: Exclude<UploadContext, "LESSON_RESOURCE">;
+  filename: string;
+  mimeType: string;
+  size: number;
+}): Promise<string> {
+  const { drive, auth } = await getAuthorizedDrive();
+  let connection = await db.googleDriveConnection.findUniqueOrThrow({ where: { id: CONNECTION_ID } });
+  const dbField = CATEGORY_FOLDER_DB_FIELD[context];
+  if (!connection[dbField]) {
+    await ensureFolderStructure(drive);
+    connection = await db.googleDriveConnection.findUniqueOrThrow({ where: { id: CONNECTION_ID } });
+  }
+  const folderId = connection[dbField];
+  if (!folderId) throw new Error("Couldn't prepare the Drive folder.");
+
+  const { token } = await auth.getAccessToken();
+  if (!token) throw new DriveNotConnectedError();
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mimeType,
+      "X-Upload-Content-Length": String(size),
+    },
+    body: JSON.stringify({ name: filename, parents: [folderId] }),
+  });
+  const location = res.headers.get("location");
+  if (!res.ok || !location) throw new Error(`Drive refused the upload session (${res.status}).`);
+  return location;
+}
+
+/**
+ * Sends one chunk of a resumable upload. Every chunk but the last must be
+ * a multiple of 256 KiB. Answers how many bytes Drive now holds, or, after
+ * the last chunk, the new file's id.
+ */
+export async function putResumableChunk(
+  sessionUrl: string,
+  chunk: Uint8Array,
+  start: number,
+  total: number
+): Promise<{ done: false; received: number } | { done: true; driveFileId: string; size: number }> {
+  const end = start + chunk.byteLength - 1;
+  const res = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: { "Content-Length": String(chunk.byteLength), "Content-Range": `bytes ${start}-${end}/${total}` },
+    body: chunk,
+  });
+  if (res.status === 308) {
+    // "Range: bytes=0-N" is what Drive has; no header means nothing yet.
+    const range = res.headers.get("range");
+    const received = range ? Number(range.split("-")[1]) + 1 : 0;
+    return { done: false, received };
+  }
+  if (res.status === 200 || res.status === 201) {
+    const data = (await res.json()) as { id?: string; size?: string };
+    if (!data.id) throw new Error("Google Drive upload did not return a file ID.");
+    return { done: true, driveFileId: data.id, size: Number(data.size ?? total) };
+  }
+  throw new Error(`Drive rejected the chunk (${res.status}).`);
 }
 
 export async function deleteFromDrive(driveFileId: string) {

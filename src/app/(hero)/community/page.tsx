@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/community/rules";
 import { Feed } from "@/components/community/feed";
 import { CommunitySidebar } from "@/components/community/sidebar";
+import { ReelsRow } from "@/components/community/reels-row";
 import { getFeedPage, getSidebar, getTopHelpers, listGroups, type FeedScope } from "@/server/services/community";
 
 export const metadata = { title: "Community" };
@@ -27,11 +28,12 @@ export default async function CommunityFeedPage({ searchParams }: { searchParams
   const user = await getCurrentUser();
   const tab = TABS.find((t) => t.key === searchParams.tab) ?? TABS[0];
 
-  const [initial, sidebar, helpers, suggestedGroups] = await Promise.all([
+  const [initial, sidebar, helpers, suggestedGroups, reels] = await Promise.all([
     getFeedPage(user, tab.scope),
     getSidebar(user),
     getTopHelpers(),
     listGroups(user, { take: 8 }),
+    tab.key === "for-you" ? getFeedPage(user, { type: "reels" }) : null,
   ]);
   const me = { name: displayName(user), avatarUrl: user.avatarUrl };
 
@@ -62,6 +64,7 @@ export default async function CommunityFeedPage({ searchParams }: { searchParams
           initial={initial}
           me={me}
           composer={{ me }}
+          afterComposer={reels ? <ReelsRow reels={reels.posts} me={me} /> : undefined}
           suggestions={{ people: sidebar.people, groups: suggestedGroups.filter((g) => !g.myRole) }}
           emptyTitle={EMPTY[tab.key].title}
           emptyBody={EMPTY[tab.key].body}

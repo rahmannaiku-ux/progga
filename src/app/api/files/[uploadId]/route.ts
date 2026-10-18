@@ -4,6 +4,7 @@ import { db } from "@/lib/db/client";
 import { courseAccessFilter } from "@/lib/auth/course-access";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
 import { streamFromDrive } from "@/lib/storage/google-drive";
+import { videoRange } from "@/lib/storage/video-range";
 
 // Always run per request and never let Next persist anything from this
 // route: Drive bytes pass straight through to the browser and are never
@@ -70,7 +71,9 @@ export async function GET(req: NextRequest, { params }: { params: { uploadId: st
   }
 
   try {
-    const range = req.headers.get("range") ?? undefined;
+    const range = upload.fileType.startsWith("video/")
+      ? videoRange(req.headers.get("range"), upload.sizeBytes)
+      : req.headers.get("range") ?? undefined;
     const { stream, status, contentRange, contentLength } = await streamFromDrive(upload.driveFileId, { range });
     // The googleapis client returns a Node.js Readable (responseType:
     // "stream") — NextResponse's body needs a Web ReadableStream, so
@@ -123,10 +126,10 @@ async function canAccessUpload(
     return isTeacherForSubmission(upload, viewer.id);
   }
 
-  // COMMUNITY_IMAGE: visible to any signed-in active user, matching how
+  // COMMUNITY_IMAGE / COMMUNITY_VIDEO: visible to any signed-in active user, matching how
   // community content is visible app-wide. CERTIFICATE / OTHER: no
   // further exception beyond owner/admin above.
-  if (upload.context === "COMMUNITY_IMAGE") return true;
+  if (upload.context === "COMMUNITY_IMAGE" || upload.context === "COMMUNITY_VIDEO") return true;
 
   return false;
 }

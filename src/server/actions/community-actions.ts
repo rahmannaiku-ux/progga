@@ -17,6 +17,9 @@ import {
   groupSlug,
   postInputSchema,
   profileInputSchema,
+  REEL_MAX_BYTES,
+  REEL_MIME_TYPES,
+  REEL_CHUNK_BYTES,
   reportInputSchema,
   type ReactionType,
 } from "@/lib/community/rules";
@@ -35,6 +38,8 @@ import {
 } from "@/server/services/community";
 import { checkFirstPostAchievement, rewardHelpfulAnswer } from "@/server/services/community-rewards";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
+import { deleteUserFile } from "@/lib/storage";
+import { isDriveConnected, startResumableUpload } from "@/lib/storage/google-drive";
 import { requireActiveUser } from "./require-user";
 
 // ---------------------------------------------------------------------
@@ -121,6 +126,8 @@ function safeScope(scope: unknown): FeedScope | null {
       return typeof s.userId === "string" ? { type: "profile", userId: s.userId.slice(0, 40) } : null;
     case "group":
       return typeof s.groupId === "string" ? { type: "group", groupId: s.groupId.slice(0, 40) } : null;
+    case "reels":
+      return typeof s.userId === "string" ? { type: "reels", userId: s.userId.slice(0, 40) } : { type: "reels" };
     case "search":
       return typeof s.query === "string" && s.query.trim().length >= 2
         ? { type: "search", query: s.query.trim().slice(0, 80) }
@@ -229,19 +236,41 @@ export async function createPost(input: unknown): Promise<Result<{ postId: strin
     if (!upload) return fail("That picture didn't upload properly. Try again.");
   }
 
+  let videoUploadId: string | null = null;
+  if (data.kind === "REEL") {
+    // The video must be this user's own, fully uploaded reel file, not yet used by another reel.
+    const uploadId = data.videoUrl!.split("/").pop()!;
+    const video = await db.upload.findFirst({
+      where: { id: uploadId, uploaderId: user.id, context: "COMMUNITY_VIDEO", url: data.videoUrl, resumableUrl: null },
+      select: { id: true, driveFileId: true },
+    });
+    if (!video?.driveFileId) return fail("The video didn't finish uploading. Try again.");
+    videoUploadId = video.id;
+  }
+
   const options = data.kind === "POLL" ? cleanPollOptions(data.pollOptions) : [];
-  const post = await db.communityPost.create({
-    data: {
-      authorId: user.id,
-      groupId: data.groupId ?? null,
-      kind: data.kind,
-      content: data.content,
-      imageUrl: data.imageUrl ?? null,
-      sharedPostId,
-      pollOptions: options.length ? { create: options.map((label, order) => ({ label, order })) } : undefined,
-    },
-    select: { id: true },
-  });
+  let post: { id: string };
+  try {
+    post = await db.communityPost.create({
+      data: {
+        authorId: user.id,
+        groupId: data.groupId ?? null,
+        kind: data.kind,
+        content: data.content,
+        imageUrl: data.imageUrl ?? null,
+        sharedPostId,
+        videoUrl: data.kind === "REEL" ? data.videoUrl : null,
+        videoDurationSec: data.kind === "REEL" ? data.videoDurationSec ?? null : null,
+        pollOptions: options.length ? { create: options.map((label, order) => ({ label, order })) } : undefined,
+      },
+      select: { id: true },
+    });
+  } catch (err) {
+    // videoUrl is unique: the same video can't be posted as two reels.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return fail("That video is already posted.");
+    throw err;
+  }
+  if (videoUploadId) await db.upload.update({ where: { id: videoUploadId }, data: { consumedAt: new Date() } });
 
   if (originalAuthorId) {
     await notify(
@@ -273,7 +302,7 @@ export async function updatePost(postId: string, content: string): Promise<Resul
   if (text.length > 5000) return fail("Keep it under 5000 characters.");
   if (post.kind === "POLL" && text.length < 3) return fail("A poll needs its question.");
   if (post.kind === "QUESTION" && text.length < 10) return fail("Write your question in a little more detail.");
-  if (!text && !post.imageUrl && !post.sharedPostId) return fail("A post can't be empty.");
+  if (!text && !post.imageUrl && !post.sharedPostId && post.kind !== "REEL") return fail("A post can't be empty.");
 
   await db.communityPost.update({ where: { id: String(postId) }, data: { content: text, editedAt: new Date() } });
   revalidateCommunity(`/community/post/${postId}`);
@@ -284,7 +313,7 @@ export async function deletePost(postId: string): Promise<Result> {
   const user = await requireActiveUser();
   const post = await db.communityPost.findUnique({
     where: { id: String(postId) },
-    select: { authorId: true, groupId: true, group: { select: { slug: true } } },
+    select: { authorId: true, groupId: true, kind: true, videoUrl: true, imageUrl: true, group: { select: { slug: true } } },
   });
   if (!post) return { ok: true }; // already gone
   const membership = post.groupId
@@ -303,7 +332,81 @@ export async function deletePost(postId: string): Promise<Result> {
   if (!allowed) return fail("You can't delete that post.");
 
   await db.communityPost.delete({ where: { id: String(postId) } });
+  if (post.kind === "REEL") {
+    // A reel's video is large: remove it (and its cover) from Drive too. Best effort.
+    for (const url of [post.videoUrl, post.imageUrl]) {
+      const id = url?.startsWith("/api/files/") ? url.split("/").pop() : null;
+      if (id) await deleteUserFile(id).catch((err) => console.error(`Couldn't delete reel file ${id}:`, err));
+    }
+  }
   revalidateCommunity(post.group ? `/community/groups/${post.group.slug}` : undefined);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Reels
+// ---------------------------------------------------------------------
+
+/**
+ * Starts a reel upload: opens a Drive resumable upload for the declared
+ * file and records it as this user's pending COMMUNITY_VIDEO upload. The
+ * browser then sends the bytes in chunks to /api/reels/upload/<uploadId>,
+ * which forwards them to Drive. Drive's session address never leaves the
+ * server.
+ */
+export async function startReelUpload(input: {
+  name: string;
+  type: string;
+  size: number;
+}): Promise<Result<{ uploadId: string; chunkBytes: number }>> {
+  const user = await requireActiveUser();
+  if (await paused(user)) return fail(PAUSED);
+  if (await limited("post", user.id)) return fail(TOO_FAST);
+
+  const type = String(input?.type ?? "");
+  const size = Number(input?.size);
+  if (!(REEL_MIME_TYPES as readonly string[]).includes(type)) return fail("Choose an MP4, MOV or WebM video.");
+  if (!Number.isInteger(size) || size <= 0) return fail("That video looks empty.");
+  if (size > REEL_MAX_BYTES) return fail(`Keep the video under ${Math.round(REEL_MAX_BYTES / 1024 / 1024)} MB.`);
+  if (!(await isDriveConnected().catch(() => false))) {
+    return fail("Reels are switched off for a moment (video storage isn't connected). Please try later.");
+  }
+
+  const ext = type === "video/webm" ? "webm" : type === "video/quicktime" ? "mov" : "mp4";
+  const filename = `reel-${user.id}-${Date.now()}.${ext}`;
+  let sessionUrl: string;
+  try {
+    sessionUrl = await startResumableUpload({ context: "COMMUNITY_VIDEO", filename, mimeType: type, size });
+  } catch (err) {
+    console.error("Couldn't start a reel upload:", err);
+    return fail("Couldn't start the upload. Please try again.");
+  }
+  const marker = `${user.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const upload = await db.upload.create({
+    data: {
+      uploaderId: user.id,
+      context: "COMMUNITY_VIDEO",
+      provider: "GOOGLE_DRIVE",
+      key: `drive-pending:${marker}`,
+      url: `pending:${marker}`,
+      name: filename,
+      sizeBytes: size,
+      fileType: type,
+      resumableUrl: sessionUrl,
+    },
+    select: { id: true },
+  });
+  return { ok: true, uploadId: upload.id, chunkBytes: REEL_CHUNK_BYTES };
+}
+
+/** Counts one watch of a reel (the player calls it once per reel per visit, after a couple of seconds). */
+export async function countReelView(postId: string): Promise<Result> {
+  const user = await requireActiveUser();
+  if (await limited("react", user.id)) return { ok: true };
+  await db.communityPost.updateMany({
+    where: { AND: [{ id: String(postId) }, { kind: "REEL" }, { authorId: { not: user.id } }, visiblePostWhere(user)] },
+    data: { viewCount: { increment: 1 } },
+  });
   return { ok: true };
 }
 

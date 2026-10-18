@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, Camera, Flame, Lock, Pencil, Zap } from "lucide-react";
+import { Bookmark, CalendarDays, Camera, Clapperboard, Flame, Lock, Pencil, Play, Zap } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/community/rules";
@@ -31,16 +31,19 @@ export default async function CommunityProfilePage({
   const profile = await getProfile(user, params.userId);
   if (!profile) notFound();
 
-  const show = searchParams.show === "followers" || searchParams.show === "following" ? searchParams.show : "posts";
-  const [initial, connections] = await Promise.all([
+  const show =
+    searchParams.show === "followers" || searchParams.show === "following" || searchParams.show === "reels" ? searchParams.show : "posts";
+  const [initial, connections, reels] = await Promise.all([
     show === "posts" && profile.canSeePosts ? getFeedPage(user, { type: "profile", userId: profile.id }) : null,
-    show !== "posts" && profile.canSeePosts ? getConnections(user, profile.id, show) : null,
+    (show === "followers" || show === "following") && profile.canSeePosts ? getConnections(user, profile.id, show) : null,
+    show === "reels" && profile.canSeePosts ? getFeedPage(user, { type: "reels", userId: profile.id }) : null,
   ]);
   const me = { name: displayName(user), avatarUrl: user.avatarUrl };
   const base = `/community/u/${profile.id}`;
 
   const tabs = [
     { key: "posts", label: "Posts", count: profile.postCount },
+    { key: "reels", label: "Reels", count: profile.reelCount },
     { key: "followers", label: "Followers", count: profile.followerCount },
     { key: "following", label: "Following", count: profile.followingCount },
   ] as const;
@@ -149,6 +152,15 @@ export default async function CommunityProfilePage({
           </section>
 
           {profile.isSelf && (
+            <Link href="/community/saved" className="comic-panel flex items-center gap-3 bg-surface p-3 text-sm font-bold text-foreground hover:bg-muted/40">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-xp/25">
+                <Bookmark className="h-4 w-4" aria-hidden="true" />
+              </span>
+              Saved posts
+            </Link>
+          )}
+
+          {profile.isSelf && (
             <details id="edit-profile" open={searchParams.edit === "1"} className="comic-panel scroll-mt-20 bg-surface p-4">
               <summary className="flex cursor-pointer list-none items-center gap-1.5 font-display text-sm font-bold text-primary">
                 <Pencil className="h-4 w-4" aria-hidden="true" /> Edit your bio, headline and privacy
@@ -174,6 +186,39 @@ export default async function CommunityProfilePage({
                 This profile is private. Follow {profile.name.split(" ")[0]} to see their posts.
               </p>
             </div>
+          ) : reels ? (
+            <section className="comic-panel bg-surface p-1.5" aria-label="Reels">
+              {profile.isSelf && (
+                <Link
+                  href="/community/reels?create=1"
+                  className="mb-1.5 flex h-11 items-center justify-center gap-2 rounded-xl bg-muted text-sm font-bold text-foreground hover:bg-muted/70"
+                >
+                  <Clapperboard className="h-4 w-4 text-danger" aria-hidden="true" /> Create reel
+                </Link>
+              )}
+              <ul className="grid grid-cols-3 gap-1">
+                {reels.posts.map((r) => (
+                  <li key={r.id}>
+                    <Link
+                      href={`/community/reels?u=${profile.id}&r=${r.id}`}
+                      prefetch={false}
+                      className="relative block aspect-[9/16] overflow-hidden rounded-md bg-gradient-to-br from-primary to-accent"
+                    >
+                      {r.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element -- the reel's cover frame, from /api/files
+                        <img src={r.imageUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                      )}
+                      <span className="absolute bottom-1 left-1.5 flex items-center gap-0.5 text-xs font-bold text-white drop-shadow">
+                        <Play className="h-3 w-3 fill-white" aria-hidden="true" /> {r.video?.views ?? 0}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {reels.posts.length === 0 && (
+                <p className="p-3 text-sm text-muted-foreground">{profile.isSelf ? "You haven't posted a reel yet." : "No reels yet."}</p>
+              )}
+            </section>
           ) : initial ? (
             <Feed
               key={profile.id}

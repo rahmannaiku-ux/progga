@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bookmark,
   CheckCircle2,
+  Clapperboard,
   EyeOff,
   Flag,
   Globe2,
@@ -16,6 +17,7 @@ import {
   MoreHorizontal,
   PenLine,
   Pencil,
+  Play,
   Repeat2,
   Share2,
   Trash2,
@@ -198,7 +200,7 @@ export function PostCard({
 
   async function copyLink() {
     setPanel(null);
-    const url = `${window.location.origin}/community/post/${post.id}`;
+    const url = `${window.location.origin}${post.kind === "REEL" ? `/community/reels?r=${post.id}` : `/community/post/${post.id}`}`;
     try {
       if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
         await navigator.share({ url, title: `Post by ${post.author.name}` });
@@ -211,11 +213,12 @@ export function PostCard({
     }
   }
 
-  const image = mediaSrc(post.imageUrl, 1200);
+  // On a reel, imageUrl is the video's cover: shown inside the reel block below instead.
+  const image = post.kind === "REEL" ? null : mediaSrc(post.imageUrl, 1200);
   const postHref = `/community/post/${post.id}`;
   const showResults = Boolean(post.poll && (post.poll.myOptionId || post.poll.closed));
   const long = post.content.length > CLAMP_CHARS || post.content.split("\n").length > CLAMP_LINES;
-  const canShare = post.kind !== "POLL" && post.shared !== "removed";
+  const canShare = post.kind !== "POLL" && post.kind !== "REEL" && post.shared !== "removed";
   const noun = post.kind === "QUESTION" ? "answer" : "comment";
 
   function openComments() {
@@ -262,6 +265,11 @@ export function PostCard({
             <span className="flex items-center gap-1 rounded-full bg-xp/25 px-2 py-1 text-[11px] font-bold text-foreground">
               {post.acceptedCommentId ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />}
               {post.acceptedCommentId ? "Answered" : "Question"}
+            </span>
+          )}
+          {post.kind === "REEL" && (
+            <span className="flex items-center gap-1 rounded-full bg-danger/10 px-2 py-1 text-[11px] font-bold text-danger">
+              <Clapperboard className="h-3.5 w-3.5" aria-hidden="true" /> Reel
             </span>
           )}
           {post.kind === "POLL" && (
@@ -392,6 +400,26 @@ export function PostCard({
           </Link>
         )}
       </div>
+
+      {post.kind === "REEL" && post.video && (
+        <Link
+          href={`/community/reels?r=${post.id}`}
+          prefetch={false}
+          className="relative mx-auto mt-3 flex aspect-[9/16] w-[min(100%,18rem)] items-center justify-center overflow-hidden rounded-xl bg-black"
+          aria-label="Watch the reel"
+        >
+          {post.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- the reel's cover frame, from /api/files
+            <img src={post.imageUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+          )}
+          <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-black/45 backdrop-blur">
+            <Play className="ml-1 h-8 w-8 fill-white text-white" aria-hidden="true" />
+          </span>
+          <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white">
+            {post.video.views} view{post.video.views === 1 ? "" : "s"}
+          </span>
+        </Link>
+      )}
 
       {image && (
         <>

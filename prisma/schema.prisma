@@ -972,6 +972,7 @@ enum UploadContext {
   COURSE_ROUTINE // a mission's weekly class routine image
   LESSON_THUMBNAIL // a patrol's thumbnail image
   COURSE_THUMBNAIL // a mission's catalog card poster
+  COMMUNITY_VIDEO // a Community reel, uploaded straight to Drive in chunks
 }
 
 // Which storage backend actually holds the bytes for this Upload row.
@@ -1015,6 +1016,9 @@ model Upload {
   // same upload for two different resources/submissions if that's ever
   // undesired, and gives an audit trail of what an upload became.
   consumedAt  DateTime?
+  // A video still being uploaded: Google Drive's resumable-upload session
+  // address. Cleared when the last chunk lands. Never sent to a browser.
+  resumableUrl String?        @db.Text
   createdAt   DateTime        @default(now())
   bugReportImage BugReportImage?
 
@@ -1065,6 +1069,7 @@ model GoogleDriveConnection {
   otherFolderId             String?
   bugReportsFolderId        String?
   courseMediaFolderId       String? // routine + thumbnail images, both live in one folder
+  reelsFolderId             String? // Community reels (videos)
   updatedAt      DateTime               @updatedAt
 }
 
@@ -2571,6 +2576,7 @@ enum CommunityPostKind {
   POST
   QUESTION
   POLL
+  REEL
 }
 
 enum CommunityReactionType {
@@ -2621,6 +2627,12 @@ model CommunityPost {
   acceptedComment   CommunityComment? @relation("CommunityAcceptedAnswer", fields: [acceptedCommentId], references: [id], onDelete: SetNull)
   // POLL only: when voting stops (null = open-ended).
   pollClosesAt DateTime?
+  // REEL only: the video (/api/files/<uploadId>, a COMMUNITY_VIDEO upload
+  // by the author; used by one reel only). imageUrl holds its cover frame.
+  videoUrl         String?   @unique
+  videoDurationSec Int?
+  // Times the reel was watched for a couple of seconds (approximate).
+  viewCount        Int       @default(0)
   // Moderation. A hidden post is gone for everyone but its author and staff.
   isHidden     Boolean         @default(false)
   hiddenReason String?

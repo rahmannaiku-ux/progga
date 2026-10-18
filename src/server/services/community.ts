@@ -57,9 +57,12 @@ export function toPerson(user: AuthorRow): PersonDTO {
 
 export type PostDTO = {
   id: string;
-  kind: "POST" | "QUESTION" | "POLL";
+  kind: "POST" | "QUESTION" | "POLL" | "REEL";
   content: string;
+  /** A picture, or on a reel its cover frame. */
   imageUrl: string | null;
+  /** REEL only. */
+  video: { url: string; durationSec: number | null; views: number } | null;
   createdAt: string;
   edited: boolean;
   isHidden: boolean;
@@ -177,6 +180,7 @@ async function toPostDTOs(rows: PostRow[], viewer: Viewer): Promise<PostDTO[]> {
       kind: row.kind,
       content: row.content,
       imageUrl: row.imageUrl,
+      video: row.kind === "REEL" && row.videoUrl ? { url: row.videoUrl, durationSec: row.videoDurationSec, views: row.viewCount } : null,
       createdAt: row.createdAt.toISOString(),
       edited: Boolean(row.editedAt),
       isHidden: row.isHidden,
@@ -230,7 +234,9 @@ export type FeedScope =
   | { type: "saved" }
   | { type: "profile"; userId: string }
   | { type: "group"; groupId: string }
-  | { type: "search"; query: string };
+  | { type: "search"; query: string }
+  /** Reels, newest first; with userId, one person's. */
+  | { type: "reels"; userId?: string };
 
 export type FeedPage = { posts: PostDTO[]; nextCursor: string | null };
 
@@ -245,6 +251,14 @@ const TRENDING_MAX = 40;
 /** The filters for a scope, on top of what the viewer may see. */
 function scopeWhere(viewer: Viewer, scope: FeedScope): Prisma.CommunityPostWhereInput[] {
   const where: Prisma.CommunityPostWhereInput[] = [visiblePostWhere(viewer)];
+
+  // Reels live in their own player (and in Saved); every other list is posts.
+  if (scope.type === "reels") {
+    where.push({ kind: "REEL" });
+    if (scope.userId) where.push({ authorId: scope.userId });
+    return where;
+  }
+  if (scope.type !== "saved") where.push({ kind: { not: "REEL" } });
 
   if (scope.type === "following") {
     where.push({
@@ -325,7 +339,7 @@ export async function getPost(viewer: Viewer, postId: string): Promise<PostDTO |
  * one indexed row, no counts or relations.
  */
 export async function newestPostId(viewer: Viewer, scope: FeedScope): Promise<string | null> {
-  if (scope.type === "trending" || scope.type === "saved" || scope.type === "search") return null;
+  if (scope.type === "trending" || scope.type === "saved" || scope.type === "search" || scope.type === "reels") return null;
   const row = await db.communityPost.findFirst({
     where: { AND: scopeWhere(viewer, scope) },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -468,6 +482,7 @@ export type ProfileDTO = PersonDTO & {
   followerCount: number;
   followingCount: number;
   postCount: number;
+  reelCount: number;
   level: number;
   xp: number;
   streak: number;
@@ -512,9 +527,12 @@ export async function getProfile(viewer: Viewer, userId: string): Promise<Profil
     ownerIsPrivate: user.communityPrivate,
     viewerFollowsOwner: Boolean(iFollow),
   });
-  const postCount = canSeePosts
-    ? await db.communityPost.count({ where: { AND: [{ authorId: userId }, visiblePostWhere(viewer)] } })
-    : 0;
+  const [postCount, reelCount] = canSeePosts
+    ? await Promise.all([
+        db.communityPost.count({ where: { AND: [{ authorId: userId }, { kind: { not: "REEL" } }, visiblePostWhere(viewer)] } }),
+        db.communityPost.count({ where: { AND: [{ authorId: userId }, { kind: "REEL" }, visiblePostWhere(viewer)] } }),
+      ])
+    : [0, 0];
 
   return {
     ...toPerson(user),
@@ -527,6 +545,7 @@ export async function getProfile(viewer: Viewer, userId: string): Promise<Profil
     followerCount: user._count.communityFollowers,
     followingCount: user._count.communityFollowing,
     postCount,
+    reelCount,
     // Derived from XP, the same way the HUD does, so the two always agree.
     level: xpProgressWithinLevel(user.heroStats?.xp ?? 0).level,
     xp: user.heroStats?.xp ?? 0,
@@ -717,6 +736,7 @@ export async function getSidebar(viewer: Viewer) {
           visiblePostWhere(viewer),
           { createdAt: { gte: new Date(Date.now() - TRENDING_WINDOW_DAYS * 86_400_000) } },
           { content: { not: "" } },
+          { kind: { not: "REEL" } },
         ],
       },
       orderBy: [{ reactions: { _count: "desc" } }, { comments: { _count: "desc" } }, { createdAt: "desc" }],

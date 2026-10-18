@@ -95,6 +95,7 @@ export function Feed({
   initial,
   me,
   composer,
+  afterComposer,
   suggestions,
   emptyTitle = "Nothing here yet",
   emptyBody = "Be the first to post.",
@@ -103,6 +104,8 @@ export function Feed({
   initial: FeedPage;
   me: Viewer;
   composer?: ComposerConfig;
+  /** Shown right under the composer (the Reels row). */
+  afterComposer?: React.ReactNode;
   /** Shown between posts on screens without the right-hand column. */
   suggestions?: { people: PersonCardDTO[]; groups: GroupDTO[] };
   emptyTitle?: string;
@@ -209,6 +212,7 @@ export function Feed({
     <div className="space-y-3 sm:space-y-4">
       <div ref={top} className="scroll-mt-20" />
       {composer && <Composer config={composer} onCreated={(id) => void prepend(id)} />}
+      {afterComposer}
 
       {hasNew && (
         <div className="pointer-events-none sticky top-16 z-20 flex justify-center lg:top-4">

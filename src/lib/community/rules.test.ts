@@ -188,3 +188,15 @@ describe("reaction summary", () => {
     expect(reactionSummary(5, "LIKE")).toBe("You and 4 others");
   });
 });
+
+describe("reel input", () => {
+  const parse = (input: unknown) => postInputSchema.safeParse(input);
+  it("needs a video stored on this site", () => {
+    expect(parse({ kind: "REEL", content: "Tip" }).success).toBe(false);
+    expect(parse({ kind: "REEL", content: "", videoUrl: "https://evil.example/v.mp4" }).success).toBe(false);
+    expect(parse({ kind: "REEL", content: "", videoUrl: "/api/files/clx123abc456", videoDurationSec: 30 }).success).toBe(true);
+  });
+  it("caps the length", () => {
+    expect(parse({ kind: "REEL", content: "", videoUrl: "/api/files/clx123abc456", videoDurationSec: 600 }).success).toBe(false);
+  });
+});

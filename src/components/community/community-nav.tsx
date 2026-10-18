@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, Compass, Home, MessageCircle, Users } from "lucide-react";
+import { Bookmark, Clapperboard, Compass, Home, MessageCircle, Users } from "lucide-react";
 import { Avatar } from "@/components/shared/avatar";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export function CommunityNav({
   const profileHref = `/community/u/${me.id}`;
   const items = [
     { href: "/community", label: "Feed", icon: Home, tone: "bg-primary/15 text-primary", active: pathname === "/community" || pathname.startsWith("/community/post") },
+    { href: "/community/reels", label: "Reels", icon: Clapperboard, tone: "bg-danger/15 text-danger", active: pathname.startsWith("/community/reels") },
     { href: "/community/discover", label: "Discover", icon: Compass, tone: "bg-accent/15 text-accent", active: pathname.startsWith("/community/discover") },
     { href: "/community/groups", label: "Groups", icon: Users, tone: "bg-primary/15 text-primary", active: pathname.startsWith("/community/groups") },
     {
@@ -33,7 +34,8 @@ export function CommunityNav({
       active: pathname.startsWith("/community/messages"),
       badge: unreadMessages,
     },
-    { href: "/community/saved", label: "Saved", icon: Bookmark, tone: "bg-xp/25 text-foreground", active: pathname.startsWith("/community/saved") },
+    // Phones have room for six tabs: Saved is reached from your profile there.
+    { href: "/community/saved", label: "Saved", icon: Bookmark, tone: "bg-xp/25 text-foreground", active: pathname.startsWith("/community/saved"), desktopOnly: true },
   ];
   const onProfile = pathname === profileHref;
 
@@ -42,7 +44,7 @@ export function CommunityNav({
     // On phones the negative margins let the tab bar run edge to edge over the page padding.
     <nav aria-label="Community" className="sticky top-0 z-30 -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:top-4 lg:mx-0 lg:mt-0 lg:self-start">
       <ul className="flex border-b border-border/15 bg-surface/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-surface/85 lg:hidden">
-        {items.map((item) => (
+        {items.filter((item) => !item.desktopOnly).map((item) => (
           <li key={item.href} className="flex-1">
             <Link
               href={item.href}
