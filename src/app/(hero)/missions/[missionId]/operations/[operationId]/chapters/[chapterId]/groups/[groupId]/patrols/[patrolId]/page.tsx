@@ -433,35 +433,37 @@ export default async function LessonPlayerPage({
           </StaggerItem>
         )}
 
-        {/* Prev / next patrol */}
-        <StaggerItem className="comic-panel flex items-center justify-between gap-2 bg-surface p-3">
-          {previous ? (
-            <Link
-              href={`/missions/${course.id}/operations/${previous.moduleId}/chapters/${previous.chapterId}/groups/${previous.groupId}/patrols/${previous.lessonId}`}
-              className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-surface/60 hover:text-primary"
-            >
-              <ChevronLeft className="h-4 w-4 shrink-0" />
-              {/* Long titles must truncate, not overflow the row — two
-                  long lesson names side by side in a justify-between
-                  row would otherwise force horizontal scroll on narrow
-                  phones. */}
-              <span className="truncate">{previous.title}</span>
-            </Link>
-          ) : (
-            <span />
-          )}
-          {next ? (
-            <Link
-              href={`/missions/${course.id}/operations/${next.moduleId}/chapters/${next.chapterId}/groups/${next.groupId}/patrols/${next.lessonId}`}
-              className="flex min-h-11 min-w-0 flex-1 items-center justify-end gap-1.5 rounded-full px-3 py-1.5 text-right text-sm font-semibold text-foreground hover:bg-surface/60 hover:text-primary"
-            >
-              <span className="truncate">{next.title}</span>
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            </Link>
-          ) : (
-            <span />
-          )}
-        </StaggerItem>
+        {/* Prev / next patrol: one labelled card each, side by side when
+            both exist, full width when there is only one (no empty half). */}
+        {(previous || next) && (
+          <StaggerItem className={previous && next ? "grid grid-cols-2 gap-3" : "grid grid-cols-1"}>
+            {previous && (
+              <Link
+                href={`/missions/${course.id}/operations/${previous.moduleId}/chapters/${previous.chapterId}/groups/${previous.groupId}/patrols/${previous.lessonId}`}
+                className="comic-panel flex min-h-14 min-w-0 items-center gap-2 bg-surface px-3 py-2.5 text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                <ChevronLeft className="h-5 w-5 shrink-0 text-primary" />
+                {/* Long titles truncate instead of widening the page on narrow phones. */}
+                <span className="min-w-0">
+                  <span className="block font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Previous</span>
+                  <span className="block truncate text-sm font-semibold">{previous.title}</span>
+                </span>
+              </Link>
+            )}
+            {next && (
+              <Link
+                href={`/missions/${course.id}/operations/${next.moduleId}/chapters/${next.chapterId}/groups/${next.groupId}/patrols/${next.lessonId}`}
+                className="comic-panel flex min-h-14 min-w-0 items-center justify-end gap-2 bg-surface px-3 py-2.5 text-right text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                <span className="min-w-0">
+                  <span className="block font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Next patrol</span>
+                  <span className="block truncate text-sm font-semibold">{next.title}</span>
+                </span>
+                <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
+              </Link>
+            )}
+          </StaggerItem>
+        )}
 
         <StaggerItem as="section">
           <h2 className="font-display text-lg font-bold text-foreground">
