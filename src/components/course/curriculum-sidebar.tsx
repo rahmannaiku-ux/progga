@@ -9,11 +9,7 @@ export type GroupSidebarLesson = {
   isCompleted: boolean;
 };
 
-/**
- * Shared list body — used by the desktop nav below and by
- * MobileGroupSheet's bottom-sheet body, so there's exactly one place
- * that renders "the list of lessons in this group."
- */
+/** List body of the desktop nav below: the lessons in this group. */
 export function GroupLessonList({
   basePath,
   lessons,
@@ -23,7 +19,7 @@ export function GroupLessonList({
   basePath: string;
   lessons: GroupSidebarLesson[];
   activeLessonId?: string;
-  /** Fired right before navigating — MobileGroupSheet uses this to close itself. */
+  /** Fired right before navigating. */
   onNavigate?: () => void;
 }) {
   return (
@@ -70,7 +66,7 @@ export function GroupLessonList({
  * handles moving between groups/chapters/subjects.
  *
  * Desktop-only (rendered inside a `hidden lg:block` wrapper by the
- * page) — MobileGroupSheet below is the `lg:hidden` equivalent.
+ * page) — GroupLessonStrip (under the player) is the `lg:hidden` equivalent.
  */
 export function GroupSidebar({
   basePath,

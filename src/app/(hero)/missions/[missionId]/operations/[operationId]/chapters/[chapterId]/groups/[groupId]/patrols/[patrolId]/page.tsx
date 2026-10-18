@@ -17,7 +17,8 @@ import { ensureLiveClass } from "@/server/live/ensure-live-class";
 import { db } from "@/lib/db/client";
 import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { GroupSidebar } from "@/components/course/curriculum-sidebar";
-import { MobileGroupSheet } from "@/components/course/mobile-group-sheet";
+import { GroupLessonStrip } from "@/components/course/group-lesson-strip";
+import { mediaSrc } from "@/lib/media-url";
 import { LessonPlayer } from "@/components/course/lesson-player";
 import { LiveLessonSection } from "@/components/course/live-lesson-section";
 import { BookmarkButton } from "@/components/course/bookmark-button";
@@ -51,7 +52,7 @@ export default async function LessonPlayerPage({
   const [course, lesson] = await Promise.all([
     db.course.findUnique({
       where: { id: params.missionId },
-      select: { id: true, slug: true },
+      select: { id: true, slug: true, teacher: { select: { firstName: true, lastName: true } } },
     }),
     db.lesson.findUnique({
       where: { id: params.patrolId },
@@ -177,7 +178,7 @@ export default async function LessonPlayerPage({
                   id: true,
                   lessons: {
                     orderBy: { order: "asc" },
-                    select: { id: true, title: true },
+                    select: { id: true, title: true, youtubeVideoId: true, thumbnailUrl: true, scheduledStart: true },
                   },
                 },
               },
@@ -231,6 +232,21 @@ export default async function LessonPlayerPage({
     title: l.title,
     isCompleted: completedIds.has(l.id),
   }));
+  // The phone row under the player: only this class's own recorded patrols (same rule as the class page —
+  // a live class never sits among them), with the thumbnails the class page shows.
+  const stripLessons = (currentGroup?.lessons ?? [])
+    .filter((l) => !l.scheduledStart || l.id === lesson.id)
+    .map((l) => {
+      const uploaded = mediaSrc(l.thumbnailUrl);
+      return {
+        id: l.id,
+        title: l.title,
+        isCompleted: completedIds.has(l.id),
+        thumb: uploaded ?? (l.youtubeVideoId ? `https://i.ytimg.com/vi/${l.youtubeVideoId}/hqdefault.jpg` : null),
+        uploadedThumb: Boolean(uploaded),
+      };
+    });
+  const mentorName = `${course.teacher.firstName} ${course.teacher.lastName}`.trim() || "Mentor";
 
   const isModerator = user.role === "TEACHER" || user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
@@ -289,18 +305,6 @@ export default async function LessonPlayerPage({
           </div>
         </StaggerItem>
 
-        {/* Mobile-only curriculum trigger — opens the same lesson list
-            as a bottom sheet instead of consuming permanent width like
-            the desktop sidebar does. */}
-        <StaggerItem>
-          <MobileGroupSheet
-            basePath={basePath}
-            groupTitle={lesson.group.title}
-            lessons={siblingLessons}
-            activeLessonId={lesson.id}
-          />
-        </StaggerItem>
-
         <StaggerItem>
         {lesson.scheduledStart ? (
           <LiveLessonSection
@@ -325,6 +329,18 @@ export default async function LessonPlayerPage({
             No video set for this patrol yet.
           </div>
         )}
+        </StaggerItem>
+
+        {/* Phone only: the other patrols of this class as a row to swipe
+            through. Desktop has GroupSidebar beside the player instead. */}
+        <StaggerItem className="lg:hidden">
+          <GroupLessonStrip
+            basePath={basePath}
+            groupTitle={lesson.group.title}
+            mentorName={mentorName}
+            lessons={stripLessons}
+            activeLessonId={lesson.id}
+          />
         </StaggerItem>
 
         {lesson.description && (
