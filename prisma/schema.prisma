@@ -621,6 +621,7 @@ model User {
   communityPosts         CommunityPost[]
   communityComments      CommunityComment[]
   communityReactions     CommunityReaction[]
+  communityCommentLikes  CommunityCommentLike[]
   communityPollVotes     CommunityPollVote[]
   communitySavedPosts    CommunitySavedPost[]
   communityFollowing     CommunityFollow[]      @relation("CommunityFollower")
@@ -2659,6 +2660,7 @@ model CommunityComment {
 
   acceptedFor CommunityPost?   @relation("CommunityAcceptedAnswer")
   reports     CommunityReport[]
+  likes       CommunityCommentLike[]
 
   @@index([postId, createdAt])
   @@index([parentId])
@@ -2676,6 +2678,19 @@ model CommunityReaction {
 
   // One reaction per person per post; changing it updates this row.
   @@unique([postId, userId])
+  @@index([userId])
+}
+
+// A like on a comment or reply. One per person per comment.
+model CommunityCommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   CommunityComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
   @@index([userId])
 }
 

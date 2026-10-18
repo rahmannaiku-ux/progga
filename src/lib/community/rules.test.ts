@@ -16,6 +16,7 @@ import {
   groupSlug,
   isCommunityImageUrl,
   postInputSchema,
+  reactionSummary,
   reportInputSchema,
   splitLinks,
 } from "@/lib/community/rules";
@@ -176,5 +177,14 @@ describe("text", () => {
     expect(communityTimeAgo(new Date("2026-10-12T11:30:00Z"), now)).toBe("30m");
     expect(communityTimeAgo(new Date("2026-10-12T07:00:00Z"), now)).toBe("5h");
     expect(communityTimeAgo(new Date("2026-10-09T12:00:00Z"), now)).toBe("3d");
+  });
+});
+
+describe("reaction summary", () => {
+  it("reads like Facebook's line under a post", () => {
+    expect(reactionSummary(3, null)).toBe("3");
+    expect(reactionSummary(1, "LIKE")).toBe("You");
+    expect(reactionSummary(2, "LOVE")).toBe("You and 1 other");
+    expect(reactionSummary(5, "LIKE")).toBe("You and 4 others");
   });
 });

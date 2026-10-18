@@ -289,6 +289,14 @@ export function communityTimeAgo(date: Date, now: Date = new Date()): string {
   return `${Math.floor(days / 365)}y`;
 }
 
+/** Facebook's summary line under a post: "You and 4 others", "You", or just the number. */
+export function reactionSummary(count: number, mine: ReactionType | null): string {
+  if (!mine) return String(count);
+  if (count <= 1) return "You";
+  const others = count - 1;
+  return `You and ${others} other${others === 1 ? "" : "s"}`;
+}
+
 // ---------------------------------------------------------------------
 // Rewards (see server/services/community-rewards.ts)
 // ---------------------------------------------------------------------

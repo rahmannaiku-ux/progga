@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Send } from "lucide-react";
+import { Avatar } from "@/components/shared/avatar";
 import { cn } from "@/lib/utils";
 import { MESSAGE_MAX_LENGTH } from "@/lib/community/rules";
 import { formatDhakaTime } from "@/lib/timezone";
@@ -210,19 +211,24 @@ const POLL_MS = 8_000;
 
 export function MessageThread({
   conversationId,
+  other,
   initial,
   initialHasMore,
 }: {
   conversationId: string;
+  other: { name: string; avatarUrl: string | null };
   initial: MessageDTO[];
   initialHasMore: boolean;
 }) {
   const [messages, setMessages] = useState(initial);
+  const [pending, setPending] = useState<{ key: number; body: string; failed?: boolean }[]>([]);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+  const seq = useRef(0);
   const lastId = messages[messages.length - 1]?.id;
 
   // Poll while the tab is visible; pause in the background; stop on unmount.
@@ -253,31 +259,58 @@ export function MessageThread({
   }, [conversationId]);
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
-  }, [lastId]);
+    bottom.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [lastId, pending.length]);
+
+  /** The message shows at once, faded, and becomes a normal bubble when the server has it. */
+  function deliver(body: string, key: number) {
+    sendMessage(conversationId, body)
+      .then((res) => {
+        if (!res.ok) {
+          setPending((p) => p.map((m) => (m.key === key ? { ...m, failed: true } : m)));
+          return setError(res.error);
+        }
+        setPending((p) => p.filter((m) => m.key !== key));
+        setMessages((prev) => (prev.some((m) => m.id === res.message.id) ? prev : [...prev, res.message]));
+      })
+      .catch(() => {
+        setPending((p) => p.map((m) => (m.key === key ? { ...m, failed: true } : m)));
+        setError(NETWORK_ERROR);
+      });
+  }
 
   function send(e: React.FormEvent) {
     e.preventDefault();
     const body = text.trim();
     if (!body) return;
     setError(null);
-    startTransition(async () => {
-      try {
-        const res = await sendMessage(conversationId, body);
-        if (!res.ok) return setError(res.error);
-        setText("");
-        setMessages((prev) => (prev.some((m) => m.id === res.message.id) ? prev : [...prev, res.message]));
-      } catch {
-        setError(NETWORK_ERROR);
-      }
-    });
+    const key = ++seq.current;
+    setPending((p) => [...p, { key, body }]);
+    setText("");
+    if (field.current) field.current.style.height = "auto";
+    deliver(body, key);
   }
+
+  // Consecutive messages from the same side form one group: joined corners,
+  // and the other person's picture only beside the last of theirs.
+  const apart = (a?: MessageDTO, b?: MessageDTO) =>
+    !a || !b || Math.abs(Date.parse(b.createdAt) - Date.parse(a.createdAt)) > 10 * 60_000;
+  const rows = messages.map((m, i) => {
+    const prev = messages[i - 1];
+    const next = messages[i + 1];
+    return {
+      m,
+      first: !prev || prev.fromMe !== m.fromMe || apart(prev, m),
+      last: !next || next.fromMe !== m.fromMe || apart(m, next),
+      stamp: apart(prev, m),
+    };
+  });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:p-4" aria-live="polite">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4" aria-live="polite">
         {hasMore && (
-          <div className="flex justify-center">
+          <div className="mb-3 flex justify-center">
             <button
               type="button"
               disabled={isPending}
@@ -295,43 +328,101 @@ export function MessageThread({
                   }
                 })
               }
-              className="h-9 rounded-full bg-muted px-4 text-xs font-bold text-foreground"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-muted px-4 text-xs font-bold text-foreground"
             >
+              {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
               Show earlier messages
             </button>
           </div>
         )}
-        {messages.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No messages yet. Say hello.</p>}
-        {messages.map((m) => (
-          <div key={m.id} className={cn("flex", m.fromMe ? "justify-end" : "justify-start")}>
-            <div className={cn("max-w-[82%] rounded-2xl px-3.5 py-2", m.fromMe ? "bg-accent text-accent-foreground" : "bg-muted text-foreground")}>
-              <RichText text={m.body} className={cn("text-sm leading-relaxed", m.fromMe && "[&_a]:text-accent-foreground")} />
-              <time dateTime={m.createdAt} className={cn("mt-0.5 block text-right text-[10px]", m.fromMe ? "text-accent-foreground/75" : "text-muted-foreground")}>
-                {formatDhakaTime(m.createdAt)}
-              </time>
+        {messages.length === 0 && pending.length === 0 && (
+          <div className="flex flex-col items-center py-10 text-center">
+            <Avatar fallbackClassName="bg-primary/15 text-2xl text-primary" src={other.avatarUrl} name={other.name} size={72} />
+            <p className="mt-3 font-display text-lg font-bold text-foreground">{other.name}</p>
+            <p className="mt-1 text-sm text-muted-foreground">No messages yet. Say hello.</p>
+          </div>
+        )}
+        {rows.map(({ m, first, last, stamp }) => (
+          <div key={m.id} className={first ? "mt-3" : "mt-0.5"}>
+            {stamp && <p className="mb-2 text-center text-[11px] font-semibold text-muted-foreground">{formatDhakaTime(m.createdAt)}</p>}
+            <div className={cn("flex items-end gap-2", m.fromMe ? "justify-end" : "justify-start")}>
+              {!m.fromMe && (
+                <span className="w-7 shrink-0">
+                  {last && <Avatar fallbackClassName="bg-primary/15 text-[11px] text-primary" src={other.avatarUrl} name={other.name} size={28} />}
+                </span>
+              )}
+              <div
+                title={formatDhakaTime(m.createdAt)}
+                className={cn(
+                  "max-w-[75%] rounded-[1.15rem] px-3.5 py-2",
+                  m.fromMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                  m.fromMe && !first && "rounded-tr-md",
+                  m.fromMe && !last && "rounded-br-md",
+                  !m.fromMe && !first && "rounded-tl-md",
+                  !m.fromMe && !last && "rounded-bl-md"
+                )}
+              >
+                <RichText text={m.body} className={cn("text-[15px] leading-snug", m.fromMe && "[&_a]:text-primary-foreground")} />
+              </div>
             </div>
+          </div>
+        ))}
+        {pending.map((p) => (
+          <div key={p.key} className="mt-0.5 flex flex-col items-end">
+            <div className={cn("max-w-[75%] rounded-[1.15rem] bg-primary px-3.5 py-2 text-primary-foreground", p.failed ? "opacity-50" : "opacity-70")}>
+              <RichText text={p.body} className="text-[15px] leading-snug" />
+            </div>
+            <span className="mt-0.5 text-[11px] text-muted-foreground">
+              {p.failed ? (
+                <button
+                  type="button"
+                  className="font-bold text-danger hover:underline"
+                  onClick={() => {
+                    setError(null);
+                    setPending((list) => list.map((x) => (x.key === p.key ? { ...x, failed: false } : x)));
+                    deliver(p.body, p.key);
+                  }}
+                >
+                  Not sent. Tap to try again
+                </button>
+              ) : (
+                "Sending..."
+              )}
+            </span>
           </div>
         ))}
         <div ref={bottom} />
       </div>
 
-      <form onSubmit={send} className="border-t border-border/20 p-3">
-        {error && <p role="alert" className="mb-2 text-xs font-semibold text-danger">{error}</p>}
+      <form onSubmit={send} className="border-t border-border/15 p-2.5 sm:p-3">
+        {error && <p role="alert" className="mb-2 px-2 text-xs font-semibold text-danger">{error}</p>}
         <div className="flex items-end gap-2">
+          <div className="flex min-w-0 flex-1 rounded-[1.25rem] bg-muted focus-within:ring-2 focus-within:ring-accent/60">
           <textarea
+            ref={field}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) send(e);
+              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) send(e);
             }}
             maxLength={MESSAGE_MAX_LENGTH}
             rows={1}
-            placeholder="Write a message..."
+            placeholder="Aa"
             aria-label="Write a message"
-            className="max-h-32 min-h-[44px] min-w-0 flex-1 rounded-2xl border border-border/60 bg-background px-3 py-2.5 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+            className="field-bare max-h-32 min-h-[40px] min-w-0 flex-1 resize-none bg-transparent px-4 py-2.5 text-[15px] leading-5 text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
-          <button type="submit" disabled={isPending || !text.trim()} aria-label="Send" className="comic-btn flex h-11 w-11 shrink-0 items-center justify-center bg-accent text-accent-foreground disabled:opacity-60">
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+          </div>
+          <button
+            type="submit"
+            disabled={!text.trim()}
+            aria-label="Send"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary transition-transform hover:bg-primary/10 enabled:active:scale-90 disabled:opacity-40"
+          >
+            <Send className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </form>

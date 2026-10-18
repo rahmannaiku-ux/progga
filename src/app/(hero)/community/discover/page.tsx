@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { displayName } from "@/lib/community/rules";
 import { Avatar } from "@/components/shared/avatar";
 import { FollowButton } from "@/components/community/bits";
 import { Feed } from "@/components/community/feed";
@@ -45,21 +46,23 @@ export default async function DiscoverPage({ searchParams }: { searchParams: { q
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <form action="/community/discover" role="search" className="comic-panel flex items-center gap-2 bg-surface p-2">
+      <form action="/community/discover" role="search" className="flex items-center gap-2">
         <label htmlFor="community-search" className="sr-only">
           Search the community
         </label>
-        <Search className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <input
-          id="community-search"
-          name="q"
-          type="search"
-          defaultValue={q}
-          maxLength={80}
-          placeholder="Search posts, heroes and groups"
-          className="h-11 min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
-        />
-        <button type="submit" className="comic-btn h-11 shrink-0 bg-accent px-4 text-sm font-bold text-accent-foreground">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-surface px-4 shadow-card focus-within:ring-2 focus-within:ring-accent">
+          <Search className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <input
+            id="community-search"
+            name="q"
+            type="search"
+            defaultValue={q}
+            maxLength={80}
+            placeholder="Search Proggaa Community"
+            className="h-11 min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+          />
+        </div>
+        <button type="submit" className="comic-btn h-11 shrink-0 bg-primary px-4 text-sm font-bold text-primary-foreground">
           Search
         </button>
       </form>
@@ -101,6 +104,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: { q
             key={searching ? `q:${q}` : "trending"}
             scope={postScope}
             initial={posts}
+            me={{ name: displayName(user), avatarUrl: user.avatarUrl }}
             emptyTitle={searching ? `No posts match "${q}"` : "Nothing is trending yet"}
             emptyBody={searching ? "Try a different word." : "Posts with the most reactions and comments show up here."}
           />

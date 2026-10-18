@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/community/rules";
 import { Feed } from "@/components/community/feed";
 import { CommunitySidebar } from "@/components/community/sidebar";
-import { getFeedPage, getSidebar, getTopHelpers, type FeedScope } from "@/server/services/community";
+import { getFeedPage, getSidebar, getTopHelpers, listGroups, type FeedScope } from "@/server/services/community";
 
 export const metadata = { title: "Community" };
 
@@ -27,15 +27,17 @@ export default async function CommunityFeedPage({ searchParams }: { searchParams
   const user = await getCurrentUser();
   const tab = TABS.find((t) => t.key === searchParams.tab) ?? TABS[0];
 
-  const [initial, sidebar, helpers] = await Promise.all([
+  const [initial, sidebar, helpers, suggestedGroups] = await Promise.all([
     getFeedPage(user, tab.scope),
     getSidebar(user),
     getTopHelpers(),
+    listGroups(user, { take: 8 }),
   ]);
+  const me = { name: displayName(user), avatarUrl: user.avatarUrl };
 
   return (
-    <div className="gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_290px]">
-      <div className="min-w-0 space-y-4">
+    <div className="gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mx-auto w-full min-w-0 max-w-[680px] space-y-3">
         <h1 className="sr-only">Proggaa Community</h1>
         <div role="tablist" aria-label="Feed" className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((t) => (
@@ -45,8 +47,8 @@ export default async function CommunityFeedPage({ searchParams }: { searchParams
               role="tab"
               aria-selected={t.key === tab.key}
               className={cn(
-                "flex h-10 shrink-0 items-center rounded-full px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                t.key === tab.key ? "bg-xp text-xp-foreground" : "bg-surface text-muted-foreground hover:text-foreground"
+                "flex h-9 shrink-0 items-center rounded-full px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                t.key === tab.key ? "bg-primary/15 text-primary" : "bg-surface text-foreground hover:bg-muted"
               )}
             >
               {t.label}
@@ -58,14 +60,18 @@ export default async function CommunityFeedPage({ searchParams }: { searchParams
           key={tab.key}
           scope={tab.scope}
           initial={initial}
-          composer={{ me: { name: displayName(user), avatarUrl: user.avatarUrl } }}
+          me={me}
+          composer={{ me }}
+          suggestions={{ people: sidebar.people, groups: suggestedGroups.filter((g) => !g.myRole) }}
           emptyTitle={EMPTY[tab.key].title}
           emptyBody={EMPTY[tab.key].body}
         />
       </div>
 
-      <div className="mt-6 xl:mt-0">
-        <CommunitySidebar {...sidebar} helpers={helpers} />
+      <div className="hidden xl:block">
+        <div className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto [scrollbar-width:thin]">
+          <CommunitySidebar {...sidebar} helpers={helpers} />
+        </div>
       </div>
     </div>
   );

@@ -126,12 +126,25 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-6px)" },
         },
+        // Community: the chosen reaction bounces in, the picker's emojis rise one by one.
+        "reaction-pop": {
+          "0%": { transform: "scale(1)" },
+          "35%": { transform: "scale(1.45) rotate(-8deg)" },
+          "70%": { transform: "scale(0.92)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "emoji-rise": {
+          from: { opacity: "0", transform: "translateY(12px) scale(0.4)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
       },
       animation: {
         "streak-pulse": "streak-pulse 2s ease-in-out infinite",
         "xp-fill": "xp-fill 1.2s ease-out forwards",
         "glow-pulse": "glow-pulse 4s ease-in-out infinite",
         float: "float 5s ease-in-out infinite",
+        "reaction-pop": "reaction-pop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1)",
+        "emoji-rise": "emoji-rise 0.28s cubic-bezier(0.3, 1.4, 0.5, 1) backwards",
       },
     },
   },

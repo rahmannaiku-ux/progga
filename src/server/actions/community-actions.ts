@@ -23,10 +23,15 @@ import {
 import {
   getComments,
   getFeedPage,
+  getPost,
+  getReactors,
+  newestPostId,
   visiblePostWhere,
   type CommentDTO,
   type FeedPage,
   type FeedScope,
+  type PostDTO,
+  type ReactorDTO,
 } from "@/server/services/community";
 import { checkFirstPostAchievement, rewardHelpfulAnswer } from "@/server/services/community-rewards";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
@@ -98,40 +103,63 @@ function revalidateCommunity(extra?: string) {
 // Feed paging (read-only, but called from the client's "load more")
 // ---------------------------------------------------------------------
 
-export async function loadFeedPage(scope: FeedScope, cursor: string | null): Promise<Result<FeedPage>> {
-  const user = await requireActiveUser();
-  if (!scope || typeof scope !== "object" || typeof (scope as { type?: unknown }).type !== "string") {
-    return fail("Couldn't load more posts.");
-  }
-  // Rebuilt field by field: the client only ever names a scope, it can't
-  // smuggle in a different viewer or an arbitrary filter.
+/**
+ * Rebuilds a client-sent scope field by field: the client only ever names a
+ * scope, it can't smuggle in a different viewer or an arbitrary filter.
+ */
+function safeScope(scope: unknown): FeedScope | null {
+  if (!scope || typeof scope !== "object" || typeof (scope as { type?: unknown }).type !== "string") return null;
   const s = scope as Record<string, unknown>;
-  let safe: FeedScope;
   switch (s.type) {
     case "following":
     case "questions":
     case "trending":
     case "saved":
     case "all":
-      safe = { type: s.type };
-      break;
+      return { type: s.type };
     case "profile":
-      if (typeof s.userId !== "string") return fail("Couldn't load more posts.");
-      safe = { type: "profile", userId: s.userId.slice(0, 40) };
-      break;
+      return typeof s.userId === "string" ? { type: "profile", userId: s.userId.slice(0, 40) } : null;
     case "group":
-      if (typeof s.groupId !== "string") return fail("Couldn't load more posts.");
-      safe = { type: "group", groupId: s.groupId.slice(0, 40) };
-      break;
+      return typeof s.groupId === "string" ? { type: "group", groupId: s.groupId.slice(0, 40) } : null;
     case "search":
-      if (typeof s.query !== "string" || s.query.trim().length < 2) return fail("Couldn't load more posts.");
-      safe = { type: "search", query: s.query.trim().slice(0, 80) };
-      break;
+      return typeof s.query === "string" && s.query.trim().length >= 2
+        ? { type: "search", query: s.query.trim().slice(0, 80) }
+        : null;
     default:
-      return fail("Couldn't load more posts.");
+      return null;
   }
+}
+
+export async function loadFeedPage(scope: FeedScope, cursor: string | null): Promise<Result<FeedPage>> {
+  const user = await requireActiveUser();
+  const safe = safeScope(scope);
+  if (!safe) return fail("Couldn't load more posts.");
   const page = await getFeedPage(user, safe, typeof cursor === "string" ? cursor : null);
   return { ok: true, ...page };
+}
+
+/** The newest post id in a scope, so an open feed can offer "New posts". */
+export async function peekNewestPost(scope: FeedScope): Promise<Result<{ id: string | null }>> {
+  const user = await requireActiveUser();
+  const safe = safeScope(scope);
+  if (!safe) return fail("Couldn't check for new posts.");
+  return { ok: true, id: await newestPostId(user, safe) };
+}
+
+/** One post, shaped for a feed (used to show a post right after it is written). */
+export async function loadPost(postId: string): Promise<Result<{ post: PostDTO }>> {
+  const user = await requireActiveUser();
+  const post = await getPost(user, String(postId).slice(0, 40));
+  if (!post) return fail("That post is no longer available.");
+  return { ok: true, post };
+}
+
+/** Who reacted to a post, with which reaction. */
+export async function loadReactors(postId: string): Promise<Result<{ people: ReactorDTO[] }>> {
+  const user = await requireActiveUser();
+  const people = await getReactors(user, String(postId).slice(0, 40));
+  if (!people) return fail("That post is no longer available.");
+  return { ok: true, people };
 }
 
 export async function loadComments(
@@ -458,6 +486,42 @@ export async function addComment(input: unknown): Promise<Result<{ commentId: st
 
   revalidateCommunity(link);
   return { ok: true, commentId: comment.id };
+}
+
+/**
+ * Likes or un-likes a comment. One row per person per comment (unique
+ * constraint), so racing taps can't raise the count.
+ */
+export async function toggleCommentLike(commentId: string): Promise<Result<{ liked: boolean; likeCount: number }>> {
+  const user = await requireActiveUser();
+  if (await limited("react", user.id)) return fail(TOO_FAST);
+
+  const comment = await db.communityComment.findFirst({
+    where: { id: String(commentId), isHidden: false, post: visiblePostWhere(user) },
+    select: { id: true, authorId: true, postId: true, content: true },
+  });
+  if (!comment) return fail("That comment is no longer available.");
+
+  const removed = await db.communityCommentLike.deleteMany({ where: { commentId: comment.id, userId: user.id } });
+  let liked = false;
+  if (removed.count === 0) {
+    try {
+      await db.communityCommentLike.create({ data: { commentId: comment.id, userId: user.id } });
+      await notify(
+        "COMMUNITY_REACTION",
+        user.id,
+        comment.authorId,
+        `${displayName(user)} liked your comment`,
+        comment.content,
+        `/community/post/${comment.postId}`
+      );
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+    }
+    liked = true;
+  }
+  const likeCount = await db.communityCommentLike.count({ where: { commentId: comment.id } });
+  return { ok: true, liked, likeCount };
 }
 
 export async function updateComment(commentId: string, content: string): Promise<Result> {

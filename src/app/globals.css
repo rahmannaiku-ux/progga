@@ -229,6 +229,15 @@
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
   border-color: hsl(var(--primary) / 0.4);
 }
+/* A field that sits inside its own styled box (Community comment, post and
+   chat fields): no border, background or focus glow of its own. */
+.theme-cartoon textarea.field-bare,
+.theme-cartoon textarea.field-bare:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .theme-cartoon input[type="checkbox"],
 .theme-cartoon input[type="radio"] {
   accent-color: hsl(var(--primary));
@@ -252,7 +261,7 @@
    border. */
 .theme-cartoon input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
 .theme-cartoon select,
-.theme-cartoon textarea {
+.theme-cartoon textarea:not(.field-bare) {
   border-radius: 0.85rem !important;
   transition:
     transform 0.15s ease,

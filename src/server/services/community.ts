@@ -242,7 +242,8 @@ const TRENDING_MAX = 40;
  * (createdAt, id) cursor; "trending" ranks the last two weeks by reactions
  * then comments and pages by offset, capped so it can't walk the table.
  */
-export async function getFeedPage(viewer: Viewer, scope: FeedScope, cursor?: string | null): Promise<FeedPage> {
+/** The filters for a scope, on top of what the viewer may see. */
+function scopeWhere(viewer: Viewer, scope: FeedScope): Prisma.CommunityPostWhereInput[] {
   const where: Prisma.CommunityPostWhereInput[] = [visiblePostWhere(viewer)];
 
   if (scope.type === "following") {
@@ -264,6 +265,11 @@ export async function getFeedPage(viewer: Viewer, scope: FeedScope, cursor?: str
   } else if (scope.type === "search") {
     where.push({ content: { contains: scope.query.slice(0, 80), mode: "insensitive" } });
   }
+  return where;
+}
+
+export async function getFeedPage(viewer: Viewer, scope: FeedScope, cursor?: string | null): Promise<FeedPage> {
+  const where = scopeWhere(viewer, scope);
 
   if (scope.type === "trending") {
     const offset = Math.min(Math.max(Number.parseInt(cursor ?? "0", 10) || 0, 0), TRENDING_MAX);
@@ -314,6 +320,38 @@ export async function getPost(viewer: Viewer, postId: string): Promise<PostDTO |
   return (await toPostDTOs([row], viewer))[0] ?? null;
 }
 
+/**
+ * Id of the newest post in a chronological scope, for the "new posts" pill:
+ * one indexed row, no counts or relations.
+ */
+export async function newestPostId(viewer: Viewer, scope: FeedScope): Promise<string | null> {
+  if (scope.type === "trending" || scope.type === "saved" || scope.type === "search") return null;
+  const row = await db.communityPost.findFirst({
+    where: { AND: scopeWhere(viewer, scope) },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true },
+  });
+  return row?.id ?? null;
+}
+
+export type ReactorDTO = PersonDTO & { type: ReactionType };
+
+/** Who reacted to a post the viewer may see (newest first, bounded), or null. */
+export async function getReactors(viewer: Viewer, postId: string): Promise<ReactorDTO[] | null> {
+  const post = await db.communityPost.findFirst({
+    where: { AND: [{ id: postId }, visiblePostWhere(viewer)] },
+    select: { id: true },
+  });
+  if (!post) return null;
+  const rows = await db.communityReaction.findMany({
+    where: { postId: post.id, user: { isActive: true, isSuspended: false } },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: { type: true, user: { select: AUTHOR_SELECT } },
+  });
+  return rows.map((r) => ({ ...toPerson(r.user), type: r.type as ReactionType }));
+}
+
 // ---------------------------------------------------------------------
 // Comments
 // ---------------------------------------------------------------------
@@ -326,6 +364,8 @@ export type CommentDTO = {
   author: PersonDTO;
   canEdit: boolean;
   canDelete: boolean;
+  likeCount: number;
+  liked: boolean;
   replies: Omit<CommentDTO, "replies">[];
 };
 
@@ -343,6 +383,11 @@ export async function getComments(
     ...(staff ? {} : { OR: [{ isHidden: false }, { authorId: viewer.id }] }),
   };
   const after = decodeCursor(cursor);
+  const likeInclude = {
+    author: { select: AUTHOR_SELECT },
+    likes: { where: { userId: viewer.id }, select: { id: true }, take: 1 },
+    _count: { select: { likes: true } },
+  } satisfies Prisma.CommunityCommentInclude;
   const [rows, membership] = await Promise.all([
     db.communityComment.findMany({
       where: {
@@ -357,12 +402,12 @@ export async function getComments(
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: COMMENTS_PAGE_SIZE + 1,
       include: {
-        author: { select: AUTHOR_SELECT },
+        ...likeInclude,
         replies: {
           where: visible,
           orderBy: { createdAt: "asc" },
           take: REPLIES_PER_COMMENT,
-          include: { author: { select: AUTHOR_SELECT } },
+          include: likeInclude,
         },
       },
     }),
@@ -374,7 +419,16 @@ export async function getComments(
       : null,
   ]);
 
-  const shape = (c: { id: string; content: string; createdAt: Date; editedAt: Date | null; authorId: string; author: AuthorRow }) => ({
+  const shape = (c: {
+    id: string;
+    content: string;
+    createdAt: Date;
+    editedAt: Date | null;
+    authorId: string;
+    author: AuthorRow;
+    likes: { id: string }[];
+    _count: { likes: number };
+  }) => ({
     id: c.id,
     content: c.content,
     createdAt: c.createdAt.toISOString(),
@@ -388,6 +442,8 @@ export async function getComments(
       inGroup: Boolean(post.groupId),
       groupMembership: membership?.role,
     }),
+    likeCount: c._count.likes,
+    liked: c.likes.length > 0,
   });
 
   const page = rows.slice(0, COMMENTS_PAGE_SIZE);

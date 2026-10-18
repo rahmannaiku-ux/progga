@@ -32,7 +32,12 @@ export default async function ConversationPage({ params }: { params: { conversat
           {conversation.other.headline && <p className="truncate text-xs text-muted-foreground">{conversation.other.headline}</p>}
         </div>
       </header>
-      <MessageThread conversationId={conversation.id} initial={conversation.messages} initialHasMore={conversation.hasMore} />
+      <MessageThread
+        conversationId={conversation.id}
+        other={{ name: conversation.other.name, avatarUrl: conversation.other.avatarUrl }}
+        initial={conversation.messages}
+        initialHasMore={conversation.hasMore}
+      />
     </div>
   );
 }

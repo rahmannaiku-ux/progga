@@ -29,18 +29,30 @@ export default async function GroupPage({ params }: { params: { slug: string } }
         <Link href="/community/groups" className="text-xs font-bold text-muted-foreground hover:text-foreground">
           ← All groups
         </Link>
-        <header className="comic-panel halftone-dots bg-primary p-5 text-primary-foreground">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-primary-foreground/80">{group.topic}</p>
-              <h1 className="mt-1 break-words font-display text-2xl font-extrabold">{group.name}</h1>
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-primary-foreground/85">
-                <Users className="h-3.5 w-3.5" aria-hidden="true" /> {group.memberCount} member{group.memberCount === 1 ? "" : "s"} · run by {group.owner.name}
-              </p>
-            </div>
-            <JoinGroupButton groupId={group.id} initialJoined={Boolean(group.myRole)} isOwner={group.myRole === "OWNER"} />
+        <header className="comic-panel overflow-hidden bg-surface">
+          {/* The group's cover, Facebook style: a banner, then name, size and faces of members. */}
+          <div className="halftone-dots relative flex h-28 items-end bg-gradient-to-br from-primary to-accent px-4 pb-3 sm:h-40 sm:px-5">
+            <span className="rounded-full bg-black/25 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">{group.topic}</span>
           </div>
-          <p className="mt-3 whitespace-pre-line text-sm text-primary-foreground/90">{group.description}</p>
+          <div className="p-4 sm:p-5">
+            <h1 className="break-words font-display text-2xl font-extrabold text-foreground sm:text-3xl">{group.name}</h1>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" aria-hidden="true" /> Study group · <span className="font-bold text-foreground">{group.memberCount}</span> member
+              {group.memberCount === 1 ? "" : "s"}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <ul className="flex" aria-label="Some of the members">
+                {members.slice(0, 8).map((m, i) => (
+                  <li key={m.id} className="-ml-2 rounded-full ring-2 ring-surface first:ml-0" style={{ zIndex: 8 - i }}>
+                    <Avatar fallbackClassName="bg-primary/15 text-primary" src={m.avatarUrl} name={m.name} size={32} />
+                  </li>
+                ))}
+              </ul>
+              <JoinGroupButton groupId={group.id} initialJoined={Boolean(group.myRole)} isOwner={group.myRole === "OWNER"} />
+            </div>
+            <p className="mt-4 whitespace-pre-line border-t border-border/15 pt-3 text-sm text-foreground">{group.description}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Run by {group.owner.name}</p>
+          </div>
         </header>
 
         {!group.myRole && (
@@ -51,6 +63,7 @@ export default async function GroupPage({ params }: { params: { slug: string } }
           key={`${group.id}:${group.myRole ?? "guest"}`}
           scope={{ type: "group", groupId: group.id }}
           initial={initial}
+          me={{ name: displayName(user), avatarUrl: user.avatarUrl }}
           composer={
             group.myRole
               ? { me: { name: displayName(user), avatarUrl: user.avatarUrl }, groupId: group.id, groupName: group.name }

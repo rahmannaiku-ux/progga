@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Flame, Lock, Zap } from "lucide-react";
+import { CalendarDays, Camera, Flame, Lock, Pencil, Zap } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/community/rules";
@@ -14,16 +14,18 @@ import { ProfileReport } from "@/components/community/profile-report";
 import { getConnections, getFeedPage, getProfile } from "@/server/services/community";
 
 /**
- * A person's community profile. Shows only what is meant to be public:
- * name, picture, headline, bio, level, streak, badges and their posts.
- * Never phone, email, grades or enrolments.
+ * A person's community profile, laid out like a Facebook profile: cover,
+ * big picture, name and follower counts, then an Intro card beside their
+ * posts. Shows only what is meant to be public: name, picture, headline,
+ * bio, level, streak, badges and their posts. Never phone, email, grades
+ * or enrolments.
  */
 export default async function CommunityProfilePage({
   params,
   searchParams,
 }: {
   params: { userId: string };
-  searchParams: { show?: string };
+  searchParams: { show?: string; edit?: string };
 }) {
   const user = await getCurrentUser();
   const profile = await getProfile(user, params.userId);
@@ -34,134 +36,184 @@ export default async function CommunityProfilePage({
     show === "posts" && profile.canSeePosts ? getFeedPage(user, { type: "profile", userId: profile.id }) : null,
     show !== "posts" && profile.canSeePosts ? getConnections(user, profile.id, show) : null,
   ]);
+  const me = { name: displayName(user), avatarUrl: user.avatarUrl };
+  const base = `/community/u/${profile.id}`;
 
   const tabs = [
-    { key: "posts", label: `Posts`, count: profile.postCount },
+    { key: "posts", label: "Posts", count: profile.postCount },
     { key: "followers", label: "Followers", count: profile.followerCount },
     { key: "following", label: "Following", count: profile.followingCount },
   ] as const;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <header className="comic-panel overflow-hidden bg-surface">
-        <div className="halftone-dots h-20 bg-primary" aria-hidden="true" />
-        <div className="px-4 pb-4 sm:px-5">
-          <div className="-mt-10 flex flex-wrap items-end justify-between gap-3">
-            <span className="rounded-full border-4 border-surface bg-surface">
-              <Avatar fallbackClassName="bg-primary/15 text-3xl text-primary" src={profile.avatarUrl} name={profile.name} size={84} />
+    <div className="mx-auto max-w-4xl space-y-3">
+      <header className="comic-panel overflow-hidden bg-surface max-sm:-mx-4 max-sm:!rounded-none max-sm:border-x-0">
+        <div className="halftone-dots h-32 bg-gradient-to-br from-primary via-primary to-accent sm:h-52" aria-hidden="true" />
+        <div className="px-4 sm:px-6">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
+            <span className="-mt-16 shrink-0 rounded-full bg-surface p-1 shadow-card sm:-mt-20">
+              <Avatar fallbackClassName="bg-primary/15 text-5xl text-primary" src={profile.avatarUrl} name={profile.name} size={136} />
             </span>
-            <div className="flex flex-wrap gap-2">
-              {profile.isSelf ? (
-                <Link href="/profile" className="comic-btn flex h-11 items-center border border-border/60 bg-surface px-4 text-sm font-bold text-foreground">
-                  Change picture
+            <div className="min-w-0 flex-1 pb-1 text-center sm:pb-4 sm:text-left">
+              <h1 className="flex flex-wrap items-center justify-center gap-2 font-display text-2xl font-extrabold text-foreground sm:justify-start sm:text-3xl">
+                {profile.name}
+                {profile.isMentor && <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-bold text-accent">Mentor</span>}
+                {profile.isPrivate && (
+                  <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                    <Lock className="h-3 w-3" aria-hidden="true" /> Private
+                  </span>
+                )}
+              </h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                <Link href={`${base}?show=followers`} className="hover:underline">
+                  <span className="font-bold text-foreground">{profile.followerCount}</span> follower{profile.followerCount === 1 ? "" : "s"}
                 </Link>
+                {" · "}
+                <Link href={`${base}?show=following`} className="hover:underline">
+                  <span className="font-bold text-foreground">{profile.followingCount}</span> following
+                </Link>
+                {profile.followsViewer && !profile.isSelf && <span className="font-bold text-accent"> · Follows you</span>}
+              </p>
+            </div>
+            <div className="flex w-full gap-2 pb-4 sm:w-auto [&>span]:flex-1 [&_button]:w-full">
+              {profile.isSelf ? (
+                <>
+                  <a href={`${base}?edit=1#edit-profile`} className="comic-btn flex h-11 flex-1 items-center justify-center gap-1.5 bg-primary px-4 text-sm font-bold text-primary-foreground">
+                    <Pencil className="h-4 w-4" aria-hidden="true" /> Edit profile
+                  </a>
+                  <Link href="/profile" className="comic-btn flex h-11 flex-1 items-center justify-center gap-1.5 border border-border/60 bg-muted px-4 text-sm font-bold text-foreground">
+                    <Camera className="h-4 w-4" aria-hidden="true" /> Picture
+                  </Link>
+                </>
               ) : (
                 <>
-                  <MessageButton userId={profile.id} />
                   <FollowButton userId={profile.id} initialFollowing={profile.isFollowing} />
+                  <MessageButton userId={profile.id} />
                 </>
               )}
             </div>
           </div>
 
-          <h1 className="mt-3 flex flex-wrap items-center gap-2 font-display text-2xl font-extrabold text-foreground">
-            {profile.name}
-            {profile.isMentor && <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-bold text-accent">Mentor</span>}
-            {profile.isPrivate && (
-              <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
-                <Lock className="h-3 w-3" aria-hidden="true" /> Private
-              </span>
-            )}
-          </h1>
-          {profile.headline && <p className="text-sm font-semibold text-muted-foreground">{profile.headline}</p>}
-          {profile.followsViewer && !profile.isSelf && <p className="mt-1 text-xs font-bold text-accent">Follows you</p>}
-          {profile.bio && <p className="mt-3 whitespace-pre-line break-words text-sm text-foreground">{profile.bio}</p>}
-
-          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1 font-bold text-foreground">
-              <Zap className="h-3.5 w-3.5" aria-hidden="true" /> Level {profile.level}
-            </span>
-            {profile.streak > 0 && (
-              <span className="flex items-center gap-1">
-                <Flame className="h-3.5 w-3.5" aria-hidden="true" /> {profile.streak}-day streak
-              </span>
-            )}
-            <span>Joined {formatDhakaDate(profile.joinedAt)}</span>
-          </p>
-
-          {profile.achievements.length > 0 && (
-            <ul className="mt-3 flex flex-wrap gap-2" aria-label="Badges">
-              {profile.achievements.map((a) => (
-                <li key={a.key} title={a.name} className="flex items-center gap-1.5 rounded-full bg-xp/20 px-2.5 py-1 text-xs font-bold text-foreground">
-                  <AchievementIcon iconKey={a.iconKey} className="h-3.5 w-3.5" /> {a.name}
-                </li>
-              ))}
-            </ul>
-          )}
+          <nav aria-label="Profile sections" className="-mx-1 flex border-t border-border/15">
+            {tabs.map((t) => (
+              <Link
+                key={t.key}
+                href={t.key === "posts" ? base : `${base}?show=${t.key}`}
+                aria-current={show === t.key ? "page" : undefined}
+                className={cn(
+                  "relative flex h-12 items-center gap-1.5 px-3 text-sm font-bold transition-colors",
+                  show === t.key ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+                <span className="font-mono text-xs">{t.count}</span>
+                {show === t.key && <span aria-hidden="true" className="absolute inset-x-2 bottom-0 h-[3px] rounded-t-full bg-primary" />}
+              </Link>
+            ))}
+          </nav>
         </div>
       </header>
 
-      {profile.isSelf && (
-        <details className="comic-panel bg-surface p-4">
-          <summary className="cursor-pointer list-none font-display text-sm font-bold text-accent">Edit your community profile</summary>
-          <div className="mt-4">
-            <ProfileForm initial={{ bio: profile.bio ?? "", headline: profile.headline ?? "", communityPrivate: profile.isPrivate }} />
-          </div>
-        </details>
-      )}
-
-      <div role="tablist" aria-label="Profile sections" className="flex gap-1.5">
-        {tabs.map((t) => (
-          <Link
-            key={t.key}
-            href={t.key === "posts" ? `/community/u/${profile.id}` : `/community/u/${profile.id}?show=${t.key}`}
-            role="tab"
-            aria-selected={show === t.key}
-            className={cn(
-              "flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold",
-              show === t.key ? "bg-xp text-xp-foreground" : "bg-surface text-muted-foreground hover:text-foreground"
+      <div className="gap-4 lg:grid lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:items-start">
+        <aside className="space-y-3 lg:sticky lg:top-4">
+          <section className="comic-panel bg-surface p-4" aria-labelledby="intro">
+            <h2 id="intro" className="font-display text-lg font-extrabold text-foreground">
+              Intro
+            </h2>
+            {profile.headline && <p className="mt-2 text-center text-sm font-semibold text-foreground">{profile.headline}</p>}
+            {profile.bio && <p className="mt-2 whitespace-pre-line break-words text-center text-sm text-foreground">{profile.bio}</p>}
+            {(profile.headline || profile.bio) && <hr className="my-3 border-border/15" />}
+            <ul className="space-y-2.5 text-sm text-foreground">
+              <li className="flex items-center gap-2.5">
+                <Zap className="h-5 w-5 shrink-0 text-xp" aria-hidden="true" /> Level <span className="font-bold">{profile.level}</span>
+                <span className="text-muted-foreground">· {profile.xp} XP</span>
+              </li>
+              {profile.streak > 0 && (
+                <li className="flex items-center gap-2.5">
+                  <Flame className="h-5 w-5 shrink-0 text-danger" aria-hidden="true" /> <span className="font-bold">{profile.streak}-day</span> study streak
+                </li>
+              )}
+              <li className="flex items-center gap-2.5">
+                <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" /> Joined {formatDhakaDate(profile.joinedAt)}
+              </li>
+            </ul>
+            {profile.achievements.length > 0 && (
+              <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Badges">
+                {profile.achievements.map((a) => (
+                  <li key={a.key} title={a.name} className="flex items-center gap-1.5 rounded-full bg-xp/20 px-2.5 py-1 text-xs font-bold text-foreground">
+                    <AchievementIcon iconKey={a.iconKey} className="h-3.5 w-3.5" /> {a.name}
+                  </li>
+                ))}
+              </ul>
             )}
-          >
-            {t.label} <span className="font-mono text-xs">{t.count}</span>
-          </Link>
-        ))}
-      </div>
+          </section>
 
-      {!profile.canSeePosts ? (
-        <div className="comic-panel flex items-center gap-3 bg-surface p-5">
-          <Lock className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">
-            This profile is private. Follow {profile.name.split(" ")[0]} to see their posts.
-          </p>
-        </div>
-      ) : initial ? (
-        <Feed
-          key={profile.id}
-          scope={{ type: "profile", userId: profile.id }}
-          initial={initial}
-          composer={profile.isSelf ? { me: { name: displayName(user), avatarUrl: user.avatarUrl } } : undefined}
-          emptyTitle={profile.isSelf ? "You haven't posted yet" : "No posts yet"}
-          emptyBody={profile.isSelf ? "Share something with the community." : `${profile.name} hasn't posted anything yet.`}
-        />
-      ) : (
-        <ul className="space-y-2">
-          {(connections ?? []).map((p) => (
-            <li key={p.id} className="comic-panel flex items-center gap-3 bg-surface p-3">
-              <Avatar fallbackClassName="bg-primary/15 text-primary" src={p.avatarUrl} name={p.name} size={40} />
-              <div className="min-w-0 flex-1">
-                <Link href={`/community/u/${p.id}`} prefetch={false} className="block truncate text-sm font-bold text-foreground hover:underline">
-                  {p.name}
-                </Link>
-                {p.headline && <p className="truncate text-xs text-muted-foreground">{p.headline}</p>}
+          {profile.isSelf && (
+            <details id="edit-profile" open={searchParams.edit === "1"} className="comic-panel scroll-mt-20 bg-surface p-4">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 font-display text-sm font-bold text-primary">
+                <Pencil className="h-4 w-4" aria-hidden="true" /> Edit your bio, headline and privacy
+              </summary>
+              <div className="mt-4">
+                <ProfileForm initial={{ bio: profile.bio ?? "", headline: profile.headline ?? "", communityPrivate: profile.isPrivate }} />
               </div>
-              {p.id !== user.id && <FollowButton userId={p.id} initialFollowing={p.isFollowing} size="sm" />}
-            </li>
-          ))}
-          {(connections ?? []).length === 0 && <li className="text-sm text-muted-foreground">No one here yet.</li>}
-        </ul>
-      )}
+            </details>
+          )}
 
-      {!profile.isSelf && <ProfileReport userId={profile.id} />}
+          {!profile.isSelf && (
+            <div className="hidden lg:block">
+              <ProfileReport userId={profile.id} />
+            </div>
+          )}
+        </aside>
+
+        <div className="mt-3 min-w-0 lg:mt-0">
+          {!profile.canSeePosts ? (
+            <div className="comic-panel flex items-center gap-3 bg-surface p-5">
+              <Lock className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm text-muted-foreground">
+                This profile is private. Follow {profile.name.split(" ")[0]} to see their posts.
+              </p>
+            </div>
+          ) : initial ? (
+            <Feed
+              key={profile.id}
+              scope={{ type: "profile", userId: profile.id }}
+              initial={initial}
+              me={me}
+              composer={profile.isSelf ? { me } : undefined}
+              emptyTitle={profile.isSelf ? "You haven't posted yet" : "No posts yet"}
+              emptyBody={profile.isSelf ? "Share something with the community." : `${profile.name} hasn't posted anything yet.`}
+            />
+          ) : (
+            <section className="comic-panel bg-surface p-2" aria-label={show === "followers" ? "Followers" : "Following"}>
+              <ul className="grid gap-1 sm:grid-cols-2">
+                {(connections ?? []).map((p) => (
+                  <li key={p.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-muted/50">
+                    <Link href={`/community/u/${p.id}`} prefetch={false} className="shrink-0">
+                      <Avatar fallbackClassName="bg-primary/15 text-primary" src={p.avatarUrl} name={p.name} size={52} />
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/community/u/${p.id}`} prefetch={false} className="block truncate text-sm font-bold text-foreground hover:underline">
+                        {p.name}
+                      </Link>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {p.headline ?? `${p.followerCount} follower${p.followerCount === 1 ? "" : "s"}`}
+                      </p>
+                    </div>
+                    {p.id !== user.id && <FollowButton userId={p.id} initialFollowing={p.isFollowing} size="sm" />}
+                  </li>
+                ))}
+              </ul>
+              {(connections ?? []).length === 0 && <p className="p-3 text-sm text-muted-foreground">No one here yet.</p>}
+            </section>
+          )}
+          {!profile.isSelf && (
+            <div className="mt-4 lg:hidden">
+              <ProfileReport userId={profile.id} />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

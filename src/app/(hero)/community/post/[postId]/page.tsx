@@ -19,11 +19,11 @@ export default async function CommunityPostPage({ params }: { params: { postId: 
   const { comments, nextCursor } = await getComments(user, { id: post.id, groupId: row?.groupId ?? null });
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Link href="/community" className="text-xs font-bold text-muted-foreground hover:text-foreground">
+    <div className="mx-auto max-w-[680px] space-y-3">
+      <Link href="/community" className="inline-flex h-9 items-center text-sm font-bold text-muted-foreground hover:text-foreground">
         ← Back to the feed
       </Link>
-      <PostDetail post={post} />
+      <PostDetail post={post} me={{ name: displayName(user), avatarUrl: user.avatarUrl }} />
       <Comments
         postId={post.id}
         isQuestion={post.kind === "QUESTION"}

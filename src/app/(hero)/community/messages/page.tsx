@@ -29,36 +29,29 @@ export default async function MessagesPage() {
           action={{ href: "/community/discover", label: "Find heroes" }}
         />
       ) : (
-        <ul className="comic-panel divide-y divide-border/20 bg-surface">
+        <ul className="comic-panel bg-surface p-1.5 max-sm:-mx-4 max-sm:!rounded-none max-sm:border-x-0">
           {conversations.map((c) => (
             <li key={c.id}>
               <Link
                 href={`/community/messages/${c.id}`}
-                className="flex items-center gap-3 p-3 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
+                className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
               >
-                <Avatar fallbackClassName="bg-primary/15 text-primary" src={c.other.avatarUrl} name={c.other.name} size={44} />
+                <Avatar fallbackClassName="bg-primary/15 text-lg text-primary" src={c.other.avatarUrl} name={c.other.name} size={56} />
                 <div className="min-w-0 flex-1">
-                  <p className={cn("truncate text-sm text-foreground", c.unread ? "font-extrabold" : "font-semibold")}>{c.other.name}</p>
+                  <p className={cn("truncate text-[15px] text-foreground", c.unread ? "font-extrabold" : "font-semibold")}>{c.other.name}</p>
                   {c.lastMessage && (
-                    <p className={cn("truncate text-xs", c.unread ? "font-bold text-foreground" : "text-muted-foreground")}>
-                      {c.lastMessage.fromMe ? "You: " : ""}
-                      {c.lastMessage.body}
+                    <p className={cn("flex min-w-0 gap-1 text-[13px]", c.unread ? "font-bold text-foreground" : "text-muted-foreground")}>
+                      <span className="truncate">
+                        {c.lastMessage.fromMe ? "You: " : ""}
+                        {c.lastMessage.body}
+                      </span>
+                      <span className="shrink-0">· {communityTimeAgo(new Date(c.lastMessage.createdAt))}</span>
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  {c.lastMessage && (
-                    <time dateTime={c.lastMessage.createdAt} className="text-[11px] text-muted-foreground">
-                      {communityTimeAgo(new Date(c.lastMessage.createdAt))}
-                    </time>
-                  )}
-                  {c.unread > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-bold text-white">
-                      {c.unread > 9 ? "9+" : c.unread}
-                      <span className="sr-only"> unread</span>
-                    </span>
-                  )}
-                </div>
+                {c.unread > 0 && (
+                  <span className="flex h-3 w-3 shrink-0 rounded-full bg-primary" aria-label={`${c.unread} unread`} />
+                )}
               </Link>
             </li>
           ))}
