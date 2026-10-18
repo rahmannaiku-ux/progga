@@ -73,6 +73,7 @@ export default async function CalendarPage() {
             longest: heroStats?.longestStreak ?? 0,
             lastActivityDate: heroStats?.lastActivityDate?.toISOString() ?? null,
           }}
+          serverNow={now.toISOString()}
         />
       </StaggerItem>
 

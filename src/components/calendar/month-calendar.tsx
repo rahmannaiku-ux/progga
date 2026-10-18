@@ -39,13 +39,19 @@ export function MonthCalendar({
   items,
   gamification,
   streak,
+  serverNow,
 }: {
   items: CalendarItem[];
   gamification: Record<string, DayGamificationSummary>;
   streak: { current: number; longest: number; lastActivityDate: string | null };
+  // The server's clock when the page was rendered. "Today" comes from
+  // here, never from the device, so a phone whose date was changed by
+  // hand can't light up streak days or move the today mark.
+  serverNow: string;
 }) {
+  const now = useMemo(() => new Date(serverNow), [serverNow]);
   const [view, setView] = useState<ViewMode>("month");
-  const [cursor, setCursor] = useState(() => new Date());
+  const [cursor, setCursor] = useState(() => now);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const itemsByDay = useMemo(() => {
@@ -72,14 +78,14 @@ export function MonthCalendar({
     const last = new Date(streak.lastActivityDate);
     // Whole Bangladesh calendar days between today and the last active day.
     const dayDiff = Math.round(
-      (dhakaStartOfDay().getTime() - dhakaStartOfDay(last).getTime()) / 86_400_000
+      (dhakaStartOfDay(now).getTime() - dhakaStartOfDay(last).getTime()) / 86_400_000
     );
     if (dayDiff > 1) return keys;
     for (let i = 0; i < streak.current; i++) {
       keys.add(dhakaDateKey(addDhakaDays(last, -i)));
     }
     return keys;
-  }, [streak]);
+  }, [streak, now]);
 
   // Every day here is an instant at 00:00 *Dhaka* time, and every
   // "which day / which month / is it today" question is answered from
@@ -96,7 +102,7 @@ export function MonthCalendar({
     return out;
   }, [cursor, view]);
 
-  const todayKey = dhakaDateKey(new Date());
+  const todayKey = dhakaDateKey(now);
   const cursorMonthKey = dhakaDateKey(cursor).slice(0, 7);
 
   const headerLabel =
