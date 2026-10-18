@@ -277,8 +277,10 @@ export default async function LessonPlayerPage({
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <StaggerContainer className="space-y-6">
+    // minmax(0, …) columns: a column must never grow to fit a wide child (the swipeable patrol row is wider
+    // than the screen by design and scrolls inside itself), or the whole page gets wider than the phone.
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <StaggerContainer className="min-w-0 space-y-6">
         <StaggerItem>
           <CourseBreadcrumb
             steps={[

@@ -51,7 +51,7 @@ export function GroupLessonStrip({
   if (lessons.length === 0) return null;
 
   return (
-    <section className="lg:hidden" aria-label={`${groupTitle} patrols`}>
+    <section className="min-w-0 lg:hidden" aria-label={`${groupTitle} patrols`}>
       <div className="flex items-baseline justify-between gap-3 px-1">
         <h2 className="min-w-0 truncate font-display text-base font-bold text-foreground">{groupTitle}</h2>
         <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
@@ -61,7 +61,7 @@ export function GroupLessonStrip({
 
       <ul
         ref={rowRef}
-        className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-3 flex w-full min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {lessons.map((lesson, i) => {
           const isActive = lesson.id === activeLessonId;
