@@ -1139,14 +1139,14 @@ html.proggaa-app .app-hide {
 
 /* The Android app has its own native tab bar, so the site's bottom bar and the
    room kept for it go (the tab bar sits below the page, not over it). */
-html.proggaa-app-android [data-bottom-nav] {
+html.proggaa-app-tabs [data-bottom-nav] {
   display: none !important;
 }
-html.proggaa-app-android #main-content {
+html.proggaa-app-tabs #main-content {
   padding-bottom: 1rem !important;
 }
 @media (max-width: 1023px) {
-  html.proggaa-app-android .chat-pane {
+  html.proggaa-app-tabs .chat-pane {
     height: calc(100dvh - 11rem) !important;
   }
 }
