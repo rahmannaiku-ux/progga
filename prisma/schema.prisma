@@ -2852,3 +2852,11 @@ model CommunityReport {
   @@unique([reporterId, targetType, targetKey])
   @@index([status, createdAt])
 }
+
+// One row ("keepalive"), rewritten at most once an hour by GET /api/keepalive
+// so the Supabase free project always sees real database writes and is never
+// paused for inactivity (a project paused for 90 days can't be restored).
+model Heartbeat {
+  id       String   @id
+  pingedAt DateTime
+}

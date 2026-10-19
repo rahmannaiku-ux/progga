@@ -1,0 +1,40 @@
+# .github/workflows/keepalive.yml
+#
+# Keeps Proggaa's database (and its server) awake.
+#
+# - Supabase pauses a free project after a quiet week, and one left paused
+#   for 90 days can't be restored. GET /api/keepalive reads and writes the
+#   database, so as long as this runs, that never happens. (The daily
+#   Vercel cron in vercel.json calls it too; either one alone is enough.)
+# - During the day (07:00-24:00 Bangladesh time) it runs about every 10
+#   minutes, which also keeps the API function and the database connection
+#   warm, so the first visitor after a quiet spell isn't kept waiting.
+#
+# This repository is public, so Actions minutes are free. A run only fails
+# after three attempts in a row, so a single hiccup doesn't send an email;
+# a real outage turns the run red and GitHub emails the owner.
+name: Keep database alive
+
+on:
+  schedule:
+    - cron: "*/10 1-17 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the keep-alive endpoint
+        run: |
+          for attempt in 1 2 3; do
+            body=$(curl -sS --max-time 60 -w '\n%{http_code}' https://prooggaa.com/api/keepalive) || true
+            code=$(printf '%s' "$body" | tail -n1)
+            echo "attempt $attempt: HTTP $code $(printf '%s' "$body" | head -n1)"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::error::Keep-alive failed: prooggaa.com or its database is not answering."
+          exit 1

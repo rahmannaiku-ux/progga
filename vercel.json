@@ -1,3 +1,8 @@
 {
-  "crons": [{ "path": "/api/cron/birthday-rewards", "schedule": "5 18 * * *" }]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "fluid": true,
+  "crons": [
+    { "path": "/api/cron/birthday-rewards", "schedule": "5 18 * * *" },
+    { "path": "/api/keepalive", "schedule": "0 3 * * *" }
+  ]
 }

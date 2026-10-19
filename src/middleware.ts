@@ -66,6 +66,8 @@ const PUBLIC_ROUTE_PATTERNS = [
   // could never run, UploadThing's server-to-server callback was
   // redirected, and the public contact form failed for signed-out visitors.
   /^\/api\/health$/,
+  // Database keep-alive, called by the Vercel cron and the GitHub workflow (no session).
+  /^\/api\/keepalive$/,
   /^\/api\/contact$/,
   // The DevTools warning page must load for anyone (even a signed-out
   // tab), or the redirect to it would itself bounce to /login.
@@ -87,6 +89,7 @@ const SKIP_IP_RATE_LIMIT = [
   "/api/webhooks/",
   "/api/uploadthing",
   "/api/health",
+  "/api/keepalive",
   "/api/cron/",
   "/api/payment-bridge/",
   // Device routes are rate-limited per device id inside device-guard (a shared per-IP window would throttle a NAT'd phone fleet).
