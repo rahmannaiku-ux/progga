@@ -55,7 +55,7 @@ export async function SiteFooter() {
   const logoUrl = branding.logoUrl && isSafeLogoUrl(branding.logoUrl) ? branding.logoUrl : null;
 
   return (
-    <footer className="relative border-t border-border/10 bg-surface/60">
+    <footer className="app-hide relative border-t border-border/10 bg-surface/60">
       <div className="container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2">

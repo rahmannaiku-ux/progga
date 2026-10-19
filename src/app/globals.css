@@ -1115,3 +1115,24 @@
     opacity: 1;
   }
 }
+
+/* Inside the Proggaa apps (components/shared/app-mode.tsx): feel like an app, not a web page.
+   No grey tap flash, no rubber-band scrolling of the whole page, no accidental text selection
+   on buttons and navigation (text in posts, messages and lessons stays selectable), and no
+   browser-only links. */
+html.proggaa-app {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+html.proggaa-app :is(button, nav, header, [role="tab"], [role="button"], label, svg, img) {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html.proggaa-app :is(a, button, [role="button"], [role="tab"]) {
+  touch-action: manipulation;
+}
+html.proggaa-app a[href="/download"],
+html.proggaa-app .app-hide {
+  display: none !important;
+}

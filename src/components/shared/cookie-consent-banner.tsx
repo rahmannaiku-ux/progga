@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { detectApp } from "@/lib/apps";
 import { Cookie } from "lucide-react";
 import {
   CONSENT_OPEN_EVENT,
@@ -17,7 +18,8 @@ export function CookieConsentBanner() {
   useEffect(() => {
     const existing = readConsent();
     setCurrent(existing);
-    setOpen(existing === null);
+    // The apps only use the essential cookies until someone chooses otherwise in Settings, so they skip the banner.
+    setOpen(existing === null && !detectApp(navigator.userAgent));
     const reopen = () => {
       setCurrent(readConsent());
       setOpen(true);
