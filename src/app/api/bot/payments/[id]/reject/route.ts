@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
-import { rejectPaymentCore } from "@/server/actions/payment-actions";
+import { rejectPaymentCore } from "@/server/services/payment-rejection";
 import { sendBotEvent } from "@/lib/bot-webhook/dispatch";
 import { db } from "@/lib/db/client";
 import { paymentCourseTitle } from "@/lib/payments/course-title";

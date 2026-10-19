@@ -34,6 +34,12 @@ describe("safeReturnTo", () => {
     expect(safeReturnTo("javascript:alert(1)")).toBe("/dashboard");
   });
 
+  it("rejects control characters and backslashes anywhere", () => {
+    expect(safeReturnTo("/\t/evil.example")).toBe("/dashboard");
+    expect(safeReturnTo("/\n/evil.example")).toBe("/dashboard");
+    expect(safeReturnTo("/a\\b")).toBe("/dashboard");
+  });
+
   it("respects a custom fallback", () => {
     expect(safeReturnTo(null, "/complete-profile")).toBe("/complete-profile");
   });

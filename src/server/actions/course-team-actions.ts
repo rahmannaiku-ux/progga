@@ -5,7 +5,7 @@ import { revalidateMissionPage } from "@/lib/mission-paths";
 import { db } from "@/lib/db/client";
 import { notifyAdminsOfCoMentorRequest } from "@/lib/course-team/notify";
 import { requireActiveUser, requireAdminUser } from "./require-user";
-import { assertOwnsCourse } from "./mission-actions";
+import { assertOwnsCourse } from "@/server/services/mission-builder";
 import {
   approveCourseTeacherRequestCore,
   rejectCourseTeacherRequestCore,

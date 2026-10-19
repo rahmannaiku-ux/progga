@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { constantTimeEquals } from "@/lib/auth/bot-auth";
 import { runBirthdayJob } from "@/server/services/birthday";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
       console.error("CRON_SECRET is not configured — refusing to run /api/cron/birthday-rewards.");
       return NextResponse.json({ error: "Server misconfiguration: CRON_SECRET not set." }, { status: 500 });
     }
-  } else if ((req.headers.get("authorization") ?? "") !== `Bearer ${secret}`) {
+  } else if (!constantTimeEquals(req.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

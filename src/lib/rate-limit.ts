@@ -120,6 +120,27 @@ function checkFallbackLimit(kind: LimiterKind, identifier: string): { success: b
  */
 export async function checkRateLimit(kind: LimiterKind, identifier: string) {
   const limiter = limiters[kind];
-  if (!limiter) return checkFallbackLimit(kind, identifier);
-  return limiter.limit(identifier);
+  if (limiter) return limiter.limit(identifier);
+  const shared = (globalThis as { [SHARED_STORE_KEY]?: SharedRateLimitStore })[SHARED_STORE_KEY];
+  if (shared && SHARED_KINDS.has(kind)) {
+    const { max, windowMs } = FALLBACK_LIMITS[kind];
+    try {
+      return { success: await shared(`${kind}:${identifier}`, max, windowMs) };
+    } catch (err) {
+      console.error("rate-limit: shared store failed, using the in-memory limit", err);
+    }
+  }
+  return checkFallbackLimit(kind, identifier);
 }
+
+/**
+ * Without Upstash, the limits that guard sign-in, codes and money are kept in
+ * the database (src/lib/db/client.ts registers the store, in the Node runtime
+ * only, since this file also runs in the Edge middleware), so they hold across
+ * every serverless instance: an in-memory window per instance would let
+ * someone guessing passwords or codes multiply their attempts by the number of
+ * instances.
+ */
+type SharedRateLimitStore = (key: string, max: number, windowMs: number) => Promise<boolean>;
+export const SHARED_STORE_KEY = "__proggaaRateLimitStore";
+const SHARED_KINDS = new Set<LimiterKind>(["login", "otpRequest", "otpVerify", "strict", "lookup"]);

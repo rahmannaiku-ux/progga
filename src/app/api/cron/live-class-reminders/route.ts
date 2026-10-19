@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { constantTimeEquals } from "@/lib/auth/bot-auth";
 import { db } from "@/lib/db/client";
 import { getSetting } from "@/lib/config/settings-service";
 
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
     }
   } else {
     const authHeader = req.headers.get("authorization") ?? "";
-    if (authHeader !== `Bearer ${secret}`) {
+    if (!constantTimeEquals(authHeader, `Bearer ${secret}`)) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
   }

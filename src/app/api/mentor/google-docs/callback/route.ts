@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeReturnTo } from "@/lib/auth/safe-redirect";
 import { exchangeGoogleDocsCode } from "@/lib/question-import/google-docs";
 import { encryptSecret } from "@/lib/storage/token-crypto";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
   try {
     if (stateRaw) {
       const parsed = JSON.parse(Buffer.from(stateRaw, "base64url").toString("utf8"));
-      returnTo = parsed.returnTo ?? returnTo;
+      returnTo = safeReturnTo(typeof parsed.returnTo === "string" ? parsed.returnTo : null, returnTo);
       csrfToken = parsed.csrfToken;
     }
   } catch {

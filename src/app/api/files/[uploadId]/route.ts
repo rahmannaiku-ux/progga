@@ -90,6 +90,12 @@ export async function GET(req: NextRequest, { params }: { params: { uploadId: st
       ETag: etag,
       "Accept-Ranges": "bytes",
     };
+    // Belt and braces on top of the upload checks (an allowlist of types and
+    // their real file signatures): opened on its own, a file can never run
+    // script as prooggaa.com. Not for PDFs, which Chrome won't show sandboxed.
+    if (contentType !== "application/pdf") {
+      headers["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox";
+    }
     if (contentLength) headers["Content-Length"] = contentLength;
     else if (status !== 206 && upload.sizeBytes) headers["Content-Length"] = String(upload.sizeBytes);
     if (status === 206 && contentRange) headers["Content-Range"] = contentRange;

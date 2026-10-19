@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { constantTimeEquals } from "@/lib/auth/bot-auth";
 import { db } from "@/lib/db/client";
 import { getLiveChatService } from "@/server/live/chat/service";
 import { planTransition, type LiveSchedule } from "@/lib/live/state";
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
     }
   } else {
     const authHeader = req.headers.get("authorization") ?? "";
-    if (authHeader !== `Bearer ${secret}`) {
+    if (!constantTimeEquals(authHeader, `Bearer ${secret}`)) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
   }

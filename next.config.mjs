@@ -25,7 +25,9 @@ const streamConnectSrc = process.env.NEXT_PUBLIC_STREAM_API_KEY
 
 const cspDirectives = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.youtube.com http://www.youtube.com https://s.ytimg.com`.trim(),
+  // No eval in production (React's dev tools need it locally only), and YouTube's
+  // player script over plain http only on the local http dev server.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval' http://www.youtube.com"} https://challenges.cloudflare.com https://www.youtube.com https://s.ytimg.com`,
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://utfs.io https://lh3.googleusercontent.com https://drive.google.com https://*.googleusercontent.com",
@@ -43,13 +45,16 @@ const cspDirectives = [
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   // Browsers ignore this over plain http (local dev); in production the site is https-only.
-  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  // Pages opened from Proggaa (or that Proggaa opens) can't reach back into its window.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=(), browsing-topics=()",
   },
   { key: "Content-Security-Policy", value: cspDirectives },
 ];

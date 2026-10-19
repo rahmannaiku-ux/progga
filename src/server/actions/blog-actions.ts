@@ -8,7 +8,7 @@ import { sanitizeHtml } from "@/lib/sanitize-html";
 import { isSafeDestinationUrl } from "@/lib/config/destinations";
 import { blogPostUpsertSchema, blogPostStatusValues } from "@/lib/validation/admin";
 import { requireAdminUser } from "./require-user";
-import { logActivity } from "./admin-actions";
+import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 
 function isUniqueConstraintError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";

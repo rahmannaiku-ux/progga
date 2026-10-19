@@ -9,7 +9,7 @@ import { parseDhakaInput } from "@/lib/timezone";
 import { ensureLiveClass } from "@/server/live/ensure-live-class";
 import { ensureLiveContainerGroup } from "@/server/live/live-container";
 import { requireMentorUser } from "./require-user";
-import { assertOwnsCourse } from "./mission-actions";
+import { assertOwnsCourse } from "@/server/services/mission-builder";
 
 /**
  * Scheduling live classes from the mentor's Live Classes page, plus turning an

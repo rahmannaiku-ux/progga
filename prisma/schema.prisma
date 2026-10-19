@@ -2947,3 +2947,13 @@ model Heartbeat {
   id       String   @id
   pingedAt DateTime
 }
+
+/// Shared rate-limit counters (src/lib/rate-limit.ts), used when Upstash Redis isn't configured, so a limit
+/// holds across every server instance instead of per instance.
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}

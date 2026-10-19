@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { getGoogleDocsAuthUrl, isGoogleDocsImportConfigured } from "@/lib/question-import/google-docs";
 import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
+import { safeReturnTo } from "@/lib/auth/safe-redirect";
 
 /**
  * Teacher-initiated, per-session OAuth (see google-docs.ts's header
@@ -18,13 +19,13 @@ export async function GET(req: NextRequest) {
   }
 
   if (!isGoogleDocsImportConfigured()) {
-    const returnTo = req.nextUrl.searchParams.get("returnTo") ?? "/mentor/dashboard";
+    const returnTo = safeReturnTo(req.nextUrl.searchParams.get("returnTo"), "/mentor/dashboard");
     return NextResponse.redirect(
       new URL(`${returnTo}?docsError=${encodeURIComponent("Google Docs import isn't configured on this server yet.")}`, req.url)
     );
   }
 
-  const returnTo = req.nextUrl.searchParams.get("returnTo") ?? "/mentor/dashboard";
+  const returnTo = safeReturnTo(req.nextUrl.searchParams.get("returnTo"), "/mentor/dashboard");
   const csrfToken = randomBytes(16).toString("hex");
   const state = Buffer.from(JSON.stringify({ csrfToken, returnTo })).toString("base64url");
 

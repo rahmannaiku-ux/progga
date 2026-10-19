@@ -27,7 +27,7 @@ function isUniqueConstraintError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
 
-export async function logActivity(
+async function logActivity(
   adminId: string,
   action: Parameters<typeof db.activityLog.create>[0]["data"]["action"],
   entityType: string,

@@ -42,7 +42,7 @@ const MENTOR_ONLY = "Only mentors can author missions.";
  * course-management actions (coupons, team, ...) import this so every one
  * shares the same check.
  */
-export async function assertOwnsCourse(courseId: string, userId: string, role: string) {
+async function assertOwnsCourse(courseId: string, userId: string, role: string) {
   return assertOwnsCourseCore(courseId, userId, role);
 }
 

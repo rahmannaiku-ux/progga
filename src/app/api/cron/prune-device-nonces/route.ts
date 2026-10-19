@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { constantTimeEquals } from "@/lib/auth/bot-auth";
 import { db } from "@/lib/db/client";
 import { NONCE_RETENTION_MS } from "@/lib/payments/sms/device-auth";
 
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
     if (process.env.NODE_ENV === "production") {
       return NextResponse.json({ error: "Server misconfiguration: CRON_SECRET not set." }, { status: 500 });
     }
-  } else if ((req.headers.get("authorization") ?? "") !== `Bearer ${secret}`) {
+  } else if (!constantTimeEquals(req.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
   const result = await db.deviceRequestNonce.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - NONCE_RETENTION_MS) } } });

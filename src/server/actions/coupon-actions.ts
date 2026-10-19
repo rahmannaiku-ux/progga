@@ -15,7 +15,7 @@ import {
 import { parseOptionalDhakaInput } from "@/lib/timezone";
 import { requireActiveUser } from "./require-user";
 import { requireCompletedProfile } from "@/lib/auth/require-auth";
-import { assertOwnsCourse } from "./mission-actions";
+import { assertOwnsCourse } from "@/server/services/mission-builder";
 
 function revalidateCouponPaths(courseId: string, slug: string) {
   revalidateMissionPage(`/${courseId}/coupons`);

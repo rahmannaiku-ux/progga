@@ -2,7 +2,7 @@ import { db } from "@/lib/db/client";
 import { isCourseMentor } from "@/lib/auth/course-access";
 import { sendTemplatedEmail } from "@/lib/email/send-email";
 import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
-import { logActivity } from "@/server/actions/admin-actions";
+import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 
 export type GrantCourseAccessResult = {
   alreadyEnrolled: boolean;

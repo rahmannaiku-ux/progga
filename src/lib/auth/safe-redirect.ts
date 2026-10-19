@@ -15,5 +15,8 @@ export function safeReturnTo(candidate: string | null | undefined, fallback = "/
     return fallback;
   }
   if (candidate.includes("://")) return fallback;
+  // Browsers drop tabs and newlines inside a URL ("/<tab>/evil.com" becomes
+  // "//evil.com") and read a backslash as "/", so neither is allowed anywhere.
+  if (/[\u0000-\u001f\u007f\\]/.test(candidate)) return fallback;
   return candidate;
 }

@@ -3,7 +3,7 @@ import { isCourseMentor } from "@/lib/auth/course-access";
 import { issueCertificate } from "@/lib/certificate/issue-certificate";
 import { generateCertificateNo } from "@/lib/certificate/certificate-no";
 import { findUserByIdentifier, userLabel } from "@/lib/auth/find-user-by-identifier";
-import { logActivity } from "@/server/actions/admin-actions";
+import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 
 export type IssueCertificateActionResult =
   | ({ ok: true } & ManualIssueResult)

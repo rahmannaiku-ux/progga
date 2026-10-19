@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { isCourseMentor } from "@/lib/auth/course-access";
 import { requireMentorUser, requireAdminUser } from "./require-user";
-import { logActivity } from "./admin-actions";
+import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 import { parseDhakaInput } from "@/lib/timezone";
 
 function parseEventDates(startAtRaw: string, endAtRaw: string) {

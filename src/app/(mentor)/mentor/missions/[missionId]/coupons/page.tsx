@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { getMissionsBase } from "@/lib/mission-paths";
-import { assertOwnsCourse } from "@/server/actions/mission-actions";
+import { assertOwnsCourse } from "@/server/services/mission-builder";
 import { CouponManager } from "@/components/mentor-dashboard/coupon-manager";
 
 export default async function MentorCouponsPage({ params }: { params: { missionId: string } }) {

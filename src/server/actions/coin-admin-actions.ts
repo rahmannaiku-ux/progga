@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { requireAdminUser } from "./require-user";
-import { logActivity } from "./admin-actions";
+import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { adjustCoinsAsAdmin as adjustCoinsCore } from "@/lib/gamification/coins";
 import { toggleStoreItemPublishedCore } from "@/server/services/admin-tools";

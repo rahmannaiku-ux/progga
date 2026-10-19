@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { getMissionsBase } from "@/lib/mission-paths";
-import { assertOwnsCourse } from "@/server/actions/mission-actions";
+import { assertOwnsCourse } from "@/server/services/mission-builder";
 import { TeamManager } from "@/components/mentor-dashboard/team-manager";
 import { AvatarCropper } from "@/components/shared/avatar-cropper";
 

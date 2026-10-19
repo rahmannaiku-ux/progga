@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
 import { requireAdminUser } from "./require-user";
-import { logActivity } from "./admin-actions";
+import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 import {
   parseAdminStudentEdit,
   parseAdminStudentStats,
