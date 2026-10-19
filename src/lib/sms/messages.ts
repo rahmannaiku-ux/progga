@@ -57,6 +57,15 @@ export function purchaseSuccessMessage({
   return `${greeting} Your purchase of "${courseTitle}" on Proggaa is confirmed. ${price}. Ref: ${reference}. The course is now unlocked on your dashboard.${invoice}`;
 }
 
+/**
+ * The birthday text (see sendBirthdaySms in server/services/birthday.ts).
+ * Plain ASCII so it stays one cheap GSM-7 message for an English name.
+ */
+export function birthdaySmsMessage(name: string, coins: number, siteUrl: string = publicSiteUrl()): string {
+  const who = name.trim() ? ` ${name.trim()}` : "";
+  return `Happy Birthday${who}! Everyone at Proggaa wishes you a wonderful year ahead. Your gift of ${coins.toLocaleString("en-US")} Proggy Coins is waiting in your account: ${siteUrl}`;
+}
+
 export function invoiceUrlFor(paymentId: string, baseUrl: string = publicSiteUrl()): string {
   return `${baseUrl}/payments/${encodeURIComponent(paymentId)}/invoice`;
 }

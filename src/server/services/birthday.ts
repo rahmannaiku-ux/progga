@@ -20,6 +20,8 @@ import {
   isExpiryReminderDue,
 } from "@/lib/birthday/reward-rules";
 import { attemptPushDelivery, deliverDuePushNotifications, queuePushDeliveryTx } from "@/server/services/push-delivery";
+import { getSmsProvider } from "@/lib/sms/onecodesoft";
+import { birthdaySmsMessage } from "@/lib/sms/messages";
 
 /**
  * Birthday rewards. Two callers, same idempotent code:
@@ -129,7 +131,40 @@ export async function grantBirthdayRewardIfDue(
       console.error("[birthday] push attempt failed", err)
     );
   }
+  if (opts.deliver !== false) await sendBirthdaySms(created.rewardId, { now });
   return { status: "granted", rewardId: created.rewardId };
+}
+
+/** Rewards younger than this still get their text if it hasn't gone out (so a late or retried run still wishes on the day). */
+const BIRTHDAY_SMS_WINDOW_MS = 20 * 3_600_000;
+
+/**
+ * Texts the student "Happy Birthday" through the same SMS provider as the
+ * sign-up codes. Once per reward: smsSentAt is claimed before sending, so
+ * two runs at once can't both send; it is released again if the provider
+ * refuses, so a later run can retry. Never throws.
+ */
+export async function sendBirthdaySms(rewardId: string, opts: { now?: Date } = {}): Promise<boolean> {
+  const now = opts.now ?? new Date();
+  const claim = await db.birthdayReward
+    .updateMany({ where: { id: rewardId, smsSentAt: null }, data: { smsSentAt: now } })
+    .catch(() => ({ count: 0 }));
+  if (claim.count === 0) return false;
+  try {
+    const reward = await db.birthdayReward.findUniqueOrThrow({
+      where: { id: rewardId },
+      select: { amount: true, user: { select: { phone: true, firstName: true, studentProfile: { select: { name: true } } } } },
+    });
+    if (!reward.user.phone) return false;
+    const name = reward.user.studentProfile?.name?.trim() || reward.user.firstName;
+    await getSmsProvider().sendSms(reward.user.phone, birthdaySmsMessage(name, reward.amount));
+    logReward("birthday.sms_sent", { rewardId, at: now.toISOString() });
+    return true;
+  } catch (err) {
+    console.error("[birthday] sms failed", rewardId, err instanceof Error ? err.name : err);
+    await db.birthdayReward.updateMany({ where: { id: rewardId }, data: { smsSentAt: null } }).catch(() => {});
+    return false;
+  }
 }
 
 /**
@@ -237,7 +272,18 @@ export async function runBirthdayJob(now: Date = new Date()) {
 
   const push = await step("phone delivery", () => deliverDuePushNotifications({ now }));
 
-  return { expired, granted, reminders, push };
+  const sms = await step("birthday sms", async () => {
+    const due = await db.birthdayReward.findMany({
+      where: { smsSentAt: null, grantedAt: { gte: new Date(now.getTime() - BIRTHDAY_SMS_WINDOW_MS) } },
+      select: { id: true },
+      take: 1000,
+    });
+    let count = 0;
+    for (const r of due) if (await sendBirthdaySms(r.id, { now })) count++;
+    return count;
+  });
+
+  return { expired, granted, reminders, push, sms };
 }
 
 export type CelebrationInfo = {

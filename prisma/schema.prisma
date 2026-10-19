@@ -2023,6 +2023,8 @@ model BirthdayReward {
   celebrationSeenAt      DateTime?
   // Claimed once by whoever queues the "expires soon" reminder.
   expiryReminderQueuedAt DateTime?
+  // Claimed once by whoever sends the birthday text message (cleared again if the send fails).
+  smsSentAt              DateTime?
   createdAt              DateTime      @default(now())
 
   @@unique([userId, birthdayYear])
