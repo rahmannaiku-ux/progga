@@ -75,7 +75,14 @@ function GroupsRow({ groups }: { groups: GroupDTO[] }) {
               </span>
             </Link>
             <div className="mt-auto p-2.5 [&_button]:w-full [&>span]:flex">
-              <JoinGroupButton groupId={g.id} initialJoined={Boolean(g.myRole)} isOwner={g.myRole === "OWNER"} size="sm" />
+              <JoinGroupButton
+            groupId={g.id}
+            initialJoined={Boolean(g.myRole)}
+            isOwner={g.myRole === "OWNER"}
+            privacy={g.privacy}
+            initialRequested={g.requested}
+            size="sm"
+          />
             </div>
           </li>
         ))}

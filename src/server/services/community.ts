@@ -120,6 +120,16 @@ export function visiblePostWhere(viewer: Viewer): Prisma.CommunityPostWhereInput
               { author: { communityFollowers: { some: { followerId: viewer.id } } } },
             ],
           },
+      // A private group's posts are for its members only (wherever they are listed).
+      staff
+        ? {}
+        : {
+            OR: [
+              { groupId: null },
+              { group: { privacy: "PUBLIC" } },
+              { group: { members: { some: { userId: viewer.id } } } },
+            ],
+          },
     ],
   };
 }
@@ -660,9 +670,12 @@ export type GroupDTO = {
   name: string;
   topic: string;
   description: string;
+  privacy: "PUBLIC" | "PRIVATE";
   memberCount: number;
   postCount: number;
-  myRole: "OWNER" | "MODERATOR" | "MEMBER" | null;
+  myRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null;
+  /** The viewer has asked to join (a private group) and is waiting. */
+  requested: boolean;
   owner: PersonDTO;
 };
 
@@ -673,8 +686,10 @@ const groupSelect = (viewerId: string) =>
     name: true,
     topic: true,
     description: true,
+    privacy: true,
     owner: { select: AUTHOR_SELECT },
     members: { where: { userId: viewerId }, select: { role: true }, take: 1 },
+    joinRequests: { where: { userId: viewerId }, select: { id: true }, take: 1 },
     _count: { select: { members: true, posts: { where: { isHidden: false } } } },
   }) satisfies Prisma.CommunityGroupSelect;
 
@@ -686,9 +701,11 @@ const toGroup = (g: GroupRow): GroupDTO => ({
   name: g.name,
   topic: g.topic,
   description: g.description,
+  privacy: g.privacy,
   memberCount: g._count.members,
   postCount: g._count.posts,
   myRole: g.members[0]?.role ?? null,
+  requested: g.joinRequests.length > 0,
   owner: toPerson(g.owner),
 });
 
@@ -733,7 +750,7 @@ export async function listGroupTopics(): Promise<string[]> {
   return rows.map((r) => r.topic);
 }
 
-export type GroupMemberDTO = PersonDTO & { role: "OWNER" | "MODERATOR" | "MEMBER" };
+export type GroupMemberDTO = PersonDTO & { role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" };
 
 export async function listGroupMembers(groupId: string): Promise<GroupMemberDTO[]> {
   const rows = await db.communityGroupMember.findMany({
@@ -743,6 +760,19 @@ export async function listGroupMembers(groupId: string): Promise<GroupMemberDTO[
     select: { role: true, user: { select: AUTHOR_SELECT } },
   });
   return rows.map((r) => ({ ...toPerson(r.user), role: r.role }));
+}
+
+export type JoinRequestDTO = PersonDTO & { requestedAt: string };
+
+/** People waiting to join a private group, oldest first (bounded). The caller checks who may see this. */
+export async function listJoinRequests(groupId: string): Promise<JoinRequestDTO[]> {
+  const rows = await db.communityGroupJoinRequest.findMany({
+    where: { groupId, user: { isActive: true, isSuspended: false } },
+    orderBy: { createdAt: "asc" },
+    take: 50,
+    select: { createdAt: true, user: { select: AUTHOR_SELECT } },
+  });
+  return rows.map((r) => ({ ...toPerson(r.user), requestedAt: r.createdAt.toISOString() }));
 }
 
 // ---------------------------------------------------------------------
@@ -880,10 +910,18 @@ export async function getConversation(
   viewerId: string,
   conversationId: string,
   before?: string | null
-): Promise<{ id: string; other: PersonDTO; messages: MessageDTO[]; hasMore: boolean } | null> {
+): Promise<{ id: string; other: PersonDTO; otherReadAt: string; messages: MessageDTO[]; hasMore: boolean } | null> {
   const conversation = await db.conversation.findUnique({
     where: { id: conversationId },
-    select: { id: true, userAId: true, userBId: true, userA: { select: AUTHOR_SELECT }, userB: { select: AUTHOR_SELECT } },
+    select: {
+      id: true,
+      userAId: true,
+      userBId: true,
+      userALastReadAt: true,
+      userBLastReadAt: true,
+      userA: { select: AUTHOR_SELECT },
+      userB: { select: AUTHOR_SELECT },
+    },
   });
   if (!conversation || !conversationSide(conversation, viewerId)) return null;
 
@@ -903,6 +941,8 @@ export async function getConversation(
   return {
     id: conversation.id,
     other: toPerson(conversation.userAId === viewerId ? conversation.userB : conversation.userA),
+    // How far the other person has read, for "Seen" under your last message.
+    otherReadAt: (conversation.userAId === viewerId ? conversation.userBLastReadAt : conversation.userALastReadAt).toISOString(),
     messages: page.map((m) => ({
       id: m.id,
       body: m.body,

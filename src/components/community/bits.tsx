@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Flag, GraduationCap, Loader2, MessageCircle, UserPlus, Users } from "lucide-react";
+import { Check, Clock, Flag, GraduationCap, Loader2, Lock, MessageCircle, UserPlus, Users } from "lucide-react";
 import { Avatar } from "@/components/shared/avatar";
 import { cn } from "@/lib/utils";
 import { REPORT_REASONS, splitLinks } from "@/lib/community/rules";
@@ -126,15 +126,21 @@ export function JoinGroupButton({
   groupId,
   initialJoined,
   isOwner,
+  privacy = "PUBLIC",
+  initialRequested = false,
   size = "md",
 }: {
   groupId: string;
   initialJoined: boolean;
   isOwner: boolean;
+  /** A private group is joined by request: the button asks, then shows "Requested" (press again to cancel). */
+  privacy?: "PUBLIC" | "PRIVATE";
+  initialRequested?: boolean;
   size?: "sm" | "md";
 }) {
   const router = useRouter();
   const [joined, setJoined] = useState(initialJoined);
+  const [requested, setRequested] = useState(initialRequested);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -159,6 +165,7 @@ export function JoinGroupButton({
               const res = await toggleGroupMembership(groupId);
               if (!res.ok) return setError(res.error);
               setJoined(res.joined);
+              setRequested(res.requested);
               router.refresh();
             } catch {
               setError(NETWORK_ERROR);
@@ -168,11 +175,21 @@ export function JoinGroupButton({
         className={cn(
           "comic-btn inline-flex shrink-0 items-center justify-center gap-1.5 font-bold disabled:opacity-60",
           size === "sm" ? "h-9 px-3 text-xs" : "h-11 px-4 text-sm",
-          joined ? "border border-border/60 bg-surface text-foreground" : "bg-accent text-accent-foreground"
+          joined || requested ? "border border-border/60 bg-surface text-foreground" : "bg-accent text-accent-foreground"
         )}
       >
-        {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : joined ? <Check className="h-4 w-4" aria-hidden="true" /> : <Users className="h-4 w-4" aria-hidden="true" />}
-        {joined ? "Joined" : "Join group"}
+        {isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        ) : joined ? (
+          <Check className="h-4 w-4" aria-hidden="true" />
+        ) : requested ? (
+          <Clock className="h-4 w-4" aria-hidden="true" />
+        ) : privacy === "PRIVATE" ? (
+          <Lock className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <Users className="h-4 w-4" aria-hidden="true" />
+        )}
+        {joined ? "Joined" : requested ? "Requested" : privacy === "PRIVATE" ? "Request to join" : "Join group"}
       </button>
       {error && <span role="alert" className="max-w-[14rem] text-right text-[11px] font-semibold text-danger">{error}</span>}
     </span>

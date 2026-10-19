@@ -9,11 +9,15 @@ import {
   REACTION_TYPES,
   canDeleteContent,
   canManageGroup,
+  canModerateGroup,
+  canRemoveFromGroup,
+  canSetGroupRole,
   cleanPollOptions,
   commentInputSchema,
   displayName,
   firstIssue,
   groupInputSchema,
+  isCommunityStaff,
   groupSlug,
   postInputSchema,
   profileInputSchema,
@@ -818,6 +822,7 @@ export async function createGroup(input: unknown): Promise<Result<{ slug: string
           name: parsed.data.name,
           topic: parsed.data.topic,
           description: parsed.data.description,
+          privacy: parsed.data.privacy,
           ownerId: user.id,
           members: { create: { userId: user.id, role: "OWNER" } },
         },
@@ -843,12 +848,14 @@ export async function updateGroup(groupId: string, input: unknown): Promise<Resu
     select: { slug: true, members: { where: { userId: user.id }, select: { role: true }, take: 1 } },
   });
   if (!group || !canManageGroup({ viewerRole: user.role, membership: group.members[0]?.role })) {
-    return fail("Only the group's owner can change it.");
+    return fail("Only the group's owner and admins can change it.");
   }
   await db.communityGroup.update({
     where: { id: String(groupId) },
-    data: { name: parsed.data.name, topic: parsed.data.topic, description: parsed.data.description },
+    data: { name: parsed.data.name, topic: parsed.data.topic, description: parsed.data.description, privacy: parsed.data.privacy },
   });
+  // Opening a private group lets in everyone who was waiting.
+  if (parsed.data.privacy === "PUBLIC") await admitAllRequests(String(groupId));
   revalidateCommunity(`/community/groups/${group.slug}`);
   return { ok: true };
 }
@@ -859,7 +866,7 @@ export async function deleteGroup(groupId: string): Promise<Result> {
     where: { id: String(groupId) },
     select: { members: { where: { userId: user.id }, select: { role: true }, take: 1 } },
   });
-  if (!group || !canManageGroup({ viewerRole: user.role, membership: group.members[0]?.role })) {
+  if (!group || !(group.members[0]?.role === "OWNER" || isCommunityStaff(user.role))) {
     return fail("Only the group's owner can delete it.");
   }
   await db.communityGroup.delete({ where: { id: String(groupId) } });
@@ -867,22 +874,49 @@ export async function deleteGroup(groupId: string): Promise<Result> {
   return { ok: true };
 }
 
-export async function toggleGroupMembership(groupId: string): Promise<Result<{ joined: boolean; memberCount: number }>> {
+/**
+ * Join or leave a group. A public group is joined at once. A private one
+ * gets a join request instead (pressing again cancels it), which its
+ * admins or moderators approve.
+ */
+export async function toggleGroupMembership(
+  groupId: string
+): Promise<Result<{ joined: boolean; requested: boolean; memberCount: number }>> {
   const user = await requireActiveUser();
   if (await limited("follow", user.id)) return fail(TOO_FAST);
   const id = String(groupId);
-  const group = await db.communityGroup.findUnique({ where: { id }, select: { slug: true } });
+  const group = await db.communityGroup.findUnique({ where: { id }, select: { slug: true, name: true, privacy: true } });
   if (!group) return fail("That group no longer exists.");
 
   const mine = await db.communityGroupMember.findUnique({
     where: { groupId_userId: { groupId: id, userId: user.id } },
     select: { role: true },
   });
-  let joined: boolean;
+  let joined = false;
+  let requested = false;
   if (mine) {
     if (mine.role === "OWNER") return fail("You own this group. Delete it, or hand it over first.");
     await db.communityGroupMember.deleteMany({ where: { groupId: id, userId: user.id } });
-    joined = false;
+  } else if (group.privacy === "PRIVATE" && !isCommunityStaff(user.role)) {
+    const pending = await db.communityGroupJoinRequest.findUnique({
+      where: { groupId_userId: { groupId: id, userId: user.id } },
+      select: { id: true },
+    });
+    if (pending) {
+      await db.communityGroupJoinRequest.deleteMany({ where: { groupId: id, userId: user.id } });
+    } else {
+      try {
+        await db.communityGroupJoinRequest.create({ data: { groupId: id, userId: user.id } });
+      } catch (err) {
+        if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+      }
+      requested = true;
+      await notifyGroupStaff(id, user.id, {
+        title: `${displayName(user)} asked to join ${group.name}`,
+        body: "Open the group to approve or decline.",
+        linkUrl: `/community/groups/${group.slug}`,
+      });
+    }
   } else {
     try {
       // Always joins as a plain member: the role is never taken from the client.
@@ -894,29 +928,134 @@ export async function toggleGroupMembership(groupId: string): Promise<Result<{ j
   }
   const memberCount = await db.communityGroupMember.count({ where: { groupId: id } });
   revalidateCommunity(`/community/groups/${group.slug}`);
-  return { ok: true, joined, memberCount };
+  return { ok: true, joined, requested, memberCount };
 }
 
-/** The owner promotes a member to moderator, or back to member. */
-export async function setGroupModerator(groupId: string, memberUserId: string, moderator: boolean): Promise<Result> {
+/** Admins and moderators let someone into a private group, or turn them down. */
+export async function respondToJoinRequest(groupId: string, requesterId: string, approve: boolean): Promise<Result> {
   const user = await requireActiveUser();
-  if (await limited("group", user.id)) return fail(TOO_FAST);
+  if (await limited("follow", user.id)) return fail(TOO_FAST);
   const id = String(groupId);
   const group = await db.communityGroup.findUnique({
     where: { id },
-    select: { slug: true, members: { where: { userId: user.id }, select: { role: true }, take: 1 } },
+    select: { slug: true, name: true, members: { where: { userId: user.id }, select: { role: true }, take: 1 } },
   });
-  if (!group || !canManageGroup({ viewerRole: user.role, membership: group.members[0]?.role })) {
-    return fail("Only the group's owner can choose moderators.");
+  if (!group || !canModerateGroup({ viewerRole: user.role, membership: group.members[0]?.role })) {
+    return fail("Only the group's admins and moderators can answer join requests.");
   }
-  const updated = await db.communityGroupMember.updateMany({
-    // Never touches the owner's own row, so ownership can't be changed here.
-    where: { groupId: id, userId: String(memberUserId), role: { not: "OWNER" } },
-    data: { role: moderator ? "MODERATOR" : "MEMBER" },
-  });
-  if (updated.count === 0) return fail("That person isn't a member of this group.");
+  const { count } = await db.communityGroupJoinRequest.deleteMany({ where: { groupId: id, userId: String(requesterId) } });
+  if (count === 0) return fail("That request was already answered.");
+  if (approve) {
+    try {
+      await db.communityGroupMember.create({ data: { groupId: id, userId: String(requesterId), role: "MEMBER" } });
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+    }
+    try {
+      await db.notification.create({
+        data: {
+          userId: String(requesterId),
+          type: "COMMUNITY_MODERATION",
+          title: `You're in! Welcome to ${group.name}`,
+          body: "Your request to join was approved.",
+          linkUrl: `/community/groups/${group.slug}`,
+        },
+      });
+    } catch {
+      // Approval stands even if the notification fails.
+    }
+  }
   revalidateCommunity(`/community/groups/${group.slug}`);
   return { ok: true };
+}
+
+/** Gives a member a new role (admin, moderator or member), within what the actor may do (see canSetGroupRole). */
+export async function setGroupMemberRole(groupId: string, memberUserId: string, role: unknown): Promise<Result> {
+  const user = await requireActiveUser();
+  if (await limited("group", user.id)) return fail(TOO_FAST);
+  if (role !== "ADMIN" && role !== "MODERATOR" && role !== "MEMBER") return fail("Pick a role.");
+  const id = String(groupId);
+  const [group, target] = await Promise.all([
+    db.communityGroup.findUnique({
+      where: { id },
+      select: { slug: true, members: { where: { userId: user.id }, select: { role: true }, take: 1 } },
+    }),
+    db.communityGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: String(memberUserId) } },
+      select: { id: true, role: true },
+    }),
+  ]);
+  if (!group) return fail("That group no longer exists.");
+  if (!target) return fail("That person isn't a member of this group.");
+  if (!canSetGroupRole({ viewerRole: user.role, actor: group.members[0]?.role, target: target.role, to: role })) {
+    return fail(
+      role === "ADMIN" || target.role === "ADMIN"
+        ? "Only the group's owner chooses admins."
+        : "Only the group's owner and admins choose moderators."
+    );
+  }
+  await db.communityGroupMember.update({ where: { id: target.id }, data: { role } });
+  revalidateCommunity(`/community/groups/${group.slug}`);
+  return { ok: true };
+}
+
+/** Kept for existing callers: make a member a moderator, or a plain member again. */
+export async function setGroupModerator(groupId: string, memberUserId: string, moderator: boolean): Promise<Result> {
+  return setGroupMemberRole(groupId, memberUserId, moderator ? "MODERATOR" : "MEMBER");
+}
+
+/** Removes someone from a group: only people ranked below you (see canRemoveFromGroup). */
+export async function removeGroupMember(groupId: string, memberUserId: string): Promise<Result> {
+  const user = await requireActiveUser();
+  if (await limited("group", user.id)) return fail(TOO_FAST);
+  const id = String(groupId);
+  const [group, target] = await Promise.all([
+    db.communityGroup.findUnique({
+      where: { id },
+      select: { slug: true, members: { where: { userId: user.id }, select: { role: true }, take: 1 } },
+    }),
+    db.communityGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: String(memberUserId) } },
+      select: { id: true, role: true },
+    }),
+  ]);
+  if (!group) return fail("That group no longer exists.");
+  if (!target) return fail("That person isn't a member of this group.");
+  if (!canRemoveFromGroup({ viewerRole: user.role, actor: group.members[0]?.role, target: target.role })) {
+    return fail("You can only remove people with a lower role than yours.");
+  }
+  await db.communityGroupMember.delete({ where: { id: target.id } });
+  revalidateCommunity(`/community/groups/${group.slug}`);
+  return { ok: true };
+}
+
+/** Everyone waiting to join becomes a member (when a group is made public). */
+async function admitAllRequests(groupId: string) {
+  const waiting = await db.communityGroupJoinRequest.findMany({ where: { groupId }, select: { userId: true }, take: 500 });
+  if (waiting.length === 0) return;
+  await db.$transaction([
+    db.communityGroupMember.createMany({
+      data: waiting.map((w) => ({ groupId, userId: w.userId, role: "MEMBER" as const })),
+      skipDuplicates: true,
+    }),
+    db.communityGroupJoinRequest.deleteMany({ where: { groupId } }),
+  ]);
+}
+
+/** Tells a group's owner, admins and moderators about something waiting for them. */
+async function notifyGroupStaff(groupId: string, actorId: string, item: { title: string; body: string; linkUrl: string }) {
+  try {
+    const staff = await db.communityGroupMember.findMany({
+      where: { groupId, role: { in: ["OWNER", "ADMIN", "MODERATOR"] }, userId: { not: actorId } },
+      select: { userId: true },
+      take: 20,
+    });
+    for (const s of staff) {
+      await createNotificationOnce("COMMUNITY_MODERATION", { userId: s.userId, ...item }, { since: new Date(Date.now() - 6 * 3_600_000) });
+    }
+  } catch {
+    // The request itself was saved; a failed notification must not undo it.
+  }
 }
 
 // ---------------------------------------------------------------------

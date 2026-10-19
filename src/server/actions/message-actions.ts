@@ -122,12 +122,14 @@ export async function sendMessage(conversationId: string, body: string): Promise
  * The conversation's latest messages, and marks it read for the caller.
  * The chat screen polls this while it is open and visible.
  */
-export async function pollConversation(conversationId: string): Promise<Result<{ messages: MessageDTO[]; hasMore: boolean }>> {
+export async function pollConversation(
+  conversationId: string
+): Promise<Result<{ messages: MessageDTO[]; hasMore: boolean; otherReadAt: string }>> {
   const user = await requireActiveUser();
   const conversation = await getConversation(user.id, String(conversationId));
   if (!conversation) return fail("That conversation isn't available.");
   await markRead(conversation.id, user.id);
-  return { ok: true, messages: conversation.messages, hasMore: conversation.hasMore };
+  return { ok: true, messages: conversation.messages, hasMore: conversation.hasMore, otherReadAt: conversation.otherReadAt };
 }
 
 export async function loadOlderMessages(

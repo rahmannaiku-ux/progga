@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Globe, Lock, Users } from "lucide-react";
 import { JoinGroupButton } from "@/components/community/bits";
 import type { GroupDTO } from "@/server/services/community";
 
@@ -22,13 +22,24 @@ export function GroupCard({ group }: { group: GroupDTO }) {
             {group.name}
           </Link>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Users className="h-3.5 w-3.5" aria-hidden="true" />
-            {group.memberCount} member{group.memberCount === 1 ? "" : "s"} · {group.postCount} post{group.postCount === 1 ? "" : "s"}
+            {group.privacy === "PRIVATE" ? (
+              <Lock className="h-3.5 w-3.5" aria-label="Private group" />
+            ) : (
+              <Globe className="h-3.5 w-3.5" aria-label="Public group" />
+            )}
+            {group.privacy === "PRIVATE" ? "Private" : "Public"} · {group.memberCount} member{group.memberCount === 1 ? "" : "s"} · {group.postCount} post{group.postCount === 1 ? "" : "s"}
           </p>
         </div>
         <p className="line-clamp-2 text-sm text-muted-foreground">{group.description}</p>
         <div className="mt-auto pt-1 [&>span]:flex [&_button]:w-full">
-          <JoinGroupButton groupId={group.id} initialJoined={Boolean(group.myRole)} isOwner={group.myRole === "OWNER"} size="sm" />
+          <JoinGroupButton
+            groupId={group.id}
+            initialJoined={Boolean(group.myRole)}
+            isOwner={group.myRole === "OWNER"}
+            privacy={group.privacy}
+            initialRequested={group.requested}
+            size="sm"
+          />
         </div>
       </div>
     </div>

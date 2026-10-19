@@ -633,9 +633,13 @@ model User {
   communityFollowers     CommunityFollow[]      @relation("CommunityFollowed")
   communityGroupsOwned   CommunityGroup[]
   communityMemberships   CommunityGroupMember[]
+  communityJoinRequests  CommunityGroupJoinRequest[]
   conversationsAsA       Conversation[]         @relation("ConversationUserA")
   conversationsAsB       Conversation[]         @relation("ConversationUserB")
   messagesSent           Message[]
+  groupChatsCreated      GroupChat[]            @relation("GroupChatCreatedBy")
+  groupChatMemberships   GroupChatMember[]
+  groupChatMessagesSent  GroupChatMessage[]
   communityReportsMade   CommunityReport[]      @relation("CommunityReportReporter")
   communityReportsAbout  CommunityReport[]      @relation("CommunityReportTargetUser")
   communityReportsReviewed CommunityReport[]    @relation("CommunityReportReviewer")
@@ -2599,8 +2603,18 @@ enum CommunityReactionType {
 
 enum CommunityGroupRole {
   OWNER
+  // Runs the group with the owner: settings, join requests, moderators.
+  ADMIN
   MODERATOR
   MEMBER
+}
+
+// PUBLIC: anyone can see the posts and join. PRIVATE: anyone can find the
+// group, but only members see its posts and members, and joining is by
+// request (approved by its admins or moderators).
+enum CommunityGroupPrivacy {
+  PUBLIC
+  PRIVATE
 }
 
 enum CommunityReportTarget {
@@ -2775,11 +2789,13 @@ model CommunityGroup {
   topic       String
   ownerId     String
   owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  privacy     CommunityGroupPrivacy @default(PUBLIC)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  members CommunityGroupMember[]
-  posts   CommunityPost[]
+  members      CommunityGroupMember[]
+  posts        CommunityPost[]
+  joinRequests CommunityGroupJoinRequest[]
 
   @@index([topic])
   @@index([createdAt])
@@ -2795,6 +2811,21 @@ model CommunityGroupMember {
   joinedAt DateTime @default(now())
 
   @@unique([groupId, userId])
+  @@index([userId])
+}
+
+// Someone asking to join a private group. Removed when approved (they
+// become a member) or declined.
+model CommunityGroupJoinRequest {
+  id        String         @id @default(cuid())
+  groupId   String
+  group     CommunityGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId, createdAt])
   @@index([userId])
 }
 
@@ -2831,6 +2862,54 @@ model Message {
   createdAt      DateTime @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+// A group chat: a named conversation between up to 50 people. Kept apart
+// from Conversation (always exactly two people, one per pair).
+model GroupChat {
+  id            String    @id @default(cuid())
+  name          String
+  createdById   String?
+  createdBy     User?     @relation("GroupChatCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  members  GroupChatMember[]
+  messages GroupChatMessage[]
+}
+
+enum GroupChatRole {
+  ADMIN
+  MEMBER
+}
+
+model GroupChatMember {
+  id         String        @id @default(cuid())
+  chatId     String
+  chat       GroupChat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       GroupChatRole @default(MEMBER)
+  joinedAt   DateTime      @default(now())
+  // Anything newer from someone else is unread for this member.
+  lastReadAt DateTime      @default(now())
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model GroupChatMessage {
+  id        String    @id @default(cuid())
+  chatId    String
+  chat      GroupChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  // Null for a system line ("Rahim added Karim") or when the sender's account is gone.
+  senderId  String?
+  sender    User?     @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  body      String    @db.Text
+  isSystem  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([chatId, createdAt])
 }
 
 model CommunityReport {

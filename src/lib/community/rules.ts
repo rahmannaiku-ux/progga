@@ -132,6 +132,7 @@ export const groupInputSchema = z.object({
   name: z.string().trim().min(3, "Give the group a name (3+ letters).").max(60),
   topic: z.string().trim().min(2, "Add a topic, like Physics or English.").max(40),
   description: z.string().trim().min(10, "Describe what the group is for.").max(600),
+  privacy: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
 });
 
 export const messageInputSchema = z.object({ body: trimmed(MESSAGE_MAX_LENGTH) });
@@ -164,21 +165,54 @@ export function isCommunityStaff(role: string): boolean {
   return STAFF_ROLES.includes(role);
 }
 
-type GroupRole = "OWNER" | "MODERATOR" | "MEMBER" | null | undefined;
+type GroupRole = "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null | undefined;
+type MemberRole = "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER";
 
-/** Only the owner (or site staff) changes a group's details or its moderators. */
+/** Higher runs more of the group: owner > admin > moderator > member. */
+const GROUP_RANK: Record<MemberRole, number> = { OWNER: 3, ADMIN: 2, MODERATOR: 1, MEMBER: 0 };
+
+/** The owner and admins (or site staff) change a group's details, privacy and moderators. */
 export function canManageGroup(input: { viewerRole: string; membership: GroupRole }): boolean {
-  return isCommunityStaff(input.viewerRole) || input.membership === "OWNER";
+  return isCommunityStaff(input.viewerRole) || input.membership === "OWNER" || input.membership === "ADMIN";
 }
 
-/** Owners and moderators (and site staff) can remove posts and comments in their group. */
+/**
+ * The owner, admins and moderators (and site staff) remove posts and
+ * comments in their group, and let people into a private one.
+ */
 export function canModerateGroup(input: { viewerRole: string; membership: GroupRole }): boolean {
-  return isCommunityStaff(input.viewerRole) || input.membership === "OWNER" || input.membership === "MODERATOR";
+  return (
+    isCommunityStaff(input.viewerRole) || input.membership === "OWNER" || input.membership === "ADMIN" || input.membership === "MODERATOR"
+  );
+}
+
+/**
+ * Whether someone may give a member a new role. The owner (and staff) can
+ * make anyone but the owner an admin, moderator or member; admins can make
+ * moderators and members out of people below admin. Ownership never moves here.
+ */
+export function canSetGroupRole(input: { viewerRole: string; actor: GroupRole; target: MemberRole; to: "ADMIN" | "MODERATOR" | "MEMBER" }): boolean {
+  if (input.target === "OWNER") return false;
+  if (isCommunityStaff(input.viewerRole) || input.actor === "OWNER") return true;
+  return input.actor === "ADMIN" && input.target !== "ADMIN" && input.to !== "ADMIN";
+}
+
+/** Whether someone may remove a member: only people ranked below them (staff: anyone but the owner). */
+export function canRemoveFromGroup(input: { viewerRole: string; actor: GroupRole; target: MemberRole }): boolean {
+  if (input.target === "OWNER") return false;
+  if (isCommunityStaff(input.viewerRole)) return true;
+  if (!input.actor || input.actor === "MEMBER") return false;
+  return GROUP_RANK[input.actor] > GROUP_RANK[input.target];
+}
+
+/** Whether the viewer may see a group's posts and members. */
+export function canSeeGroupContent(input: { viewerRole: string; privacy: "PUBLIC" | "PRIVATE"; membership: GroupRole }): boolean {
+  return input.privacy === "PUBLIC" || Boolean(input.membership) || isCommunityStaff(input.viewerRole);
 }
 
 /**
  * Whether the viewer may delete a post or comment: its author, site staff,
- * or (inside a group) that group's owner and moderators. Nobody else.
+ * or (inside a group) that group's owner, admins and moderators. Nobody else.
  */
 export function canDeleteContent(input: {
   viewerId: string;
@@ -189,7 +223,7 @@ export function canDeleteContent(input: {
 }): boolean {
   if (input.viewerId === input.authorId) return true;
   if (isCommunityStaff(input.viewerRole)) return true;
-  return Boolean(input.inGroup) && (input.groupMembership === "OWNER" || input.groupMembership === "MODERATOR");
+  return Boolean(input.inGroup) && canModerateGroup({ viewerRole: input.viewerRole, membership: input.groupMembership });
 }
 
 /** Only its author edits a post or comment. Staff hide or remove; they don't rewrite. */

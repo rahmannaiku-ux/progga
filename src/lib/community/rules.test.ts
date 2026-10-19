@@ -200,3 +200,42 @@ describe("reel input", () => {
     expect(parse({ kind: "REEL", content: "", videoUrl: "/api/files/clx123abc456", videoDurationSec: 600 }).success).toBe(false);
   });
 });
+
+describe("group roles", () => {
+  it("lets the owner and admins manage, and moderators moderate", async () => {
+    const { canManageGroup, canModerateGroup } = await import("./rules");
+    expect(canManageGroup({ viewerRole: "STUDENT", membership: "ADMIN" })).toBe(true);
+    expect(canManageGroup({ viewerRole: "STUDENT", membership: "MODERATOR" })).toBe(false);
+    expect(canModerateGroup({ viewerRole: "STUDENT", membership: "ADMIN" })).toBe(true);
+    expect(canModerateGroup({ viewerRole: "STUDENT", membership: "MEMBER" })).toBe(false);
+  });
+
+  it("only the owner (or staff) appoints admins; admins appoint moderators", async () => {
+    const { canSetGroupRole } = await import("./rules");
+    expect(canSetGroupRole({ viewerRole: "STUDENT", actor: "OWNER", target: "MEMBER", to: "ADMIN" })).toBe(true);
+    expect(canSetGroupRole({ viewerRole: "STUDENT", actor: "ADMIN", target: "MEMBER", to: "ADMIN" })).toBe(false);
+    expect(canSetGroupRole({ viewerRole: "STUDENT", actor: "ADMIN", target: "MEMBER", to: "MODERATOR" })).toBe(true);
+    expect(canSetGroupRole({ viewerRole: "STUDENT", actor: "ADMIN", target: "ADMIN", to: "MEMBER" })).toBe(false);
+    expect(canSetGroupRole({ viewerRole: "STUDENT", actor: "MODERATOR", target: "MEMBER", to: "MODERATOR" })).toBe(false);
+    expect(canSetGroupRole({ viewerRole: "ADMIN", actor: null, target: "OWNER", to: "MEMBER" })).toBe(false);
+    expect(canSetGroupRole({ viewerRole: "ADMIN", actor: null, target: "MEMBER", to: "ADMIN" })).toBe(true);
+  });
+
+  it("removes only people ranked lower", async () => {
+    const { canRemoveFromGroup } = await import("./rules");
+    expect(canRemoveFromGroup({ viewerRole: "STUDENT", actor: "MODERATOR", target: "MEMBER" })).toBe(true);
+    expect(canRemoveFromGroup({ viewerRole: "STUDENT", actor: "MODERATOR", target: "MODERATOR" })).toBe(false);
+    expect(canRemoveFromGroup({ viewerRole: "STUDENT", actor: "ADMIN", target: "MODERATOR" })).toBe(true);
+    expect(canRemoveFromGroup({ viewerRole: "STUDENT", actor: "OWNER", target: "ADMIN" })).toBe(true);
+    expect(canRemoveFromGroup({ viewerRole: "STUDENT", actor: "MEMBER", target: "MEMBER" })).toBe(false);
+    expect(canRemoveFromGroup({ viewerRole: "SUPER_ADMIN", actor: null, target: "OWNER" })).toBe(false);
+  });
+
+  it("keeps a private group's content for members and staff", async () => {
+    const { canSeeGroupContent } = await import("./rules");
+    expect(canSeeGroupContent({ viewerRole: "STUDENT", privacy: "PUBLIC", membership: null })).toBe(true);
+    expect(canSeeGroupContent({ viewerRole: "STUDENT", privacy: "PRIVATE", membership: null })).toBe(false);
+    expect(canSeeGroupContent({ viewerRole: "STUDENT", privacy: "PRIVATE", membership: "MEMBER" })).toBe(true);
+    expect(canSeeGroupContent({ viewerRole: "ADMIN", privacy: "PRIVATE", membership: null })).toBe(true);
+  });
+});

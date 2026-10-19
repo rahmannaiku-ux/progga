@@ -2,33 +2,34 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AtSign, Check, Loader2, Send } from "lucide-react";
-import { Avatar } from "@/components/shared/avatar";
+import { AtSign, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MESSAGE_MAX_LENGTH } from "@/lib/community/rules";
-import { formatDhakaTime } from "@/lib/timezone";
 import {
   createGroup,
   deleteGroup,
   lookUpUsername,
-  setGroupModerator,
+  removeGroupMember,
+  respondToJoinRequest,
+  setGroupMemberRole,
   setUsername,
   updateCommunityProfile,
   updateGroup,
 } from "@/server/actions/community-actions";
-import { loadOlderMessages, pollConversation, sendMessage } from "@/server/actions/message-actions";
-import type { MessageDTO } from "@/server/services/community";
 import type { UsernameCheck } from "@/server/services/usernames";
-import { RichText } from "./bits";
 
 const NETWORK_ERROR = "That didn't go through. Check your connection and try again.";
 const INPUT = "h-11 w-full rounded-xl border border-border/60 bg-background px-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent";
 const LABEL = "mb-1.5 block text-xs font-bold text-foreground";
 
 /** Create a group, or (with `group`) edit one the viewer owns. */
-export function GroupForm({ group }: { group?: { id: string; name: string; topic: string; description: string } }) {
+export function GroupForm({
+  group,
+}: {
+  group?: { id: string; name: string; topic: string; description: string; privacy: "PUBLIC" | "PRIVATE" };
+}) {
   const router = useRouter();
   const [name, setName] = useState(group?.name ?? "");
+  const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">(group?.privacy ?? "PUBLIC");
   const [topic, setTopic] = useState(group?.topic ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
   const [state, setState] = useState<{ error?: string; saved?: boolean }>({});
@@ -43,11 +44,11 @@ export function GroupForm({ group }: { group?: { id: string; name: string; topic
         startTransition(async () => {
           try {
             if (group) {
-              const res = await updateGroup(group.id, { name, topic, description });
+              const res = await updateGroup(group.id, { name, topic, description, privacy });
               setState(res.ok ? { saved: true } : { error: res.error });
               if (res.ok) router.refresh();
             } else {
-              const res = await createGroup({ name, topic, description });
+              const res = await createGroup({ name, topic, description, privacy });
               if (!res.ok) return setState({ error: res.error });
               router.push(`/community/groups/${res.slug}`);
             }
@@ -78,6 +79,41 @@ export function GroupForm({ group }: { group?: { id: string; name: string; topic
           className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>
+      <fieldset>
+        <legend className={LABEL}>Who can see the posts?</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              ["PUBLIC", "Public", "Anyone can see the posts and join."],
+              ["PRIVATE", "Private", "Anyone can find the group, but only members see posts. You approve who joins."],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <label
+              key={value}
+              className={cn(
+                "flex cursor-pointer gap-2.5 rounded-xl border p-3 text-sm",
+                privacy === value ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/50"
+              )}
+            >
+              <input
+                type="radio"
+                name="group-privacy"
+                value={value}
+                checked={privacy === value}
+                onChange={() => setPrivacy(value)}
+                className="mt-0.5 h-4 w-4"
+              />
+              <span>
+                <span className="block font-bold text-foreground">{label}</span>
+                <span className="block text-xs text-muted-foreground">{hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {group && group.privacy === "PRIVATE" && privacy === "PUBLIC" && (
+          <p className="mt-1.5 text-xs text-muted-foreground">Making it public lets in everyone who is waiting to join.</p>
+        )}
+      </fieldset>
       {state.error && <p role="alert" className="text-xs font-semibold text-danger">{state.error}</p>}
       {state.saved && <p role="status" className="text-xs font-semibold text-accent">Saved.</p>}
       <button type="submit" disabled={isPending} className="comic-btn flex h-11 items-center gap-1.5 bg-accent px-5 text-sm font-bold text-accent-foreground disabled:opacity-60">
@@ -119,32 +155,118 @@ export function DeleteGroupButton({ groupId }: { groupId: string }) {
   );
 }
 
-/** Owner-only: make a member a moderator, or a plain member again. */
-export function ModeratorToggle({ groupId, userId, isModerator }: { groupId: string; userId: string; isModerator: boolean }) {
+const ROLE_NAMES = { ADMIN: "Admin", MODERATOR: "Moderator", MEMBER: "Member" } as const;
+
+/**
+ * What the viewer may do to one member of a group: give them another role
+ * and remove them. Only the choices the viewer is allowed are offered (the
+ * server checks again).
+ */
+export function GroupMemberActions({
+  groupId,
+  userId,
+  name,
+  role,
+  roles,
+  canRemove,
+}: {
+  groupId: string;
+  userId: string;
+  name: string;
+  role: "ADMIN" | "MODERATOR" | "MEMBER";
+  /** Roles the viewer may give this member. */
+  roles: ("ADMIN" | "MODERATOR" | "MEMBER")[];
+  canRemove: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const run = (fn: () => Promise<{ ok: true } | { ok: false; error: string }>) => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const res = await fn();
+        if (!res.ok) return setError(res.error);
+        router.refresh();
+      } catch {
+        setError(NETWORK_ERROR);
+      }
+    });
+  };
+  if (roles.length <= 1 && !canRemove) return null;
   return (
-    <span className="flex flex-col items-end">
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => {
-          setError(null);
-          startTransition(async () => {
-            try {
-              const res = await setGroupModerator(groupId, userId, !isModerator);
-              if (!res.ok) return setError(res.error);
-              router.refresh();
-            } catch {
-              setError(NETWORK_ERROR);
-            }
-          });
-        }}
-        className="h-9 rounded-lg px-2 text-xs font-bold text-accent hover:underline disabled:opacity-60"
-      >
-        {isModerator ? "Remove as moderator" : "Make moderator"}
-      </button>
+    <span className="flex shrink-0 flex-col items-end gap-0.5">
+      <span className="flex items-center gap-1">
+        {roles.length > 1 && (
+          <select
+            aria-label={`Role for ${name}`}
+            value={role}
+            disabled={isPending}
+            onChange={(e) => run(() => setGroupMemberRole(groupId, userId, e.target.value))}
+            className="h-8 rounded-lg border border-border/60 bg-background px-1.5 text-xs font-bold text-foreground"
+          >
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_NAMES[r]}
+              </option>
+            ))}
+          </select>
+        )}
+        {canRemove && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              if (window.confirm(`Remove ${name} from the group?`)) run(() => removeGroupMember(groupId, userId));
+            }}
+            className="h-8 rounded-lg px-2 text-xs font-bold text-danger hover:bg-danger/10 disabled:opacity-60"
+          >
+            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : "Remove"}
+          </button>
+        )}
+      </span>
+      {error && <span role="alert" className="max-w-[12rem] text-right text-[11px] font-semibold text-danger">{error}</span>}
+    </span>
+  );
+}
+
+/** Approve or decline one request to join a private group. */
+export function JoinRequestButtons({ groupId, userId }: { groupId: string; userId: string }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const answer = (approve: boolean) => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const res = await respondToJoinRequest(groupId, userId, approve);
+        if (!res.ok) return setError(res.error);
+        router.refresh();
+      } catch {
+        setError(NETWORK_ERROR);
+      }
+    });
+  };
+  return (
+    <span className="flex shrink-0 flex-col items-end gap-0.5">
+      <span className="flex gap-1">
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => answer(true)}
+          className="comic-btn h-8 bg-primary px-3 text-xs font-bold text-primary-foreground disabled:opacity-60"
+        >
+          Approve
+        </button>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => answer(false)}
+          className="h-8 rounded-lg bg-muted px-3 text-xs font-bold text-foreground disabled:opacity-60"
+        >
+          Decline
+        </button>
+      </span>
       {error && <span role="alert" className="text-[11px] font-semibold text-danger">{error}</span>}
     </span>
   );
@@ -343,230 +465,5 @@ export function UsernameForm({ current }: { current: string | null }) {
         </div>
       )}
     </form>
-  );
-}
-
-// How often an open chat asks for new messages. No realtime service: the
-// chat simply re-reads while it is on screen, and stops when it is not.
-const POLL_MS = 8_000;
-
-export function MessageThread({
-  conversationId,
-  other,
-  initial,
-  initialHasMore,
-}: {
-  conversationId: string;
-  other: { name: string; avatarUrl: string | null };
-  initial: MessageDTO[];
-  initialHasMore: boolean;
-}) {
-  const [messages, setMessages] = useState(initial);
-  const [pending, setPending] = useState<{ key: number; body: string; failed?: boolean }[]>([]);
-  const [hasMore, setHasMore] = useState(initialHasMore);
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const bottom = useRef<HTMLDivElement>(null);
-  const field = useRef<HTMLTextAreaElement>(null);
-  const seq = useRef(0);
-  const lastId = messages[messages.length - 1]?.id;
-
-  // Poll while the tab is visible; pause in the background; stop on unmount.
-  useEffect(() => {
-    let stopped = false;
-    async function tick() {
-      if (document.hidden || stopped) return;
-      try {
-        const res = await pollConversation(conversationId);
-        if (stopped || !res.ok) return;
-        setMessages((prev) => {
-          const known = new Set(prev.map((m) => m.id));
-          const fresh = res.messages.filter((m) => !known.has(m.id));
-          return fresh.length ? [...prev, ...fresh] : prev;
-        });
-      } catch {
-        // A missed poll is fine; the next one catches up.
-      }
-    }
-    void tick();
-    const timer = setInterval(tick, POLL_MS);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      stopped = true;
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [conversationId]);
-
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [lastId, pending.length]);
-
-  /** The message shows at once, faded, and becomes a normal bubble when the server has it. */
-  function deliver(body: string, key: number) {
-    sendMessage(conversationId, body)
-      .then((res) => {
-        if (!res.ok) {
-          setPending((p) => p.map((m) => (m.key === key ? { ...m, failed: true } : m)));
-          return setError(res.error);
-        }
-        setPending((p) => p.filter((m) => m.key !== key));
-        setMessages((prev) => (prev.some((m) => m.id === res.message.id) ? prev : [...prev, res.message]));
-      })
-      .catch(() => {
-        setPending((p) => p.map((m) => (m.key === key ? { ...m, failed: true } : m)));
-        setError(NETWORK_ERROR);
-      });
-  }
-
-  function send(e: React.FormEvent) {
-    e.preventDefault();
-    const body = text.trim();
-    if (!body) return;
-    setError(null);
-    const key = ++seq.current;
-    setPending((p) => [...p, { key, body }]);
-    setText("");
-    if (field.current) field.current.style.height = "auto";
-    deliver(body, key);
-  }
-
-  // Consecutive messages from the same side form one group: joined corners,
-  // and the other person's picture only beside the last of theirs.
-  const apart = (a?: MessageDTO, b?: MessageDTO) =>
-    !a || !b || Math.abs(Date.parse(b.createdAt) - Date.parse(a.createdAt)) > 10 * 60_000;
-  const rows = messages.map((m, i) => {
-    const prev = messages[i - 1];
-    const next = messages[i + 1];
-    return {
-      m,
-      first: !prev || prev.fromMe !== m.fromMe || apart(prev, m),
-      last: !next || next.fromMe !== m.fromMe || apart(m, next),
-      stamp: apart(prev, m),
-    };
-  });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4" aria-live="polite">
-        {hasMore && (
-          <div className="mb-3 flex justify-center">
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() =>
-                startTransition(async () => {
-                  const first = messages[0];
-                  if (!first) return;
-                  try {
-                    const res = await loadOlderMessages(conversationId, `${first.createdAt}_${first.id}`);
-                    if (!res.ok) return setError(res.error);
-                    setMessages((prev) => [...res.messages.filter((m) => !prev.some((p) => p.id === m.id)), ...prev]);
-                    setHasMore(res.hasMore);
-                  } catch {
-                    setError(NETWORK_ERROR);
-                  }
-                })
-              }
-              className="flex h-9 items-center gap-1.5 rounded-full bg-muted px-4 text-xs font-bold text-foreground"
-            >
-              {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-              Show earlier messages
-            </button>
-          </div>
-        )}
-        {messages.length === 0 && pending.length === 0 && (
-          <div className="flex flex-col items-center py-10 text-center">
-            <Avatar fallbackClassName="bg-primary/15 text-2xl text-primary" src={other.avatarUrl} name={other.name} size={72} />
-            <p className="mt-3 font-display text-lg font-bold text-foreground">{other.name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">No messages yet. Say hello.</p>
-          </div>
-        )}
-        {rows.map(({ m, first, last, stamp }) => (
-          <div key={m.id} className={first ? "mt-3" : "mt-0.5"}>
-            {stamp && <p className="mb-2 text-center text-[11px] font-semibold text-muted-foreground">{formatDhakaTime(m.createdAt)}</p>}
-            <div className={cn("flex items-end gap-2", m.fromMe ? "justify-end" : "justify-start")}>
-              {!m.fromMe && (
-                <span className="w-7 shrink-0">
-                  {last && <Avatar fallbackClassName="bg-primary/15 text-[11px] text-primary" src={other.avatarUrl} name={other.name} size={28} />}
-                </span>
-              )}
-              <div
-                title={formatDhakaTime(m.createdAt)}
-                className={cn(
-                  "max-w-[75%] rounded-[1.15rem] px-3.5 py-2",
-                  m.fromMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                  m.fromMe && !first && "rounded-tr-md",
-                  m.fromMe && !last && "rounded-br-md",
-                  !m.fromMe && !first && "rounded-tl-md",
-                  !m.fromMe && !last && "rounded-bl-md"
-                )}
-              >
-                <RichText text={m.body} className={cn("text-[15px] leading-snug", m.fromMe && "[&_a]:text-primary-foreground")} />
-              </div>
-            </div>
-          </div>
-        ))}
-        {pending.map((p) => (
-          <div key={p.key} className="mt-0.5 flex flex-col items-end">
-            <div className={cn("max-w-[75%] rounded-[1.15rem] bg-primary px-3.5 py-2 text-primary-foreground", p.failed ? "opacity-50" : "opacity-70")}>
-              <RichText text={p.body} className="text-[15px] leading-snug" />
-            </div>
-            <span className="mt-0.5 text-[11px] text-muted-foreground">
-              {p.failed ? (
-                <button
-                  type="button"
-                  className="font-bold text-danger hover:underline"
-                  onClick={() => {
-                    setError(null);
-                    setPending((list) => list.map((x) => (x.key === p.key ? { ...x, failed: false } : x)));
-                    deliver(p.body, p.key);
-                  }}
-                >
-                  Not sent. Tap to try again
-                </button>
-              ) : (
-                "Sending..."
-              )}
-            </span>
-          </div>
-        ))}
-        <div ref={bottom} />
-      </div>
-
-      <form onSubmit={send} className="border-t border-border/15 p-2.5 sm:p-3">
-        {error && <p role="alert" className="mb-2 px-2 text-xs font-semibold text-danger">{error}</p>}
-        <div className="flex items-end gap-2">
-          <div className="flex min-w-0 flex-1 rounded-[1.25rem] bg-muted focus-within:ring-2 focus-within:ring-accent/60">
-          <textarea
-            ref={field}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) send(e);
-            }}
-            maxLength={MESSAGE_MAX_LENGTH}
-            rows={1}
-            placeholder="Aa"
-            aria-label="Write a message"
-            className="field-bare max-h-32 min-h-[40px] min-w-0 flex-1 resize-none bg-transparent px-4 py-2.5 text-[15px] leading-5 text-foreground placeholder:text-muted-foreground focus:outline-none"
-          />
-          </div>
-          <button
-            type="submit"
-            disabled={!text.trim()}
-            aria-label="Send"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary transition-transform hover:bg-primary/10 enabled:active:scale-90 disabled:opacity-40"
-          >
-            <Send className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-      </form>
-    </div>
   );
 }

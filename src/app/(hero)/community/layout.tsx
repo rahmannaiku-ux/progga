@@ -2,14 +2,14 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { displayName } from "@/lib/community/rules";
 import { CommunityNav } from "@/components/community/community-nav";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
-import { countUnreadConversations } from "@/server/services/community";
+import { countUnreadChats } from "@/server/services/chats";
 import { ensureUsername } from "@/server/services/usernames";
 
 /** Shell for every Community screen: its own navigation beside the page. */
 export default async function CommunityLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const [unreadMessages, open] = await Promise.all([
-    countUnreadConversations(user.id),
+    countUnreadChats(user.id),
     isFeatureEnabled("community", { userId: user.id, role: user.role }),
     // Everyone gets a unique @username the first time they open the Community.
     ensureUsername(user).catch((err) => console.error("Could not assign a username:", err)),
