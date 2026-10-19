@@ -9,7 +9,7 @@ import { AnimatedProgressBar } from "@/components/gamification/animated-progress
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
-import { missionProgressPct } from "@/lib/progress-math";
+import { lessonShare, progressPctFromShares } from "@/lib/progress-math";
 import { mediaSrc, mediaViewUrl } from "@/lib/media-url";
 
 /**
@@ -55,10 +55,9 @@ export default async function MissionOverviewPage({
                 groups: {
                   select: {
                     id: true,
-                    // Only lesson ids are read on this page (counts +
-                    // progress lookups) — title isn't shown here, so
-                    // skip it and every other lesson column.
-                    lessons: { where: { isPublished: true }, select: { id: true } },
+                    // Only ids (counts + progress lookups) and lengths (to
+                    // count partly watched lessons) are read on this page.
+                    lessons: { where: { isPublished: true }, select: { id: true, durationSeconds: true } },
                   },
                 },
               },
@@ -83,6 +82,7 @@ export default async function MissionOverviewPage({
       c.groups.flatMap((g) =>
         g.lessons.map((l) => ({
           lessonId: l.id,
+          durationSeconds: l.durationSeconds,
           groupId: g.id,
           chapterId: c.id,
           moduleId: m.id,
@@ -92,7 +92,7 @@ export default async function MissionOverviewPage({
   );
   const progressRows = await db.lessonProgress.findMany({
     where: { userId: user.id, lessonId: { in: flat.map((l) => l.lessonId) } },
-    select: { lessonId: true, isCompleted: true },
+    select: { lessonId: true, isCompleted: true, watchedSeconds: true, durationSec: true },
   });
   const completedIds = new Set(
     progressRows.filter((p) => p.isCompleted).map((p) => p.lessonId)
@@ -116,7 +116,12 @@ export default async function MissionOverviewPage({
   // Worked out from the same published lessons the subject counts use, so the
   // bar can never disagree with "x of y Patrols" (the stored percentage goes
   // stale when a mentor adds or publishes lessons after the student started).
-  const progressPct = missionProgressPct(completedIds.size, flat.length);
+  // Partly watched lessons count in proportion, so the bar moves while watching.
+  const progressById = new Map(progressRows.map((p) => [p.lessonId, p]));
+  const progressPct = progressPctFromShares(
+    flat.map((l) => lessonShare(progressById.get(l.lessonId), l.durationSeconds)),
+    flat.length
+  );
   const isComplete = enrollment.status === "COMPLETED";
   const routineSrc = mediaSrc(course.routineImageUrl, 1600);
   const routineLink = mediaViewUrl(course.routineImageUrl);

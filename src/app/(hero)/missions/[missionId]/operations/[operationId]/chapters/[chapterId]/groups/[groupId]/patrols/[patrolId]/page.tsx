@@ -19,6 +19,7 @@ import { CourseBreadcrumb } from "@/components/course/course-breadcrumb";
 import { GroupSidebar } from "@/components/course/curriculum-sidebar";
 import { GroupLessonStrip } from "@/components/course/group-lesson-strip";
 import { mediaSrc } from "@/lib/media-url";
+import { lessonShare } from "@/lib/progress-math";
 import { LessonPlayer } from "@/components/course/lesson-player";
 import { LiveLessonSection } from "@/components/course/live-lesson-section";
 import { BookmarkButton } from "@/components/course/bookmark-button";
@@ -178,7 +179,7 @@ export default async function LessonPlayerPage({
                   id: true,
                   lessons: {
                     orderBy: { order: "asc" },
-                    select: { id: true, title: true, youtubeVideoId: true, thumbnailUrl: true, scheduledStart: true },
+                    select: { id: true, title: true, durationSeconds: true, youtubeVideoId: true, thumbnailUrl: true, scheduledStart: true },
                   },
                 },
               },
@@ -212,7 +213,7 @@ export default async function LessonPlayerPage({
     // sidebar — no need for a second findUnique on the same row.
     db.lessonProgress.findMany({
       where: { userId: user.id, lessonId: { in: flat.map((l) => l.lessonId) } },
-      select: { lessonId: true, isCompleted: true, lastPositionSec: true },
+      select: { lessonId: true, isCompleted: true, lastPositionSec: true, watchedSeconds: true, durationSec: true },
     }),
   ]);
   const progress = allProgress.find((p) => p.lessonId === lesson.id) ?? null;
@@ -220,6 +221,9 @@ export default async function LessonPlayerPage({
   const completedIds = new Set(
     allProgress.filter((p) => p.isCompleted).map((p) => p.lessonId)
   );
+  // How much of each lesson is done (0..1), counting partly watched ones.
+  const progressById = new Map(allProgress.map((p) => [p.lessonId, p]));
+  const shareOf = (l: { id: string; durationSeconds: number }) => lessonShare(progressById.get(l.id), l.durationSeconds);
 
   // Sidebar is scoped to the CURRENT class type (LessonGroup) only — the
   // siblings a student would actually flip between — not the entire
@@ -231,6 +235,7 @@ export default async function LessonPlayerPage({
     id: l.id,
     title: l.title,
     isCompleted: completedIds.has(l.id),
+    share: shareOf(l),
   }));
   // The phone row under the player: only this class's own recorded patrols (same rule as the class page —
   // a live class never sits among them), with the thumbnails the class page shows.
@@ -242,6 +247,7 @@ export default async function LessonPlayerPage({
         id: l.id,
         title: l.title,
         isCompleted: completedIds.has(l.id),
+        share: shareOf(l),
         thumb: uploaded ?? (l.youtubeVideoId ? `https://i.ytimg.com/vi/${l.youtubeVideoId}/hqdefault.jpg` : null),
         uploadedThumb: Boolean(uploaded),
       };

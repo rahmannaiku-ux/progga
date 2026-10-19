@@ -1099,6 +1099,9 @@ model LessonProgress {
   isCompleted    Boolean   @default(false)
   completedAt    DateTime?
   lastPositionSec Int      @default(0) // resume playback position
+  // Length of the lesson as last measured when saving (the mentor's, else the
+  // player's), so a partly watched lesson can count towards the progress bar.
+  durationSec    Int       @default(0)
   updatedAt      DateTime  @updatedAt
 
   @@unique([userId, lessonId])

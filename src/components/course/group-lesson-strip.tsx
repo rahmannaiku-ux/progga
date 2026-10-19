@@ -9,6 +9,8 @@ export type StripLesson = {
   id: string;
   title: string;
   isCompleted: boolean;
+  /** How much of it is done, 0..1 (see lessonShare). */
+  share?: number;
   /** Mentor-uploaded thumbnail, or the YouTube one; null = play icon. */
   thumb: string | null;
   /** True for a mentor-uploaded image (kept at its own shape) rather than YouTube's 16:9 frame. */
@@ -99,6 +101,12 @@ export function GroupLessonStrip({
                   ) : (
                     <span className="flex h-full w-full items-center justify-center bg-primary/10">
                       <PlayCircle className="h-7 w-7 text-primary" />
+                    </span>
+                  )}
+                  {!lesson.isCompleted && (lesson.share ?? 0) > 0 && (
+                    // How far it was watched, like a video site's red line under the thumbnail.
+                    <span className="absolute inset-x-0 bottom-0 h-1 bg-black/30" aria-hidden="true">
+                      <span className="block h-full bg-danger" style={{ width: `${Math.round((lesson.share ?? 0) * 100)}%` }} />
                     </span>
                   )}
                   {lesson.isCompleted && !isActive && (

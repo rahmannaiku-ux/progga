@@ -90,18 +90,25 @@ export async function updateLessonProgress(
       lessonId,
       watchedSeconds: next.watched,
       lastPositionSec: next.position,
+      durationSec: next.duration,
       isCompleted,
       completedAt: isCompleted ? new Date() : null,
     },
     update: {
       watchedSeconds: next.watched,
       lastPositionSec: next.position,
+      durationSec: next.duration,
       ...(justCompleted ? { isCompleted: true, completedAt: new Date() } : {}),
     },
   });
 
-  if (justCompleted) {
+  // The mission's progress bar counts partly watched lessons too, so it is
+  // re-derived whenever more of the lesson was really played (it only writes
+  // when the whole percentage changes).
+  if (justCompleted || next.watched > (existing?.watchedSeconds ?? 0)) {
     await recalcEnrollmentProgress(user.id, courseId);
+  }
+  if (justCompleted) {
     await awardLessonCompletionXp(user.id, lessonId);
     await updateStreak(user.id);
     await checkLessonCompletionAchievements(user.id);

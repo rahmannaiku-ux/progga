@@ -2,11 +2,14 @@ import Link from "next/link";
 import { CheckCircle2, Circle, PlayCircle, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
+import { progressPctFromShares } from "@/lib/progress-math";
 
 export type GroupSidebarLesson = {
   id: string;
   title: string;
   isCompleted: boolean;
+  /** How much of it is done, 0..1, counting partial watching (see lessonShare); defaults to 0/1 from isCompleted. */
+  share?: number;
 };
 
 /** List body of the desktop nav below: the lessons in this group. */
@@ -46,7 +49,14 @@ export function GroupLessonList({
               ) : (
                 <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
               )}
-              <span className="line-clamp-1">{lesson.title}</span>
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-1">{lesson.title}</span>
+                {!lesson.isCompleted && (lesson.share ?? 0) > 0 && (
+                  <span className="mt-1 block h-1 overflow-hidden rounded-full bg-muted" aria-label={`${Math.round((lesson.share ?? 0) * 100)}% watched`}>
+                    <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round((lesson.share ?? 0) * 100)}%` }} />
+                  </span>
+                )}
+              </span>
             </Link>
           </li>
         );
@@ -81,7 +91,11 @@ export function GroupSidebar({
 }) {
   const completedCount = lessons.filter((l) => l.isCompleted).length;
   const totalCount = lessons.length;
-  const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  // Partly watched patrols count in proportion, so the bar moves while watching.
+  const percent = progressPctFromShares(
+    lessons.map((l) => l.share ?? (l.isCompleted ? 1 : 0)),
+    totalCount
+  );
 
   return (
     <nav className="comic-panel flex max-h-[80vh] flex-col overflow-hidden bg-surface p-0">
