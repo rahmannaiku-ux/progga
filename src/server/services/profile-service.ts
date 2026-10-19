@@ -2,6 +2,7 @@ import { db } from "@/lib/db/client";
 import { normalizeBangladeshPhone } from "@/lib/auth/phone";
 import { Prisma, type StudyVersion } from "@prisma/client";
 import { calendarDateToDb, parseDateOfBirth } from "@/lib/birthday/dates";
+import { ensureUsername } from "@/server/services/usernames";
 
 /**
  * Phase 4 profile-completion service. Deliberately takes `userId` as a
@@ -227,6 +228,8 @@ export async function completeStudentProfile(
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return emailInUse();
     throw err;
   }
+  // Their unique Community @username, now that their name is known (they can change it later).
+  await ensureUsername({ id: userId }).catch((err) => console.error("Could not assign a username:", err));
 
   return { ok: true };
 }

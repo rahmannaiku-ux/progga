@@ -9,7 +9,7 @@ import { Avatar } from "@/components/shared/avatar";
 import { AchievementIcon } from "@/components/gamification/achievement-icon";
 import { FollowButton, MessageButton } from "@/components/community/bits";
 import { Feed } from "@/components/community/feed";
-import { ProfileForm } from "@/components/community/forms";
+import { ProfileForm, UsernameForm } from "@/components/community/forms";
 import { ProfileReport } from "@/components/community/profile-report";
 import { getConnections, getFeedPage, getProfile } from "@/server/services/community";
 
@@ -67,6 +67,7 @@ export default async function CommunityProfilePage({
                   </span>
                 )}
               </h1>
+              {profile.username && <p className="text-sm font-semibold text-muted-foreground">@{profile.username}</p>}
               <p className="mt-0.5 text-sm text-muted-foreground">
                 <Link href={`${base}?show=followers`} className="hover:underline">
                   <span className="font-bold text-foreground">{profile.followerCount}</span> follower{profile.followerCount === 1 ? "" : "s"}
@@ -163,9 +164,11 @@ export default async function CommunityProfilePage({
           {profile.isSelf && (
             <details id="edit-profile" open={searchParams.edit === "1"} className="comic-panel scroll-mt-20 bg-surface p-4">
               <summary className="flex cursor-pointer list-none items-center gap-1.5 font-display text-sm font-bold text-primary">
-                <Pencil className="h-4 w-4" aria-hidden="true" /> Edit your bio, headline and privacy
+                <Pencil className="h-4 w-4" aria-hidden="true" /> Edit your username, bio, headline and privacy
               </summary>
-              <div className="mt-4">
+              <div className="mt-4 space-y-4">
+                <UsernameForm current={profile.username} />
+                <hr className="border-border/15" />
                 <ProfileForm initial={{ bio: profile.bio ?? "", headline: profile.headline ?? "", communityPrivate: profile.isPrivate }} />
               </div>
             </details>
@@ -242,6 +245,7 @@ export default async function CommunityProfilePage({
                         {p.name}
                       </Link>
                       <p className="truncate text-xs text-muted-foreground">
+                        {p.username && <span className="font-semibold">@{p.username} · </span>}
                         {p.headline ?? `${p.followerCount} follower${p.followerCount === 1 ? "" : "s"}`}
                       </p>
                     </div>

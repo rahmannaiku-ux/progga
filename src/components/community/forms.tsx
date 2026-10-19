@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send } from "lucide-react";
+import { AtSign, Check, Loader2, Send } from "lucide-react";
 import { Avatar } from "@/components/shared/avatar";
 import { cn } from "@/lib/utils";
 import { MESSAGE_MAX_LENGTH } from "@/lib/community/rules";
@@ -10,12 +10,15 @@ import { formatDhakaTime } from "@/lib/timezone";
 import {
   createGroup,
   deleteGroup,
+  lookUpUsername,
   setGroupModerator,
+  setUsername,
   updateCommunityProfile,
   updateGroup,
 } from "@/server/actions/community-actions";
 import { loadOlderMessages, pollConversation, sendMessage } from "@/server/actions/message-actions";
 import type { MessageDTO } from "@/server/services/community";
+import type { UsernameCheck } from "@/server/services/usernames";
 import { RichText } from "./bits";
 
 const NETWORK_ERROR = "That didn't go through. Check your connection and try again.";
@@ -201,6 +204,144 @@ export function ProfileForm({ initial }: { initial: { bio: string; headline: str
       <button type="submit" disabled={isPending} className="comic-btn flex h-11 items-center gap-1.5 bg-accent px-5 text-sm font-bold text-accent-foreground disabled:opacity-60">
         {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />} Save profile
       </button>
+    </form>
+  );
+}
+
+/**
+ * Choose your @username. Checks availability as you type and, when the one
+ * you want is taken or not allowed, offers the closest free ones to tap.
+ */
+export function UsernameForm({ current }: { current: string | null }) {
+  const router = useRouter();
+  const [value, setValue] = useState(current ?? "");
+  const [check, setCheck] = useState<UsernameCheck | null>(current ? { status: "yours", username: current } : null);
+  const [checking, setChecking] = useState(false);
+  const [state, setState] = useState<{ error?: string; saved?: string }>({});
+  const [isPending, startTransition] = useTransition();
+  const seq = useRef(0);
+
+  useEffect(() => {
+    const wanted = value.trim().replace(/^@+/, "");
+    if (!wanted) {
+      setCheck(null);
+      setChecking(false);
+      return;
+    }
+    const mine = ++seq.current;
+    setChecking(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await lookUpUsername(wanted);
+        if (mine !== seq.current) return; // a newer keystroke is being checked
+        if (res.ok) setCheck(res.check);
+        else setState({ error: res.error });
+      } catch {
+        if (mine === seq.current) setState({ error: NETWORK_ERROR });
+      } finally {
+        if (mine === seq.current) setChecking(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [value]);
+
+  const canSave = !checking && check?.status === "available" && !isPending;
+  const pick = (u: string) => {
+    setState({});
+    setValue(u);
+  };
+
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!canSave) return;
+        setState({});
+        startTransition(async () => {
+          try {
+            const res = await setUsername(value);
+            if (res.ok) {
+              setState({ saved: res.username });
+              setValue(res.username);
+              setCheck({ status: "yours", username: res.username });
+              router.refresh();
+            } else {
+              setState({ error: res.error });
+              if ("suggestions" in res && res.suggestions?.length) {
+                setCheck({ status: "taken", username: value, message: res.error, suggestions: res.suggestions });
+              }
+            }
+          } catch {
+            setState({ error: NETWORK_ERROR });
+          }
+        });
+      }}
+    >
+      <label className={LABEL} htmlFor="profile-username">Username</label>
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <AtSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <input
+            id="profile-username"
+            value={value}
+            onChange={(e) => {
+              setState({});
+              setValue(e.target.value.replace(/\s+/g, "").toLowerCase());
+            }}
+            maxLength={21}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="your.name"
+            aria-describedby="username-status"
+            className={cn(INPUT, "pl-9")}
+          />
+        </div>
+        <button type="submit" disabled={!canSave} className="comic-btn flex h-11 shrink-0 items-center gap-1.5 bg-accent px-4 text-sm font-bold text-accent-foreground disabled:opacity-50">
+          {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />} Save
+        </button>
+      </div>
+      <div id="username-status" aria-live="polite" className="min-h-5 text-xs">
+        {checking ? (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Checking...
+          </span>
+        ) : state.saved ? (
+          <span className="flex items-center gap-1 font-semibold text-accent">
+            <Check className="h-3.5 w-3.5" aria-hidden="true" /> You are now @{state.saved}
+          </span>
+        ) : state.error && !(check && "suggestions" in check) ? (
+          <span role="alert" className="font-semibold text-danger">{state.error}</span>
+        ) : check?.status === "available" ? (
+          <span className="flex items-center gap-1 font-semibold text-accent">
+            <Check className="h-3.5 w-3.5" aria-hidden="true" /> @{check.username} is available
+          </span>
+        ) : check?.status === "yours" ? (
+          <span className="text-muted-foreground">This is your username. People can find you as @{check.username}.</span>
+        ) : check && "message" in check ? (
+          <span className="font-semibold text-danger">{check.message}</span>
+        ) : (
+          <span className="text-muted-foreground">Letters, numbers, dots and underscores. 3 to 20 characters.</span>
+        )}
+      </div>
+      {!checking && check && "suggestions" in check && check.suggestions.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-xs text-muted-foreground">Available instead:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {check.suggestions.map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => pick(u)}
+                className="rounded-full border border-border/60 bg-muted px-3 py-1 text-xs font-bold text-foreground hover:bg-accent/15"
+              >
+                @{u}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </form>
   );
 }

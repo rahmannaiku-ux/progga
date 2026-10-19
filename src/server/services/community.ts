@@ -30,6 +30,7 @@ const AUTHOR_SELECT = {
   id: true,
   firstName: true,
   lastName: true,
+  username: true,
   avatarUrl: true,
   headline: true,
   role: true,
@@ -38,17 +39,28 @@ const AUTHOR_SELECT = {
 export type PersonDTO = {
   id: string;
   name: string;
+  /** Unique @handle (without the @); null only until one is assigned. */
+  username: string | null;
   avatarUrl: string | null;
   headline: string | null;
   isMentor: boolean;
 };
 
-type AuthorRow = { id: string; firstName: string; lastName: string; avatarUrl: string | null; headline: string | null; role: string };
+type AuthorRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username?: string | null;
+  avatarUrl: string | null;
+  headline: string | null;
+  role: string;
+};
 
 export function toPerson(user: AuthorRow): PersonDTO {
   return {
     id: user.id,
     name: displayName(user),
+    username: user.username ?? null,
     avatarUrl: user.avatarUrl,
     headline: user.headline,
     isMentor: user.role !== "STUDENT",
@@ -490,10 +502,20 @@ export type ProfileDTO = PersonDTO & {
   canSeePosts: boolean;
 };
 
-/** A person's public community profile, or null if there is no such active account. */
-export async function getProfile(viewer: Viewer, userId: string): Promise<ProfileDTO | null> {
+/**
+ * A person's public community profile, or null if there is no such active
+ * account. `idOrUsername` is their id or their username (with or without @).
+ */
+export async function getProfile(viewer: Viewer, idOrUsername: string): Promise<ProfileDTO | null> {
+  let handle = idOrUsername;
+  try {
+    handle = decodeURIComponent(idOrUsername);
+  } catch {
+    // not URL-encoded after all
+  }
+  handle = handle.replace(/^@+/, "").toLowerCase();
   const user = await db.user.findFirst({
-    where: { id: userId, isActive: true, isSuspended: false },
+    where: { OR: [{ id: idOrUsername }, { username: handle }], isActive: true, isSuspended: false },
     select: {
       ...AUTHOR_SELECT,
       bio: true,
@@ -509,6 +531,7 @@ export async function getProfile(viewer: Viewer, userId: string): Promise<Profil
     },
   });
   if (!user) return null;
+  const userId = user.id;
 
   const [iFollow, followsMe] = await Promise.all([
     db.communityFollow.findUnique({
@@ -571,6 +594,7 @@ export async function findPeople(viewer: Viewer, query: string | null, take = 12
             OR: [
               { firstName: { contains: q, mode: "insensitive" } },
               { lastName: { contains: q, mode: "insensitive" } },
+              { username: { contains: q.replace(/^@+/, "").toLowerCase() } },
               { headline: { contains: q, mode: "insensitive" } },
             ],
           }

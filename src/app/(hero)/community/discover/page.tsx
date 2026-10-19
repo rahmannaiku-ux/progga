@@ -20,6 +20,7 @@ function People({ people }: { people: PersonCardDTO[] }) {
             <Link href={`/community/u/${p.id}`} prefetch={false} className="block truncate text-sm font-bold text-foreground hover:underline">
               {p.name}
             </Link>
+            {p.username && <p className="truncate text-xs font-semibold text-muted-foreground">@{p.username}</p>}
             <p className="truncate text-xs text-muted-foreground">
               {p.headline ?? (p.isMentor ? "Mentor" : "Hero")} · {p.followerCount} follower{p.followerCount === 1 ? "" : "s"}
             </p>

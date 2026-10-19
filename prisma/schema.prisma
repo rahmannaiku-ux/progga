@@ -618,6 +618,11 @@ model User {
   // When true, only followers see this person's posts and they are left
   // out of "people to follow". Their name and avatar stay visible.
   communityPrivate       Boolean                @default(false)
+  // Unique @handle in the Community, always stored lowercase. Assigned
+  // automatically from the person's name; they can pick another free one.
+  username               String?                @unique
+  // When the person last chose their username (null while it is the automatic one).
+  usernameChangedAt      DateTime?
   communityPosts         CommunityPost[]
   communityComments      CommunityComment[]
   communityReactions     CommunityReaction[]

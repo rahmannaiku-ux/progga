@@ -40,6 +40,7 @@ import { checkFirstPostAchievement, rewardHelpfulAnswer } from "@/server/service
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { deleteUserFile } from "@/lib/storage";
 import { isDriveConnected, startResumableUpload } from "@/lib/storage/google-drive";
+import { changeUsername, checkUsername, type UsernameCheck } from "@/server/services/usernames";
 import { requireActiveUser } from "./require-user";
 
 // ---------------------------------------------------------------------
@@ -63,8 +64,10 @@ async function paused(user: { id: string; role: string }): Promise<boolean> {
   return !(await isFeatureEnabled("community", { userId: user.id, role: user.role }));
 }
 
-type Limit = "post" | "comment" | "react" | "report" | "group" | "follow";
+type Limit = "post" | "comment" | "react" | "report" | "group" | "follow" | "lookup" | "username";
 const LIMIT_KIND: Record<Limit, "write" | "api" | "strict"> = {
+  lookup: "api",
+  username: "strict",
   post: "write",
   comment: "write",
   react: "api",
@@ -769,6 +772,24 @@ export async function updateCommunityProfile(input: unknown): Promise<Result> {
   });
   revalidateCommunity(`/community/u/${user.id}`);
   return { ok: true };
+}
+
+/** Whether a username is free for the current user, with close free ones when it isn't (checked as they type). */
+export async function lookUpUsername(raw: unknown): Promise<Result<{ check: UsernameCheck }>> {
+  const user = await requireActiveUser();
+  if (typeof raw !== "string") return fail("Type a username.");
+  if (await limited("lookup", user.id)) return fail(TOO_FAST);
+  return { ok: true, check: await checkUsername(user.id, raw) };
+}
+
+/** Sets the current user's own username, if it is valid and free. */
+export async function setUsername(raw: unknown): Promise<Result<{ username: string }> | { ok: false; error: string; suggestions?: string[] }> {
+  const user = await requireActiveUser();
+  if (typeof raw !== "string") return fail("Type a username.");
+  if (await limited("username", user.id)) return fail(TOO_FAST);
+  const res = await changeUsername(user.id, raw);
+  if (res.ok) revalidateCommunity(`/community/u/${user.id}`);
+  return res;
 }
 
 // ---------------------------------------------------------------------
