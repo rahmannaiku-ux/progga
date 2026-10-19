@@ -2,7 +2,9 @@
 
 A gamified e-learning platform for Bangladeshi students, with a comic /
 superhero-inspired look (all visuals and terminology are original, not
-based on any existing franchise). It is a web app, not a mobile app.
+based on any existing franchise). It is a web app; the Windows and
+Android apps (repo `rahmannaiku-ux/proggaa-apps`, download page `/download`)
+show the same site with in-app updates and phone notifications.
 Students ("Heroes") buy and take courses ("Missions"). Teachers
 ("Mentors") build and grade them. Admins run the platform.
 
@@ -143,6 +145,9 @@ docs/                    # deeper design docs + archived build history
 | Feature flags & platform settings | `src/lib/config/*` (Admin → Control Center) |
 | Sidebar navigation per role | `src/lib/nav-config.ts` |
 | Emails | `src/lib/email/*` (templates are editable in Admin → Settings) |
+| Community (feed, reels, groups, chats, usernames) | `src/lib/community/*`, `server/services/community.ts`, `chats.ts`, `usernames.ts`, `server/actions/community-actions.ts`, `chat-actions.ts`, `message-actions.ts`, `app/(hero)/community` |
+| Birthday rewards and SMS | `src/lib/birthday/*`, `server/services/birthday.ts`, cron `/api/cron/birthday-rewards` |
+| Windows / Android apps | Separate repo `rahmannaiku-ux/proggaa-apps`. Here: `app/(public)/download`, `app/api/app/notifications`, `src/lib/apps.ts` |
 | Bug reports | Student form on `/support` (`components/support/bug-report-form.tsx`), admin triage at `/admin/bug-reports`, `server/actions/bug-report-actions.ts`. Screenshots go to the Drive folder `PROGGAA/bug-reports` |
 
 ---

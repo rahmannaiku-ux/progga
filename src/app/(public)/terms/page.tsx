@@ -153,7 +153,18 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section title="9. Suspension and closing your account">
+        <Section title="9. The apps">
+          <p>
+            The Proggaa apps for Windows and Android are free and show the same service, so these terms apply in
+            them too. Download them only from{" "}
+            <Link href="/download" className={A}>
+              prooggaa.com/download
+            </Link>
+            . The apps offer updates themselves; please install them, as older versions may stop working.
+          </p>
+        </Section>
+
+        <Section title="10. Suspension and closing your account">
           <p>
             We may suspend or close an account that breaks these terms, puts others at risk or misuses
             payments. To close your account, contact us through the{" "}
@@ -164,7 +175,7 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section title="10. The service">
+        <Section title="11. The service">
           <p>
             We work hard to keep Proggaa running and accurate, but it is provided as it is: there may be
             interruptions, mistakes or changes to features and content. We are not responsible for
@@ -173,7 +184,7 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section title="11. Changes and contact">
+        <Section title="12. Changes and contact">
           <p>
             If we change these terms we will update the date above and, for important changes, tell you
             in the app. Using Proggaa after a change means you accept the new terms. These terms are

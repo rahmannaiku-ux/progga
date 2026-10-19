@@ -101,6 +101,10 @@ export default function CookiesPage() {
             If you turn on phone notifications, your browser also keeps a notification subscription for
             Proggaa. You can turn it off in Settings or in your browser.
           </p>
+          <p className="mt-3">
+            The Proggaa apps for Windows and Android use the same cookies and settings, kept inside the app.
+            Uninstalling the app removes them.
+          </p>
         </section>
 
         <section>

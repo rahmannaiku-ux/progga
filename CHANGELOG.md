@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-10-19 — Apps, chats, groups, reels and more
+Migrations (all additive): `20261019000000_community_comment_likes`, `20261019010000_community_reels`,
+`20261019020000_birthday_sms`, `20261019030000_heartbeat`, `20261019040000_lesson_progress_duration`,
+`20261019050000_community_usernames`, `20261019060000_group_chats`, `20261019070000_group_privacy`.
+
+- **Apps for Windows and Android** (separate repo `rahmannaiku-ux/proggaa-apps`): the site in an app, with in-app
+  updates from GitHub Releases and, on Android, phone notifications. Download page `/download` (header, footer and
+  Settings link to it). The Android app reads new notifications from `GET /api/app/notifications`. Links and app
+  detection: `src/lib/apps.ts`.
+- **Community, Facebook style**: create-post dialog, long-press reactions with a picker, inline comments with likes,
+  "new posts" pill, lightbox, reactors list, Messenger-style chat.
+- **Reels**: short vertical videos uploaded in chunks straight to Google Drive (`PROGGAA/reels`) and streamed back through
+  `/api/files` with range requests. Full-screen player at `/community/reels`.
+- **Usernames**: everyone has a unique @username (assigned from their name, changeable in Edit profile with
+  availability checks and suggestions; once a week). Profiles open at `/community/u/<username>` too.
+- **Group chats**: named chats of up to 50 people with admins, add/remove/leave, system lines, "seen by" faces and
+  per-chat notifications. Chats is now a two-pane screen with search and All / Unread / Groups.
+- **Groups**: public or private (members-only posts, join requests approved by admins or moderators), and roles owner /
+  admin / moderator / member.
+- **Progress bars** move while a lesson is watched, not only when it is finished.
+- **Birthday SMS**: the birthday job now texts the student and is scheduled daily in `vercel.json` (needs `CRON_SECRET`).
+- **Keep-alive**: `/api/keepalive` (daily Vercel cron and a GitHub Actions workflow) keeps the free Supabase project from
+  pausing; Vercel Fluid compute is on.
+- **Legal pages**: Terms, Privacy and Cookies rewritten for all of the above.
+
 ## 2026-10-13 — Proggaa Community
 The old Community page (a list of course discussion posts) is now a student social network at `/community`.
 Migration `20261013000000_proggaa_community` (additive only): 12 new tables, 5 enums, 5 `NotificationType` values and

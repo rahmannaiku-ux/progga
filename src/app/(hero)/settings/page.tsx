@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { headers } from "next/headers";
+import { Download, RefreshCw } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { StudentDetailsCard } from "@/components/profile/student-details-card";
@@ -9,6 +12,7 @@ import { getLinkStatusForUser } from "@/server/actions/telegram-link-actions";
 import { PhoneNotificationsCard } from "@/components/profile/phone-notifications-card";
 import { dateOfBirthParts, dhakaCalendarDate, formatCalendarDate, toIsoDate } from "@/lib/birthday/dates";
 import { getVapidConfig } from "@/lib/push/web-push";
+import { APP_CHECK_UPDATE_URL, detectApp } from "@/lib/apps";
 
 /**
  * Account settings: contact and school details, password and sessions, the
@@ -24,6 +28,8 @@ export default async function SettingsPage() {
   ]);
   const dob = dateOfBirthParts(studentProfile?.dateOfBirth);
   const vapid = getVapidConfig();
+  // Inside the Proggaa app: its own notifications replace browser push, and it can check for updates.
+  const inApp = detectApp(headers().get("user-agent"));
 
   return (
     <StaggerContainer className="mx-auto max-w-2xl space-y-6">
@@ -60,8 +66,39 @@ export default async function SettingsPage() {
         <SecurityCard />
       </StaggerItem>
 
-      <StaggerItem id="phone-notifications" className="scroll-mt-24">
-        <PhoneNotificationsCard vapidPublicKey={vapid?.publicKey ?? null} deviceCount={pushDevices} />
+      {inApp?.kind === "android" ? (
+        <StaggerItem id="phone-notifications" className="comic-panel scroll-mt-24 bg-surface p-5">
+          <h2 className="font-display text-sm font-bold text-foreground">Phone notifications</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The Proggaa app shows your notifications on this phone, even when it&apos;s closed. To turn them on or off, open
+            your phone&apos;s Settings, then Apps, Proggaa, Notifications.
+          </p>
+        </StaggerItem>
+      ) : (
+        <StaggerItem id="phone-notifications" className="scroll-mt-24">
+          <PhoneNotificationsCard vapidPublicKey={vapid?.publicKey ?? null} deviceCount={pushDevices} />
+        </StaggerItem>
+      )}
+
+      <StaggerItem id="app" className="comic-panel scroll-mt-24 bg-surface p-5">
+        <h2 className="font-display text-sm font-bold text-foreground">Proggaa app</h2>
+        {inApp ? (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Proggaa for {inApp.kind === "android" ? "Android" : "Windows"}, version {inApp.version}. It updates itself.
+            </p>
+            <a href={APP_CHECK_UPDATE_URL} className="comic-btn inline-flex h-10 items-center gap-1.5 bg-primary px-4 text-sm font-bold text-primary-foreground">
+              <RefreshCw className="h-4 w-4" aria-hidden="true" /> Check for updates
+            </a>
+          </div>
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Get Proggaa for Android or Windows: notifications, one-tap opening and automatic updates.</p>
+            <Link href="/download" className="comic-btn inline-flex h-10 items-center gap-1.5 bg-primary px-4 text-sm font-bold text-primary-foreground">
+              <Download className="h-4 w-4" aria-hidden="true" /> Get the app
+            </Link>
+          </div>
+        )}
       </StaggerItem>
 
       <StaggerItem id="telegram" className="scroll-mt-24 space-y-3">

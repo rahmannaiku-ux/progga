@@ -46,6 +46,8 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/privacy$/,
   /^\/terms$/,
   /^\/cookies$/,
+  // The Windows and Android app downloads.
+  /^\/download$/,
   // Certificate verification: anyone holding a certificate ID can check it.
   /^\/certificates\/verify(\/.*)?$/,
   // Auth pages, plus the legacy /sign-in and /sign-up routes kept only

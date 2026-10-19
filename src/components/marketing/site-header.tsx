@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/categories", label: "Categories" },
   { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
+  { href: "/download", label: "Get the app" },
 ];
 
 // Server component: auth state is resolved here (not in a client

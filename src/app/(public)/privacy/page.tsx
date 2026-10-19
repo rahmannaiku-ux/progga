@@ -144,11 +144,34 @@ export default function PrivacyPage() {
             <li>Stream, for live-room chat;</li>
             <li>your browser&apos;s push service (Google, Apple, Mozilla or Microsoft), for phone notifications;</li>
             <li>Telegram, if you link your account to the Proggaa bot;</li>
+            <li>GitHub, which hosts the Proggaa app downloads and updates;</li>
             <li>Google Gemini, when a mentor uses AI to help write questions (no student personal data is sent).</li>
           </ul>
         </Section>
 
-        <Section title="5. Cookies">
+        <Section title="5. The Proggaa apps">
+          <p>
+            The Windows and Android apps show the same website, so everything in this policy applies to them. In
+            addition:
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              Both apps check GitHub (where they are published) for new versions, and download updates from it. GitHub
+              sees your IP address when they do; it gets no account details.
+            </li>
+            <li>
+              The Android app checks Proggaa for your new notifications about every 15 minutes, using your signed-in
+              session, and shows them on your phone. Sign out to stop it.
+            </li>
+            <li>
+              The Android app asks permission to show notifications, and, the first time you install an update, to
+              install apps. It only reads files and videos you choose to upload, and it doesn&apos;t use your location,
+              contacts, camera or microphone.
+            </li>
+          </ul>
+        </Section>
+
+        <Section title="6. Cookies">
           <p>
             We use a small number of cookies to keep you signed in and to protect your account. See our{" "}
             <Link href="/cookies" className={A}>
@@ -158,7 +181,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="6. How long we keep it">
+        <Section title="7. How long we keep it">
           <p>
             We keep account, learning and Community records while your account is active, and payment
             and medal records for as long as needed to verify them and meet accounting obligations.
@@ -169,7 +192,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="7. Your choices">
+        <Section title="8. Your choices">
           <ul className="list-disc space-y-1 pl-5">
             <li>
               Update your profile, picture, headline, bio and @username, and change your login phone
@@ -177,7 +200,7 @@ export default function PrivacyPage() {
             </li>
             <li>Make your Community profile private, so only followers see your posts.</li>
             <li>Choose who you follow, leave groups and group chats, and delete your own posts, reels and comments.</li>
-            <li>Turn phone notifications on or off in Settings or in your browser.</li>
+            <li>Turn phone notifications on or off in Settings, in your browser, or in your phone&apos;s settings for the app.</li>
             <li>
               Ask us to correct or delete your data, or change your cookie choice, through the{" "}
               <Link href="/contact" className={A}>
@@ -188,7 +211,7 @@ export default function PrivacyPage() {
           </ul>
         </Section>
 
-        <Section title="8. Children">
+        <Section title="9. Children">
           <p>
             Many of our students are under 18. We ask for a parent or guardian phone number so we can
             reach them about the student&apos;s account. Students should not share personal contact
@@ -197,7 +220,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="9. Security">
+        <Section title="10. Security">
           <p>
             Passwords are hashed, sessions are stored server-side, and uploads and videos are served only
             to people allowed to see them. Admin tools are restricted by role, and requests are rate
@@ -206,7 +229,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="10. Changes and contact">
+        <Section title="11. Changes and contact">
           <p>
             If we change this policy we will update the date above and, for significant changes,
             notify you in the app. Questions or requests can be sent through our{" "}

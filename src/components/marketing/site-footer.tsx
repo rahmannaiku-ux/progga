@@ -11,6 +11,7 @@ const columns = [
     links: [
       { href: "/courses", label: "Browse missions" },
       { href: "/categories", label: "Categories" },
+      { href: "/download", label: "Download the app" },
     ],
   },
   {
