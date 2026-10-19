@@ -3,13 +3,13 @@ import { CookieSettingsLink } from "@/components/shared/cookie-settings-link";
 
 export const metadata = { title: "Cookie Policy" };
 
-const UPDATED = "30 September 2026";
+const UPDATED = "19 October 2026";
 
 const ESSENTIAL = [
   {
     name: "proggaa_session",
     purpose: "Keeps you signed in. Contains a random token that is checked against our database.",
-    duration: "Up to 30 days",
+    duration: "30 days, renewed while you use the site",
   },
   {
     name: "proggaa_device",
@@ -22,16 +22,26 @@ const ESSENTIAL = [
     duration: "1 year",
   },
   {
-    name: "Theme setting (browser storage)",
-    purpose: "Remembers light or dark mode.",
-    duration: "Until cleared",
+    name: "gdrive_oauth_state, gdocs_oauth_csrf",
+    purpose:
+      "Temporary security cookies used only while an admin or mentor connects Google Drive or Google Docs.",
+    duration: "10 minutes",
   },
   {
-    name: "Short-lived sign-in state cookies",
-    purpose:
-      "Temporary cookies used only while an admin or mentor connects Google Drive or Google Docs.",
-    duration: "Minutes",
+    name: "gdocs_access_token",
+    purpose: "Lets a mentor who connected Google Docs pick a document to attach. Mentors only.",
+    duration: "Until Google's sign-in expires (about an hour)",
   },
+];
+
+// Not cookies: small settings kept in your own browser (localStorage / sessionStorage).
+// They are never sent to us and you can clear them in your browser at any time.
+const BROWSER_STORAGE = [
+  { name: "theme", purpose: "Remembers light or dark mode." },
+  { name: "proggaa-player-skin", purpose: "Remembers the look you picked for the lesson video player." },
+  { name: "proggaa:recent-searches", purpose: "Your recent searches, so you can repeat them quickly." },
+  { name: "proggaa:dob-reminder-snoozed-until", purpose: "Hides the \"add your birthday\" reminder for a while after you dismiss it." },
+  { name: "proggaa:devtools:redirect", purpose: "A security setting for the current tab only; cleared when the tab closes." },
 ];
 
 export default function CookiesPage() {
@@ -72,6 +82,28 @@ export default function CookiesPage() {
         </section>
 
         <section>
+          <h2 className="font-display text-lg font-semibold text-foreground">Settings stored in your browser</h2>
+          <p className="mt-2">
+            These are not cookies and are never sent to us. They only remember your preferences on this
+            device.
+          </p>
+          <div className="mt-3 overflow-hidden rounded-xl border border-border/60">
+            <ul className="divide-y divide-border/40">
+              {BROWSER_STORAGE.map((c) => (
+                <li key={c.name} className="space-y-1 p-3">
+                  <p className="font-mono text-xs font-semibold text-foreground">{c.name}</p>
+                  <p>{c.purpose}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-3">
+            If you turn on phone notifications, your browser also keeps a notification subscription for
+            Proggaa. You can turn it off in Settings or in your browser.
+          </p>
+        </section>
+
+        <section>
           <h2 className="font-display text-lg font-semibold text-foreground">
             Third-party embeds (your choice)
           </h2>
@@ -82,7 +114,8 @@ export default function CookiesPage() {
             until you play a video. When you choose{" "}
             <strong className="text-foreground">Accept all</strong>, YouTube and Google may use their
             normal cookies as described in their own policies. Live room chat is provided by Stream and
-            may store data needed to run the chat.
+            may store data needed to run the chat. Community photos and reels are played from
+            Proggaa&apos;s own address, so watching them sets no Google cookies.
           </p>
         </section>
 
