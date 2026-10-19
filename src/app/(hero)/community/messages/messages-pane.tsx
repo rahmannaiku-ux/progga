@@ -9,7 +9,7 @@ export function MessagesPane({ list, children }: { list: React.ReactNode; childr
   return (
     <div
       className={cn(
-        "comic-panel grid overflow-hidden bg-surface max-sm:-mx-4 max-sm:!rounded-none max-sm:border-x-0",
+        "chat-pane comic-panel grid overflow-hidden bg-surface max-sm:-mx-4 max-sm:!rounded-none max-sm:border-x-0",
         "h-[calc(100dvh-16rem)] min-h-[24rem] lg:h-[calc(100dvh-8rem)] lg:grid-cols-[320px_minmax(0,1fr)]"
       )}
     >

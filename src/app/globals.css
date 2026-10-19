@@ -1136,3 +1136,17 @@ html.proggaa-app a[href="/download"],
 html.proggaa-app .app-hide {
   display: none !important;
 }
+
+/* The Android app has its own native tab bar, so the site's bottom bar and the
+   room kept for it go (the tab bar sits below the page, not over it). */
+html.proggaa-app-android [data-bottom-nav] {
+  display: none !important;
+}
+html.proggaa-app-android #main-content {
+  padding-bottom: 1rem !important;
+}
+@media (max-width: 1023px) {
+  html.proggaa-app-android .chat-pane {
+    height: calc(100dvh - 11rem) !important;
+  }
+}
