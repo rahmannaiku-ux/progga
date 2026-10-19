@@ -9,6 +9,12 @@ Migrations (all additive): `20261019000000_community_comment_likes`, `2026101901
   updates from GitHub Releases and, on Android, phone notifications. Download page `/download` (header, footer and
   Settings link to it). The Android app reads new notifications from `GET /api/app/notifications`. Links and app
   detection: `src/lib/apps.ts`.
+  Inside the apps, `/` goes to `/login` (or `/dashboard`) instead of the landing page, and paid missions show "Buy on
+  prooggaa.com" (opens the browser) instead of checkout. Web push now works too: VAPID keys are set on Vercel
+  (backup in `D:\proggaa-keysapid.json`).
+- **Fixes from a screenshot pass of every page**: page-load (hydration) errors on Medals and on feeds with shared posts,
+  names missing for students whose name was only in their profile (now copied to the account and kept in sync), and
+  two pages that were wider than a phone screen.
 - **Community, Facebook style**: create-post dialog, long-press reactions with a picker, inline comments with likes,
   "new posts" pill, lightbox, reactors list, Messenger-style chat.
 - **Reels**: short vertical videos uploaded in chunks straight to Google Drive (`PROGGAA/reels`) and streamed back through
