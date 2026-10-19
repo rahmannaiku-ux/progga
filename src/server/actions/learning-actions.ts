@@ -82,6 +82,10 @@ export async function updateLessonProgress(
     reportedDurationSec: reportedDurationSeconds,
   });
   const { isCompleted, justCompleted } = next;
+  // A save sent before the player knows the video's length (the first autosave
+  // after opening a lesson) reports none: keep the length already saved rather
+  // than wiping it, or the progress bars would drop this lesson back to 0.
+  const durationSec = next.duration > 0 ? next.duration : existing?.durationSec ?? 0;
 
   await db.lessonProgress.upsert({
     where: { userId_lessonId: { userId: user.id, lessonId } },
@@ -90,22 +94,22 @@ export async function updateLessonProgress(
       lessonId,
       watchedSeconds: next.watched,
       lastPositionSec: next.position,
-      durationSec: next.duration,
+      durationSec,
       isCompleted,
       completedAt: isCompleted ? new Date() : null,
     },
     update: {
       watchedSeconds: next.watched,
       lastPositionSec: next.position,
-      durationSec: next.duration,
+      durationSec,
       ...(justCompleted ? { isCompleted: true, completedAt: new Date() } : {}),
     },
   });
 
   // The mission's progress bar counts partly watched lessons too, so it is
-  // re-derived whenever more of the lesson was really played (it only writes
-  // when the whole percentage changes).
-  if (justCompleted || next.watched > (existing?.watchedSeconds ?? 0)) {
+  // re-derived whenever more of the lesson was really played or its length
+  // became known (it only writes when the whole percentage changes).
+  if (justCompleted || next.watched > (existing?.watchedSeconds ?? 0) || durationSec !== (existing?.durationSec ?? 0)) {
     await recalcEnrollmentProgress(user.id, courseId);
   }
   if (justCompleted) {
