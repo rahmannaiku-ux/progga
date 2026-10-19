@@ -37,6 +37,24 @@ export type SettingDefinition<T = unknown> = {
 };
 
 export const SETTING_DEFINITIONS = {
+  "apps.minVersionAndroid": {
+    key: "apps.minVersionAndroid",
+    category: "Apps",
+    label: "Oldest Android app version allowed",
+    description: "Android apps older than this are asked to update before they can be used. Empty = no minimum. Set from Admin -> Apps.",
+    type: "STRING",
+    defaultValue: "",
+    validate: (v: unknown) => v === "" || (typeof v === "string" && /^\d{1,3}\.\d{1,2}\.\d{1,2}$/.test(v)),
+  },
+  "apps.minVersionWindows": {
+    key: "apps.minVersionWindows",
+    category: "Apps",
+    label: "Oldest Windows app version allowed",
+    description: "Windows apps older than this are asked to update before they can be used. Empty = no minimum. Set from Admin -> Apps.",
+    type: "STRING",
+    defaultValue: "",
+    validate: (v: unknown) => v === "" || (typeof v === "string" && /^\d{1,3}\.\d{1,2}\.\d{1,2}$/.test(v)),
+  },
   "homepage.heroTitleLine1": {
     key: "homepage.heroTitleLine1",
     category: "Homepage",

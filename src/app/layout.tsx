@@ -6,6 +6,7 @@ import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { CookieConsentBanner } from "@/components/shared/cookie-consent-banner";
+import { AppUpdateGate } from "@/components/shared/app-update-gate";
 
 // Display face: bold, bouncy, comic-poster energy — the Proggaa brand
 // voice. Loaded once here and used everywhere via the --font-display
@@ -163,6 +164,7 @@ export default async function RootLayout({
             style={primaryVars}
           >
             {children}
+            <AppUpdateGate />
           </div>
           <CookieConsentBanner />
         </ThemeProvider>

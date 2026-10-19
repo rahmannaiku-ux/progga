@@ -212,6 +212,7 @@ export const adminNav: NavSection[] = [
         prefetch: false,
       },
       { label: "Storage", href: "/admin/storage", icon: HardDrive, prefetch: false },
+      { label: "Apps", href: "/admin/apps", icon: Smartphone, prefetch: false },
     ],
   },
 ];

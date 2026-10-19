@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectApp, guessPlatform, parseLatestRelease } from "./apps";
+import { compareVersions, detectApp, guessPlatform, isAppVersion, mustUpdate, nextPatch, parseLatestRelease } from "./apps";
 
 describe("detectApp", () => {
   it("recognises both apps by their user agent tag", () => {
@@ -45,5 +45,33 @@ describe("parseLatestRelease", () => {
   it("is null for anything else", () => {
     expect(parseLatestRelease({ message: "Not Found" })).toBeNull();
     expect(parseLatestRelease(null)).toBeNull();
+  });
+});
+
+describe("versions", () => {
+  it("compares numerically, not as text", () => {
+    expect(compareVersions("1.0.10", "1.0.9")).toBeGreaterThan(0);
+    expect(compareVersions("1.2.0", "1.10.0")).toBeLessThan(0);
+    expect(compareVersions("v2.0.0", "2.0.0")).toBe(0);
+  });
+
+  it("checks the format the apps accept", () => {
+    expect(isAppVersion("1.0.2")).toBe(true);
+    expect(isAppVersion("1.100.0")).toBe(false);
+    expect(isAppVersion("1.0")).toBe(false);
+    expect(isAppVersion("1.0.0-beta")).toBe(false);
+  });
+
+  it("suggests the next patch", () => {
+    expect(nextPatch("1.0.4")).toBe("1.0.5");
+    expect(nextPatch("1.0.99")).toBe("1.1.0");
+    expect(nextPatch("nope")).toBe("1.0.0");
+  });
+
+  it("asks older apps to update", () => {
+    expect(mustUpdate("1.0.0", "1.0.1")).toBe(true);
+    expect(mustUpdate("1.0.1", "1.0.1")).toBe(false);
+    expect(mustUpdate("1.2.0", "")).toBe(false);
+    expect(mustUpdate("1.2.0", null)).toBe(false);
   });
 });

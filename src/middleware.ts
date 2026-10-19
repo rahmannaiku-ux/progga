@@ -73,6 +73,8 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/api\/health$/,
   // Database keep-alive, called by the Vercel cron and the GitHub workflow (no session).
   /^\/api\/keepalive$/,
+  // The apps' settings (oldest version allowed), read before anyone signs in.
+  /^\/api\/app\/config$/,
   /^\/api\/contact$/,
   // The DevTools warning page must load for anyone (even a signed-out
   // tab), or the redirect to it would itself bounce to /login.
@@ -95,6 +97,7 @@ const SKIP_IP_RATE_LIMIT = [
   "/api/uploadthing",
   "/api/health",
   "/api/keepalive",
+  "/api/app/config",
   "/api/cron/",
   "/api/payment-bridge/",
   // Device routes are rate-limited per device id inside device-guard (a shared per-IP window would throttle a NAT'd phone fleet).

@@ -66,3 +66,38 @@ export function parseLatestRelease(json: unknown): LatestRelease | null {
     androidBytes: size("Proggaa.apk"),
   };
 }
+
+/** Compares two MAJOR.MINOR.PATCH versions: negative when a is older, 0 when equal, positive when newer. Unparseable sorts oldest. */
+export function compareVersions(a: string, b: string): number {
+  const parse = (v: string) => {
+    const m = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(v.trim());
+    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+  };
+  const x = parse(a);
+  const y = parse(b);
+  if (!x || !y) return x ? 1 : y ? -1 : 0;
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i]! - y[i]!;
+  return 0;
+}
+
+/** Whether `version` is a valid MAJOR.MINOR.PATCH (each part 0-99 after the major, as the apps require). */
+export function isAppVersion(version: string): boolean {
+  const m = /^(\d{1,3})\.(\d{1,2})\.(\d{1,2})$/.exec(version.trim());
+  return Boolean(m);
+}
+
+/** The next patch version: 1.0.4 -> 1.0.5 (and 1.0.99 -> 1.1.0). */
+export function nextPatch(version: string): string {
+  const m = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(version.trim());
+  if (!m) return "1.0.0";
+  const [major, minor, patch] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return patch < 99 ? `${major}.${minor}.${patch + 1}` : `${major}.${minor + 1}.0`;
+}
+
+/** What the website enforces on the apps (Admin -> Apps): the oldest version each may keep using. */
+export type AppPolicy = { minVersion: { android: string; windows: string } };
+
+/** True when an app at `version` must update before it is used (no minimum set = never). */
+export function mustUpdate(version: string, minimum: string | null | undefined): boolean {
+  return Boolean(minimum && isAppVersion(minimum) && compareVersions(version, minimum) < 0);
+}
