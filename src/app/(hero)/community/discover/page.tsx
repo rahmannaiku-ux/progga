@@ -14,7 +14,7 @@ function People({ people }: { people: PersonCardDTO[] }) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {people.map((p) => (
-        <li key={p.id} className="comic-panel flex items-center gap-3 bg-surface p-3">
+        <li key={p.id} className="comic-panel flex min-w-0 items-center gap-3 bg-surface p-3">
           <Avatar fallbackClassName="bg-primary/15 text-primary" src={p.avatarUrl} name={p.name} size={44} />
           <div className="min-w-0 flex-1">
             <Link href={`/community/u/${p.id}`} prefetch={false} className="block truncate text-sm font-bold text-foreground hover:underline">

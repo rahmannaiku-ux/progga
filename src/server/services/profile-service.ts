@@ -221,7 +221,11 @@ export async function completeStudentProfile(
       where: { userId, dateOfBirth: null },
       data: { dateOfBirth: validated.dateOfBirth, dateOfBirthSetAt: now },
     }),
-    db.user.update({ where: { id: userId }, data: { profileCompleted: true, email: validated.email } }),
+    db.user.update({
+      where: { id: userId },
+      // The name shown everywhere (Community, leaderboards, mentors' lists) comes from these.
+      data: { profileCompleted: true, email: validated.email, ...splitName(validated.data.name) },
+    }),
   ]);
   } catch (err) {
     // Lost a race with another account claiming the same email.
@@ -321,8 +325,18 @@ export async function updateStudentProfile(userId: string, input: EditableStuden
   const profile = await db.studentProfile.findUnique({ where: { userId }, select: { id: true } });
   if (!profile) return { ok: false, reason: "not_found" };
 
-  await db.studentProfile.update({ where: { userId }, data });
+  await db.$transaction([
+    db.studentProfile.update({ where: { userId }, data }),
+    // Keep the displayed name (User.firstName/lastName) the same as the profile name.
+    ...(data.name ? [db.user.update({ where: { id: userId }, data: splitName(data.name) })] : []),
+  ]);
   return { ok: true };
+}
+
+/** "Mahamuda Rahman Dina" -> first "Mahamuda", last "Rahman Dina": how the profile name becomes the display name. */
+export function splitName(name: string | null | undefined): { firstName: string; lastName: string } {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  return { firstName: parts[0] ?? "", lastName: parts.slice(1).join(" ") };
 }
 
 /** The public "about me" fields on /profile. Shared by the profile page and the Telegram bot. */

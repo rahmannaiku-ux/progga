@@ -8,6 +8,9 @@ import { legacyHostRedirect } from "@/lib/site-url";
 // doesn't need).
 const PATHNAME_HEADER = "x-proggaa-pathname";
 
+/** The tag the Proggaa apps add to their user agent (kept in sync with detectApp in src/lib/apps.ts). */
+const APP_USER_AGENT = /ProggaaApp\/Android\/|ProggaaDesktop\//;
+
 /**
  * Route-group based RBAC.
  *
@@ -199,6 +202,13 @@ export default async function middleware(req: NextRequest) {
 
   const dinaa = dinaaPage(req);
   if (dinaa) return dinaa;
+
+  // The Windows and Android apps (src/lib/apps.ts) never show the marketing
+  // landing page: their home is the login screen, then the student side.
+  if (pathname === "/" && APP_USER_AGENT.test(req.headers.get("user-agent") ?? "")) {
+    const home = req.cookies.get(SESSION_COOKIE_NAME)?.value ? "/dashboard" : "/login";
+    return NextResponse.redirect(new URL(home, req.url));
+  }
 
   // Fast path: public, non-API pages (marketing, catalog, auth screens)
   // need neither a session check nor API rate limiting, so they can

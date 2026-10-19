@@ -153,12 +153,12 @@ export default async function MedalsPage({
                     <p className="truncate font-display text-base font-bold text-foreground">
                       {e.course.title}
                     </p>
-                    <p className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex items-center gap-2">
                       <AnimatedProgressBar percent={e.progressPct} className="h-2" />
                       <span className="shrink-0 font-mono text-xs font-bold text-muted-foreground">
                         {Math.round(e.progressPct)}%
                       </span>
-                    </p>
+                    </div>
                   </div>
                   <Link href={`/courses/${e.course.slug}`} className="shrink-0 text-xs font-bold text-primary">
                     Continue

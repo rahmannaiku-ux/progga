@@ -28,7 +28,7 @@ export function MissionExamPicker({ courses }: { courses: { id: string; title: s
         required
         value={courseId}
         onChange={(e) => setCourseId(e.target.value)}
-        className="h-10 flex-1 rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
+        className="h-10 min-w-0 flex-1 rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
       >
         <option value="" disabled>
           Choose a mission to create an exam in…

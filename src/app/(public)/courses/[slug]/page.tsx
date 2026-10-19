@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { BarChart3, Clock, Layers, Star, Globe2, Users, Zap, Tag } from "lucide-react";
 import { db } from "@/lib/db/client";
@@ -9,6 +10,8 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { DoodleStar, DoodleSparkle } from "@/components/marketing/cartoon-doodles";
 import { mediaSrc } from "@/lib/media-url";
 import { PurchasePanel } from "@/components/course/purchase-panel";
+import { BuyOnWebsite } from "@/components/course/buy-on-website";
+import { detectApp } from "@/lib/apps";
 import { CourseHeroMedia } from "@/components/course/course-hero-media";
 import { CourseTeachersShowcase, type CourseTeacherEntry } from "@/components/course/course-teachers-showcase";
 
@@ -141,6 +144,8 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
   // it is a single button (already enrolled, or a payment being checked).
   // globals.css turns this into bottom padding on the page.
   const fullPanel = !alreadyEnrolled && pendingPayment?.status !== "AWAITING_VERIFICATION";
+  // Inside the Windows or Android app, paid missions are bought on the website, not in the app.
+  const buyOnWebsite = Boolean(detectApp(headers().get("user-agent"))) && !course.isFree && !alreadyEnrolled;
   const sheetRoom = fullPanel && !course.isFree ? "13.5rem" : fullPanel ? "9.5rem" : "6.5rem";
 
   return (
@@ -219,6 +224,13 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
                   {price.percentOff ? `${price.percentOff}% off` : `${formatMoney(price.amountOffCents, course.currency)} off`}
                 </Badge>
               )}
+              {buyOnWebsite ? (
+                <BuyOnWebsite
+                  priceLabel={formatMoney(price.finalCents, course.currency)}
+                  url={`https://prooggaa.com/courses/${course.slug}`}
+                  pending={Boolean(pendingPayment)}
+                />
+              ) : (
               <PurchasePanel
                 courseId={course.id}
                 currency={course.currency}
@@ -231,6 +243,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
                 signedIn={Boolean(viewer)}
                 loginHref={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
               />
+              )}
               {/* The stat tiles already say this on a phone. */}
               <p className="hidden text-center text-xs text-muted-foreground lg:block">
                 {course._count.enrollments} hero{course._count.enrollments === 1 ? "" : "es"} already enrolled

@@ -395,7 +395,7 @@ export function PostCard({
                 {post.shared.author.name}
                 <span className="font-normal text-muted-foreground">· {communityTimeAgo(new Date(post.shared.createdAt))}</span>
               </p>
-              {post.shared.content && <RichText text={post.shared.content} className="mt-1 line-clamp-4 text-sm text-foreground" />}
+              {post.shared.content && <RichText plain text={post.shared.content} className="mt-1 line-clamp-4 text-sm text-foreground" />}
             </div>
           </Link>
         )}

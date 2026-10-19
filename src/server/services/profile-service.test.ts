@@ -167,7 +167,7 @@ describe("completeStudentProfile — email", () => {
     await completeStudentProfile("user_1", { ...VALID_INPUT, email: " Fahim@Example.COM " });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: "user_1" },
-      data: { profileCompleted: true, email: "fahim@example.com" },
+      data: { profileCompleted: true, email: "fahim@example.com", firstName: "Fahim", lastName: "Rahman" },
     });
   });
 });
@@ -197,7 +197,7 @@ describe("completeStudentProfile — persistence", () => {
     const result = await completeStudentProfile("user_1", VALID_INPUT);
     expect(result).toEqual({ ok: true });
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(userUpdate).toHaveBeenCalledWith({ where: { id: "user_1" }, data: { profileCompleted: true, email: "fahim@example.com" } });
+    expect(userUpdate).toHaveBeenCalledWith({ where: { id: "user_1" }, data: { profileCompleted: true, email: "fahim@example.com", firstName: "Fahim", lastName: "Rahman" } });
   });
 
   it("normalizes parent phone numbers through the shared phone utility before persisting", async () => {

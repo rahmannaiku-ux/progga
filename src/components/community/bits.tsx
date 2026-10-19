@@ -19,11 +19,11 @@ const NETWORK_ERROR = "That didn't go through. Check your connection and try aga
  * User-written text. Rendered as text nodes (React escapes them), with
  * plain http(s) links turned into real anchors. No HTML is ever injected.
  */
-export function RichText({ text, className }: { text: string; className?: string }) {
+export function RichText({ text, className, plain = false }: { text: string; className?: string; plain?: boolean }) {
   return (
     <p className={cn("whitespace-pre-wrap break-words", className)}>
       {splitLinks(text).map((part, i) =>
-        part.type === "link" ? (
+        part.type === "link" && !plain ? (
           <a
             key={i}
             href={part.href}

@@ -13,6 +13,15 @@ export const APPS_RELEASES_URL = `https://github.com/${APPS_REPO}/releases`;
 /** The link the apps catch to look for an update straight away (see the apps' README). */
 export const APP_CHECK_UPDATE_URL = "proggaa://update";
 
+/**
+ * A link the apps catch to open `url` in the person's normal browser instead
+ * of the app window (used where something is only done on the website, like
+ * buying a mission). Only meant to be shown inside the apps.
+ */
+export function openInBrowserHref(url: string): string {
+  return `proggaa://browser?url=${encodeURIComponent(url)}`;
+}
+
 export type AppKind = "android" | "windows";
 
 /**
