@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Download, RefreshCw } from "lucide-react";
+import { Bell, Download, RefreshCw } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
 import { StudentDetailsCard } from "@/components/profile/student-details-card";
@@ -12,7 +12,7 @@ import { getLinkStatusForUser } from "@/server/actions/telegram-link-actions";
 import { PhoneNotificationsCard } from "@/components/profile/phone-notifications-card";
 import { dateOfBirthParts, dhakaCalendarDate, formatCalendarDate, toIsoDate } from "@/lib/birthday/dates";
 import { getVapidConfig } from "@/lib/push/web-push";
-import { APP_CHECK_UPDATE_URL, detectApp } from "@/lib/apps";
+import { APP_CHECK_UPDATE_URL, APP_NOTIFICATIONS_SINCE, APP_NOTIFICATIONS_URL, compareVersions, detectApp } from "@/lib/apps";
 
 /**
  * Account settings: contact and school details, password and sessions, the
@@ -69,10 +69,21 @@ export default async function SettingsPage() {
       {inApp?.kind === "android" ? (
         <StaggerItem id="phone-notifications" className="comic-panel scroll-mt-24 bg-surface p-5">
           <h2 className="font-display text-sm font-bold text-foreground">Phone notifications</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The Proggaa app shows your notifications on this phone, even when it&apos;s closed. To turn them on or off, open
-            your phone&apos;s Settings, then Apps, Proggaa, Notifications.
-          </p>
+          {compareVersions(inApp.version, APP_NOTIFICATIONS_SINCE) >= 0 ? (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                The Proggaa app shows your notifications on this phone, even when it&apos;s closed.
+              </p>
+              <a href={APP_NOTIFICATIONS_URL} className="comic-btn inline-flex h-10 items-center gap-1.5 bg-primary px-4 text-sm font-bold text-primary-foreground">
+                <Bell className="h-4 w-4" aria-hidden="true" /> Notification settings
+              </a>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              The Proggaa app shows your notifications on this phone, even when it&apos;s closed. To turn them on or off, open
+              your phone&apos;s Settings, then Apps, Proggaa, Notifications.
+            </p>
+          )}
         </StaggerItem>
       ) : (
         <StaggerItem id="phone-notifications" className="scroll-mt-24">

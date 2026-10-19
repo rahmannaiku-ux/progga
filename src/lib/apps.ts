@@ -13,6 +13,11 @@ export const APPS_RELEASES_URL = `https://github.com/${APPS_REPO}/releases`;
 /** The link the apps catch to look for an update straight away (see the apps' README). */
 export const APP_CHECK_UPDATE_URL = "proggaa://update";
 
+/** The link the Android app catches to turn its notifications on (asks, or opens the phone's settings). */
+export const APP_NOTIFICATIONS_URL = "proggaa://notifications";
+/** The first Android version that understands APP_NOTIFICATIONS_URL. */
+export const APP_NOTIFICATIONS_SINCE = "1.0.9";
+
 /**
  * A link the apps catch to open `url` in the person's normal browser instead
  * of the app window (used where something is only done on the website, like
