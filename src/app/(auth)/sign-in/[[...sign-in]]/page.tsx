@@ -8,11 +8,12 @@ import { safeReturnTo } from "@/lib/auth/safe-redirect";
  * a legacy Clerk-style `redirect_url` param into the new `returnTo`
  * convention, rather than trusting it directly.
  */
-export default function SignInRedirectPage({
-  searchParams,
-}: {
-  searchParams: { redirect_url?: string };
-}) {
+export default async function SignInRedirectPage(
+  props: {
+    searchParams: Promise<{ redirect_url?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const returnTo = safeReturnTo(searchParams.redirect_url);
   redirect(returnTo === "/dashboard" ? "/login" : `/login?returnTo=${encodeURIComponent(returnTo)}`);
 }

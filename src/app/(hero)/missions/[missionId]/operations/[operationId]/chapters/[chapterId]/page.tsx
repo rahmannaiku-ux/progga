@@ -14,11 +14,12 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
  * "Archive Class", "Live Batch") rather than a fixed set, so titles and
  * ordering come straight from what the teacher set up in the builder.
  */
-export default async function ChapterGroupsPage({
-  params,
-}: {
-  params: { missionId: string; operationId: string; chapterId: string };
-}) {
+export default async function ChapterGroupsPage(
+  props: {
+    params: Promise<{ missionId: string; operationId: string; chapterId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   // Cheap existence + enrollment check first — avoids fetching the

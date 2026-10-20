@@ -3,11 +3,12 @@ import { CourseCard } from "@/components/course/course-card";
 import { Avatar } from "@/components/shared/avatar";
 import { db } from "@/lib/db/client";
 
-export default async function InstructorProfilePage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function InstructorProfilePage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const teacher = await db.user.findFirst({
     where: { id: params.id, role: "TEACHER" },
     include: {

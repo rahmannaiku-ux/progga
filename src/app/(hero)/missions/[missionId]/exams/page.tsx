@@ -17,7 +17,8 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
  * (Assessment.lessonId, resolved through lesson → group → chapter → module) —
  * the reference course/exam tree groups both under one "Exams" tab.
  */
-export default async function CourseExamsPage({ params }: { params: { missionId: string } }) {
+export default async function CourseExamsPage(props: { params: Promise<{ missionId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   const [course, enrollment] = await Promise.all([

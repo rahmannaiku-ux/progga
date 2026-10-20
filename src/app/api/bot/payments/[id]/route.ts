@@ -10,7 +10,8 @@ const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
  * admin (admins can look up any payment id — e.g. from the /admin
  * pending-payments list in the bot — everyone else only their own).
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

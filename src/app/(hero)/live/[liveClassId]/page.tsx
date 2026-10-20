@@ -19,7 +19,8 @@ import { formatDhakaDateTimeBST } from "@/lib/timezone";
  * handling, untouched here), chat and its input follow below, clear of
  * the fixed bottom nav via the layout's existing pb-24.
  */
-export default async function LiveRoomPage({ params }: { params: { liveClassId: string } }) {
+export default async function LiveRoomPage(props: { params: Promise<{ liveClassId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   await requireLiveRoomEnabledOrNotFound(user);
 

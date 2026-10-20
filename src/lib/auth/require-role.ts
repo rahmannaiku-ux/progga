@@ -27,7 +27,7 @@ const ROLE_RANK: Record<Role, number> = {
  * the session.
  */
 export const requireRole = cache(async (minimumRole: Role) => {
-  const token = getSessionCookieToken();
+  const token = await getSessionCookieToken();
   if (!token) redirect("/login");
 
   const validated = await validateSessionToken(token);

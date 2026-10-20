@@ -9,11 +9,12 @@ import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
 /** Chapters within a Subject (Module) — step 2 of the drill-down. */
-export default async function SubjectChaptersPage({
-  params,
-}: {
-  params: { missionId: string; operationId: string };
-}) {
+export default async function SubjectChaptersPage(
+  props: {
+    params: Promise<{ missionId: string; operationId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   // Cheap existence + enrollment check first — avoids fetching the full

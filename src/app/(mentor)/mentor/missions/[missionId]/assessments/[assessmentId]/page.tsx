@@ -26,14 +26,15 @@ import {
 import { getMentorAssessmentAnalytics } from "@/server/services/exam-analytics";
 import { searchQuestionBank } from "@/server/services/question-bank";
 
-export default async function AssessmentEditorPage({
-  params,
-  searchParams,
-}: {
-  params: { missionId: string; assessmentId: string };
-  searchParams: { docsError?: string; docsConnected?: string };
-}) {
-  const missionsBase = getMissionsBase();
+export default async function AssessmentEditorPage(
+  props: {
+    params: Promise<{ missionId: string; assessmentId: string }>;
+    searchParams: Promise<{ docsError?: string; docsConnected?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const assessment = await db.assessment.findUnique({

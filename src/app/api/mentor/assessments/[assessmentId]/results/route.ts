@@ -16,7 +16,8 @@ function cell(value: string | number | null | undefined): string {
  * Every finished attempt of one exam as a CSV download, for the mentors
  * of its mission and admins.
  */
-export async function GET(_req: Request, { params }: { params: { assessmentId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ assessmentId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentActiveSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 

@@ -23,11 +23,12 @@ const PODIUM_THEME = [
   { medal: "text-orange-400", ring: "bg-orange-400/15", label: "3rd", scale: "" },
 ];
 
-export default async function LeaderboardPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function LeaderboardPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const period = await getLeaderboardPeriod();
 

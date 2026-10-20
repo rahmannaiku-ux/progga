@@ -88,8 +88,8 @@ function generateSessionToken(): string {
 // ---------------------------------------------------------------------
 
 /** Sets the session cookie. Call only from a Server Action or Route Handler. */
-export function setSessionCookie(rawToken: string, expiresAt: Date) {
-  cookies().set(SESSION_COOKIE_NAME, rawToken, {
+export async function setSessionCookie(rawToken: string, expiresAt: Date) {
+  (await cookies()).set(SESSION_COOKIE_NAME, rawToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -99,8 +99,8 @@ export function setSessionCookie(rawToken: string, expiresAt: Date) {
 }
 
 /** Clears the session cookie. Call only from a Server Action or Route Handler. */
-export function clearSessionCookie() {
-  cookies().delete(SESSION_COOKIE_NAME);
+export async function clearSessionCookie() {
+  (await cookies()).delete(SESSION_COOKIE_NAME);
 }
 
 const DEVICE_COOKIE_MAX_AGE_S = 2 * 365 * 24 * 60 * 60; // 2 years
@@ -109,11 +109,11 @@ const DEVICE_COOKIE_MAX_AGE_S = 2 * 365 * 24 * 60 * 60; // 2 years
  * Returns this browser's device id, minting and setting one if it has
  * none yet. Call only from a Server Action or Route Handler.
  */
-export function getOrSetDeviceId(): string {
-  const existing = cookies().get(DEVICE_COOKIE_NAME)?.value;
+export async function getOrSetDeviceId(): Promise<string> {
+  const existing = (await cookies()).get(DEVICE_COOKIE_NAME)?.value;
   if (existing && /^[a-f0-9]{32}$/.test(existing)) return existing;
   const id = randomBytes(16).toString("hex");
-  cookies().set(DEVICE_COOKIE_NAME, id, {
+  (await cookies()).set(DEVICE_COOKIE_NAME, id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -124,8 +124,8 @@ export function getOrSetDeviceId(): string {
 }
 
 /** Reads the raw session token from the incoming request's cookies, if any. */
-export function getSessionCookieToken(): string | null {
-  return cookies().get(SESSION_COOKIE_NAME)?.value ?? null;
+export async function getSessionCookieToken(): Promise<string | null> {
+  return (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? null;
 }
 
 // ---------------------------------------------------------------------

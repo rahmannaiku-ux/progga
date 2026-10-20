@@ -18,7 +18,8 @@ const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
  * (double confirm tap in Telegram, retried request) is a safe no-op:
  * markPaidAndEnroll returns the already-PAID row instead of erroring.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

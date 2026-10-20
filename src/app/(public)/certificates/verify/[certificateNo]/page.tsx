@@ -12,11 +12,12 @@ export const metadata = {
 // Always read live: a revoked certificate must stop verifying immediately.
 export const dynamic = "force-dynamic";
 
-export default async function VerifyCertificatePage({
-  params,
-}: {
-  params: { certificateNo: string };
-}) {
+export default async function VerifyCertificatePage(
+  props: {
+    params: Promise<{ certificateNo: string }>;
+  }
+) {
+  const params = await props.params;
   const certificateNo = normalizeCertificateNo(decodeURIComponent(params.certificateNo)).slice(0, 40);
 
   // Only what is printed on the certificate itself: name, mission, date.

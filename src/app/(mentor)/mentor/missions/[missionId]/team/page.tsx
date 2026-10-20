@@ -8,8 +8,9 @@ import { assertOwnsCourse } from "@/server/services/mission-builder";
 import { TeamManager } from "@/components/mentor-dashboard/team-manager";
 import { AvatarCropper } from "@/components/shared/avatar-cropper";
 
-export default async function MentorTeamPage({ params }: { params: { missionId: string } }) {
-  const missionsBase = getMissionsBase();
+export default async function MentorTeamPage(props: { params: Promise<{ missionId: string }> }) {
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({

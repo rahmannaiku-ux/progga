@@ -30,13 +30,14 @@ type Filter = "highest-risk" | "highest-score" | "submitted" | "in-progress" | "
  * this needs, so an integrity/risk column and the risk-based filters
  * are added directly to it instead of duplicating the query elsewhere.
  */
-export default async function MonitorLiveExamPage({
-  params,
-  searchParams,
-}: {
-  params: { assessmentId: string };
-  searchParams: { filter?: Filter };
-}) {
+export default async function MonitorLiveExamPage(
+  props: {
+    params: Promise<{ assessmentId: string }>;
+    searchParams: Promise<{ filter?: Filter }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await requireRole("TEACHER");
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 

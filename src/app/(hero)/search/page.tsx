@@ -66,11 +66,12 @@ function ResultList({
   );
 }
 
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; tab?: string };
-}) {
+export default async function SearchPage(
+  props: {
+    searchParams: Promise<{ q?: string; tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const q = searchParams.q?.trim() ?? "";
   const tab = TABS.find((t) => t.key === searchParams.tab)?.key ?? "all";
   const user = await getCurrentUser();

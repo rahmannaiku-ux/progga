@@ -16,11 +16,12 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { buildAttemptBreakdown } from "@/server/services/attempt-breakdown";
 import { XP_REWARDS } from "@/lib/gamification/xp-curve";
 
-export default async function EncounterPage({
-  params,
-}: {
-  params: { examId: string };
-}) {
+export default async function EncounterPage(
+  props: {
+    params: Promise<{ examId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   const assessment = await db.assessment.findUnique({

@@ -17,11 +17,12 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 // silently do nothing.
 export const metadata = { title: "Browse Missions" };
 
-export default async function CoursesPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; category?: string; level?: string; price?: string };
-}) {
+export default async function CoursesPage(
+  props: {
+    searchParams: Promise<{ q?: string; category?: string; level?: string; price?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const [courses, categories] = await Promise.all([
     searchCourses({
       q: searchParams.q,

@@ -15,7 +15,8 @@ import { isLiveRoomEnabled } from "@/lib/live/flag";
  * not just at initial page load. The Stream API secret never leaves
  * this server (see server/live/chat/stream-provider.ts).
  */
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const authResult = await resolveLiveApiUser();
   if (!authResult.ok) return authResult.response;
   const { user } = authResult;

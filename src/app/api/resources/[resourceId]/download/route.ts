@@ -35,7 +35,8 @@ const ALLOWED_FILE_HOSTS = new Set(["utfs.io"]);
  * When their switch is on, the request is counted and redirected to Google's
  * own download address, which is built from the document id alone.
  */
-export async function GET(req: NextRequest, { params }: { params: { resourceId: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ resourceId: string }> }) {
+  const params = await props.params;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.resourceId)) {
     return NextResponse.json({ error: "File not found." }, { status: 404 });
   }

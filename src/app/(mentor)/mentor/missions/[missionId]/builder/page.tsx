@@ -14,12 +14,13 @@ import { QuickAdd } from "@/components/mentor-dashboard/quick-add";
 import { AddAction } from "@/components/mentor-dashboard/add-action";
 import { ImageUploadField } from "@/components/mentor-dashboard/image-upload-field";
 
-export default async function MissionBuilderPage({
-  params,
-}: {
-  params: { missionId: string };
-}) {
-  const missionsBase = getMissionsBase();
+export default async function MissionBuilderPage(
+  props: {
+    params: Promise<{ missionId: string }>;
+  }
+) {
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({

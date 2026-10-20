@@ -13,7 +13,8 @@ import { db } from "@/lib/db/client";
  * plays it in its own protected player, which also measures how much was actually
  * watched. The bot sends people to the Patrol page to watch.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

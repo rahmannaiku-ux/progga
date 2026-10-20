@@ -30,7 +30,7 @@ const cookiesDelete = vi.fn((name: string) => cookieStore.delete(name));
 const cookiesGet = vi.fn((name: string) => cookieStore.get(name));
 
 vi.mock("next/headers", () => ({
-  cookies: () => ({
+  cookies: async () => ({
     set: (name: string, value: string, _opts: unknown) => cookiesSet(name, value),
     get: (name: string) => cookiesGet(name),
     delete: (name: string) => cookiesDelete(name),
@@ -215,19 +215,19 @@ describe("hasActiveSession", () => {
 });
 
 describe("cookie helpers", () => {
-  it("setSessionCookie stores the raw token under SESSION_COOKIE_NAME", () => {
-    setSessionCookie("raw-token-value", new Date(Date.now() + 1000));
+  it("setSessionCookie stores the raw token under SESSION_COOKIE_NAME", async () => {
+    await setSessionCookie("raw-token-value", new Date(Date.now() + 1000));
     expect(cookiesSet).toHaveBeenCalledWith(SESSION_COOKIE_NAME, "raw-token-value");
   });
 
-  it("getSessionCookieToken reads it back", () => {
-    setSessionCookie("raw-token-value", new Date(Date.now() + 1000));
-    expect(getSessionCookieToken()).toBe("raw-token-value");
+  it("getSessionCookieToken reads it back", async () => {
+    await setSessionCookie("raw-token-value", new Date(Date.now() + 1000));
+    expect(await getSessionCookieToken()).toBe("raw-token-value");
   });
 
-  it("clearSessionCookie removes it", () => {
-    setSessionCookie("raw-token-value", new Date(Date.now() + 1000));
-    clearSessionCookie();
-    expect(getSessionCookieToken()).toBeNull();
+  it("clearSessionCookie removes it", async () => {
+    await setSessionCookie("raw-token-value", new Date(Date.now() + 1000));
+    await clearSessionCookie();
+    expect(await getSessionCookieToken()).toBeNull();
   });
 });

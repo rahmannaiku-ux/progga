@@ -18,12 +18,13 @@ import { AttemptTools, RegradeButton } from "@/components/mentor-dashboard/attem
  * existing investigate-attempt page (integrity timeline, question
  * timing) rather than re-implementing either here.
  */
-export default async function AssessmentResultsPage({
-  params,
-}: {
-  params: { missionId: string; assessmentId: string };
-}) {
-  const missionsBase = getMissionsBase();
+export default async function AssessmentResultsPage(
+  props: {
+    params: Promise<{ missionId: string; assessmentId: string }>;
+  }
+) {
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 

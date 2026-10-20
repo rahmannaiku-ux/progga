@@ -12,7 +12,8 @@ const MAX_NOTE_LENGTH = 2000;
  * the hero must be enrolled in the Mission, the note cannot be empty, and posting is
  * rate limited.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

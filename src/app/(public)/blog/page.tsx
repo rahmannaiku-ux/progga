@@ -7,11 +7,12 @@ export const metadata = { title: "Blog" };
 
 const POSTS_PER_PAGE = 12;
 
-export default async function BlogPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function BlogPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams.page) || 1);
 
   // Public listing only ever reads PUBLISHED posts — draft/archived

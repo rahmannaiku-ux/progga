@@ -22,7 +22,8 @@ const levelLabel: Record<string, string> = {
   ALL_LEVELS: "All levels",
 };
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const course = await db.course.findUnique({
     where: { slug: params.slug },
     select: { title: true, subtitle: true },
@@ -31,7 +32,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return { title: course.title, description: course.subtitle ?? undefined };
 }
 
-export default async function CourseBuyingPage({ params }: { params: { slug: string } }) {
+export default async function CourseBuyingPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const [course, viewer] = await Promise.all([
     db.course.findUnique({
       where: { slug: params.slug },
@@ -145,7 +147,7 @@ export default async function CourseBuyingPage({ params }: { params: { slug: str
   // globals.css turns this into bottom padding on the page.
   const fullPanel = !alreadyEnrolled && pendingPayment?.status !== "AWAITING_VERIFICATION";
   // Inside the Windows or Android app, paid missions are bought on the website, not in the app.
-  const buyOnWebsite = Boolean(detectApp(headers().get("user-agent"))) && !course.isFree && !alreadyEnrolled;
+  const buyOnWebsite = Boolean(detectApp((await headers()).get("user-agent"))) && !course.isFree && !alreadyEnrolled;
   const sheetRoom = fullPanel && !course.isFree ? "13.5rem" : fullPanel ? "9.5rem" : "6.5rem";
 
   return (

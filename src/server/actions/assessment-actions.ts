@@ -189,7 +189,7 @@ export async function createAssessment(formData: FormData) {
     },
   });
 
-  redirect(`${getMissionsBase()}/${data.courseId}/assessments/${assessment.id}`);
+  redirect(`${await getMissionsBase()}/${data.courseId}/assessments/${assessment.id}`);
 }
 
 export async function updateAssessment(assessmentId: string, formData: FormData) {
@@ -307,7 +307,7 @@ export async function deleteAssessment(assessmentId: string) {
   // automatically), never the reusable questions themselves.
   await db.assessment.delete({ where: { id: assessmentId } });
   revalidateMissionPage(`/${courseId}/assessments`);
-  redirect(`${getMissionsBase()}/${courseId}/assessments`);
+  redirect(`${await getMissionsBase()}/${courseId}/assessments`);
 }
 
 /**
@@ -405,7 +405,7 @@ export async function duplicateAssessment(assessmentId: string) {
 
   revalidateMissionPage(`/${courseId}/assessments`);
   revalidatePath("/mentor/exam-history");
-  redirect(`${getMissionsBase()}/${courseId}/assessments/${duplicate.id}`);
+  redirect(`${await getMissionsBase()}/${courseId}/assessments/${duplicate.id}`);
 }
 
 // ---------------------------------------------------------------------

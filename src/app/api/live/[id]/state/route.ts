@@ -20,7 +20,8 @@ import { canViewLiveClass } from "@/server/live/live-access";
  * this is what makes automatic transitions actually happen without
  * depending on the sweep cron running promptly.
  */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const authResult = await resolveLiveApiUser();
   if (!authResult.ok) return authResult.response;
   const { user } = authResult;

@@ -10,7 +10,8 @@ import { isCourseMentor } from "@/lib/auth/course-access";
  * pointsAwarded/gradedAt yet) — the same "needs a human" signal short
  * answer/essay questions require elsewhere in the grading UI.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

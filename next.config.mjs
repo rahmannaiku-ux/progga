@@ -62,9 +62,6 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Lint runs as its own step (`npm run lint`, e.g. in CI) — not inside
-  // `next build`, so a style warning/error can never block a deploy.
-  eslint: { ignoreDuringBuilds: true },
   output: process.env.VERCEL ? undefined : "standalone", // standalone only for Docker builds, not Vercel
   // @pdfme/pdf-lib and @pdfme/common (both pulled in transitively by
   // @pdfme/generator, used for certificate PDF generation — see
@@ -72,19 +69,9 @@ const nextConfig = {
   // @pdfme/generator's own CJS build does `require("@pdfme/pdf-lib")` /
   // `require("@pdfme/common")` internally, which neither Node's native
   // module loader nor webpack's default CJS bundling will do for a
-  // pure-ESM target:
-  //   - Excluding these from bundling (experimental.serverComponentsExternalPackages,
-  //     the old config here) leaves Node's native require() to load the
-  //     raw file at runtime, which throws ERR_REQUIRE_ESM.
-  //   - Bundling them normally (no external-packages config at all)
-  //     makes webpack itself refuse with "Module not found: ESM
-  //     packages (...) need to be imported. Use 'import' to reference
-  //     the package instead."
-  // `transpilePackages` + `esmExternals: 'loose'` is the combination
-  // Next.js documents for exactly this "an ESM-only npm package needs
-  // to work through a CJS require() somewhere in the chain" situation:
-  // it runs these packages through Next's own compiler (which handles
-  // the ESM/CJS interop) instead of handing them to webpack raw.
+  // pure-ESM target, so excluding them from bundling throws
+  // ERR_REQUIRE_ESM at runtime. `transpilePackages` runs them through
+  // Next's own compiler, which handles the ESM/CJS interop.
   transpilePackages: ["@pdfme/generator", "@pdfme/pdf-lib", "@pdfme/schemas", "@pdfme/common"],
   images: {
     remotePatterns: [
@@ -114,39 +101,35 @@ const nextConfig = {
       },
     ];
   },
+  // argon2 loads a prebuilt .node binary at runtime via node-gyp-build
+  // (dynamic fs.readdirSync + require, not a static import), so
+  // the bundler/tracer can't follow it. Two things are both
+  // required to fix this on Vercel (confirmed via vercel/next.js
+  // discussion #65978 — the external-packages flag alone was NOT
+  // enough and still crashed in production):
+  //   1. serverExternalPackages leaves `require("argon2")`
+  //      un-bundled so it resolves against the real node_modules/argon2
+  //      at runtime instead of a bundled chunk.
+  //   2. outputFileTracingIncludes force-includes the prebuilds/
+  //      directory in the deployed function, since @vercel/nft's
+  //      static analysis can't discover files argon2 only reaches via
+  //      a dynamic directory scan — without this the native binary
+  //      itself never gets uploaded, even with (1) alone, and it still
+  //      fails with "No native build was found for platform=linux
+  //      ... abi=...".
+  serverExternalPackages: ["argon2"],
+  outputFileTracingIncludes: {
+    // Certificate PDFs read these fonts and the logo from disk at runtime,
+    // which tracing cannot see either.
+    "/*": [
+      "node_modules/argon2/prebuilds/**/*",
+      "src/lib/certificate/fonts/*.ttf",
+      "public/branding/proggaa-logo-512.png",
+    ],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
-    },
-    // See the transpilePackages comment above — 'loose' mode lets
-    // webpack auto-correct remaining ESM/CJS interop edges for the
-    // same @pdfme packages that Next docs recommend it for.
-    esmExternals: "loose",
-    // argon2 loads a prebuilt .node binary at runtime via node-gyp-build
-    // (dynamic fs.readdirSync + require, not a static import), so
-    // webpack's bundler/tracer can't follow it. Two things are both
-    // required to fix this on Vercel (confirmed via vercel/next.js
-    // discussion #65978 — the external-packages flag alone was NOT
-    // enough and still crashed in production):
-    //   1. serverComponentsExternalPackages leaves `require("argon2")`
-    //      un-bundled so it resolves against the real node_modules/argon2
-    //      at runtime instead of a webpack chunk.
-    //   2. outputFileTracingIncludes force-includes the prebuilds/
-    //      directory in the deployed function, since @vercel/nft's
-    //      static analysis can't discover files argon2 only reaches via
-    //      a dynamic directory scan — without this the native binary
-    //      itself never gets uploaded, even with (1) alone, and it still
-    //      fails with "No native build was found for platform=linux
-    //      ... abi=...".
-    serverComponentsExternalPackages: ["argon2"],
-    outputFileTracingIncludes: {
-      // Certificate PDFs read these fonts and the logo from disk at runtime,
-      // which tracing cannot see either.
-      "/*": [
-        "node_modules/argon2/prebuilds/**/*",
-        "src/lib/certificate/fonts/*.ttf",
-        "public/branding/proggaa-logo-512.png",
-      ],
     },
   },
 };

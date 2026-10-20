@@ -3,11 +3,12 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { UserManagementTable } from "@/components/admin-dashboard/user-management-table";
 
-export default async function AdminUsersPage({
-  searchParams,
-}: {
-  searchParams: { page?: string; q?: string };
-}) {
+export default async function AdminUsersPage(
+  props: {
+    searchParams: Promise<{ page?: string; q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const admin = await requireRole("ADMIN");
 
   const [total, students, mentors, admins] = await Promise.all([

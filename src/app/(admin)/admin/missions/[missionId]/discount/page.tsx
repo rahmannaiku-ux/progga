@@ -5,11 +5,12 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { CourseDiscountForm } from "@/components/admin-dashboard/course-discount-form";
 
-export default async function AdminCourseDiscountPage({
-  params,
-}: {
-  params: { missionId: string };
-}) {
+export default async function AdminCourseDiscountPage(
+  props: {
+    params: Promise<{ missionId: string }>;
+  }
+) {
+  const params = await props.params;
   await requireRole("ADMIN");
 
   const course = await db.course.findUnique({

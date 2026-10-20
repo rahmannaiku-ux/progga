@@ -1,0 +1,82 @@
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+
+const eslintConfig = [
+  {
+    ignores: [
+      "node_modules/",
+      ".next/",
+      "out/",
+      "coverage/",
+      "public/",
+      "next-env.d.ts",
+      "prisma/migrations/",
+      "telegram-bot/",
+    ],
+  },
+  ...nextCoreWebVitals,
+  {
+    rules: {
+      // Real bugs — keep these as errors.
+      "react-hooks/rules-of-hooks": "error",
+      "no-var": "error",
+      "no-debugger": "error",
+      "no-dupe-keys": "error",
+      "no-unreachable": "error",
+      "no-self-assign": "error",
+
+      // Worth fixing but not build-breaking.
+      "react-hooks/exhaustive-deps": "warn",
+      "prefer-const": "warn",
+      eqeqeq: ["warn", "always", { null: "ignore" }],
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "@next/next/no-img-element": "warn",
+
+      // React Compiler rules added in eslint-plugin-react-hooks 7. The
+      // compiler isn't enabled here, so these are advice, not bugs.
+      "react-hooks/purity": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+      "react-hooks/immutability": "warn",
+      "react-hooks/refs": "warn",
+
+      // The UI copy is full of apostrophes and quotes ("You're", "hero's");
+      // escaping every one as &apos; / &quot; only makes the JSX harder to read.
+      "react/no-unescaped-entities": "off",
+    },
+  },
+  {
+    // Vitest specs
+    files: ["**/*.test.ts", "**/*.test.tsx"],
+    rules: { "no-console": "off" },
+  },
+  {
+    // Node scripts and config files may log.
+    files: ["scripts/**", "prisma/**", "*.config.*"],
+    rules: { "no-console": "off" },
+  },
+  {
+    // Live Class code must never read or format time in the runtime's
+    // (server/device) timezone. Use lib/timezone.ts (Asia/Dhaka) instead.
+    files: [
+      "src/lib/live/**/*.{ts,tsx}",
+      "src/components/live/**/*.{ts,tsx}",
+      "src/server/**/live-*.ts",
+      "src/app/**/live/**/*.{ts,tsx}",
+      "src/app/api/live/**/*.ts",
+    ],
+    ignores: ["**/*.test.ts", "**/*.test.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(toLocaleString|toLocaleDateString|toLocaleTimeString|getHours|getMinutes|getSeconds|getDay|getDate|getMonth|getFullYear|setHours|setMinutes|setDate|setMonth|setFullYear)$/]",
+          message:
+            "Live Class code must not use runtime-local time APIs. Use the Asia/Dhaka helpers in src/lib/timezone.ts.",
+        },
+      ],
+    },
+  },
+];
+
+export default eslintConfig;

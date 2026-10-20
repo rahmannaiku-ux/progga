@@ -9,7 +9,8 @@ import { enrollInFreeCourse } from "@/server/services/enrollment";
  * Enrols a hero in a FREE Mission through the same service as the website's Enroll
  * button. Paid Missions go through /checkout instead.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

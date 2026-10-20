@@ -10,7 +10,8 @@ import { getComments, getPost } from "@/server/services/community";
 export const metadata = { title: "Post" };
 
 /** One post with its discussion. A post the viewer may not see is a 404. */
-export default async function CommunityPostPage({ params }: { params: { postId: string } }) {
+export default async function CommunityPostPage(props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   const post = await getPost(user, params.postId);
   if (!post) notFound();

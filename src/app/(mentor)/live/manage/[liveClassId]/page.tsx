@@ -11,7 +11,8 @@ import { STREAM_LIVECLASS_CHANNEL_CONFIG } from "@/server/live/chat/service";
 import { pinLiveClassMessage, unpinLiveClassMessage, deleteLiveClassMessage } from "@/server/actions/live-class-actions";
 import { formatDhakaDateTimeBST } from "@/lib/timezone";
 
-export default async function ManageLiveClassPage({ params }: { params: { liveClassId: string } }) {
+export default async function ManageLiveClassPage(props: { params: Promise<{ liveClassId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   await requireLiveRoomEnabledOrNotFound(user);
 

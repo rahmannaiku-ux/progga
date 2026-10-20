@@ -8,7 +8,7 @@ show the same site with in-app updates and phone notifications.
 Students ("Heroes") buy and take courses ("Missions"). Teachers
 ("Mentors") build and grade them. Admins run the platform.
 
-- **Stack:** Next.js 14 (App Router) · React 18 · TypeScript · Tailwind + Radix/shadcn-style UI ·
+- **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind + Radix/shadcn-style UI ·
   PostgreSQL (Supabase) · Prisma 5 · Vitest · Docker / Vercel
 - **Auth:** custom phone number + SMS OTP + password (Argon2id), DB-backed sessions. *(Clerk was removed, so ignore any Clerk references in older docs.)*
 - **Money:** Bangladeshi taka only. Payments are made through bKash/MFS: students submit a transaction ID, which an admin verifies manually or which is matched automatically against SMS from an Android device.
@@ -213,7 +213,7 @@ Switches: `ANTI_DEVTOOLS=on|off` (off by default in `next dev`), `ANTI_DEVTOOLS_
 
 ### Linting
 
-ESLint 8 + `next/core-web-vitals` (`.eslintrc.json`). Build-breaking problems (`rules-of-hooks`, `no-var`, `no-debugger`) are errors. `exhaustive-deps`, `prefer-const`, `eqeqeq`, `no-console` and `<img>` are warnings. `next build` skips lint on purpose, so run it in CI.
+ESLint 9 + `eslint-config-next/core-web-vitals` (`eslint.config.mjs`). Build-breaking problems (`rules-of-hooks`, `no-var`, `no-debugger`) are errors. `exhaustive-deps`, `prefer-const`, `eqeqeq`, `no-console`, `<img>` and the React Compiler rules (`purity`, `refs`, `set-state-in-effect`, ...) are warnings. `next build` does not lint, so run it in CI.
 
 ---
 

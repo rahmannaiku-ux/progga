@@ -7,11 +7,12 @@ import { PaginationControls, parsePageParam } from "@/components/shared/paginati
 
 const PAGE_SIZE = 20;
 
-export default async function AdminCalendarPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function AdminCalendarPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const page = parsePageParam(searchParams.page);

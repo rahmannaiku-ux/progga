@@ -26,7 +26,8 @@ const ROLE_CHOICES = ["ADMIN", "MODERATOR", "MEMBER"] as const;
  * join requests and settings. A private group shows outsiders only its
  * name, description and size until they are let in.
  */
-export default async function GroupPage({ params }: { params: { slug: string } }) {
+export default async function GroupPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   const group = await getGroup(user, params.slug);
   if (!group) notFound();

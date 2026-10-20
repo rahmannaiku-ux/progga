@@ -13,7 +13,8 @@ const NAME = { select: { id: true, firstName: true, lastName: true } } as const;
  * posts, comments and profiles, with the content in question and the
  * decision controls. Handled reports stay listed with who decided and why.
  */
-export default async function AdminCommunityPage({ searchParams }: { searchParams: { view?: string } }) {
+export default async function AdminCommunityPage(props: { searchParams: Promise<{ view?: string }> }) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
   const view = searchParams.view === "handled" ? "handled" : "open";
 

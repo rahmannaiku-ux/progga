@@ -25,21 +25,22 @@ const DIFFICULTIES = ["EASY", "MEDIUM", "HARD"];
  * still attached to any exam) — different from the "remove from this
  * exam" action inside an assessment editor.
  */
-export default async function QuestionBankPage({
-  params,
-  searchParams,
-}: {
-  params: { missionId: string };
-  searchParams: {
-    q?: string;
-    type?: string;
-    difficulty?: string;
-    topic?: string;
-    docsError?: string;
-    docsConnected?: string;
-  };
-}) {
-  const missionsBase = getMissionsBase();
+export default async function QuestionBankPage(
+  props: {
+    params: Promise<{ missionId: string }>;
+    searchParams: Promise<{
+      q?: string;
+      type?: string;
+      difficulty?: string;
+      topic?: string;
+      docsError?: string;
+      docsConnected?: string;
+    }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({

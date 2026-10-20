@@ -13,7 +13,8 @@ import { createCheckoutPayment } from "@/server/services/checkout";
  * amount, the number to send it to, and the reference. They then send the Transaction
  * ID with POST /api/bot/payments/:id/txid.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

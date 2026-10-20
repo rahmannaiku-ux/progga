@@ -33,20 +33,22 @@ async function loadPaidPayment(paymentId: string) {
 
 // The document title is what browsers use as the default file name when
 // the invoice is saved via Print → "Save as PDF".
-export async function generateMetadata({
-  params,
-}: {
-  params: { paymentId: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ paymentId: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const payment = await loadPaidPayment(params.paymentId);
   return { title: payment ? `Invoice ${invoiceNumber(payment.paymentReference)}` : "Invoice" };
 }
 
-export default async function InvoicePage({
-  params,
-}: {
-  params: { paymentId: string };
-}) {
+export default async function InvoicePage(
+  props: {
+    params: Promise<{ paymentId: string }>;
+  }
+) {
+  const params = await props.params;
   const [payment, branding] = await Promise.all([loadPaidPayment(params.paymentId), getSiteBranding()]);
   if (!payment) notFound();
 

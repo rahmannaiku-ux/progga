@@ -11,11 +11,12 @@ import { mediaSrc } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
 
 /** Lessons within a class type — step 4, the last stop before the player. */
-export default async function LessonGroupLessonsPage({
-  params,
-}: {
-  params: { missionId: string; operationId: string; chapterId: string; groupId: string };
-}) {
+export default async function LessonGroupLessonsPage(
+  props: {
+    params: Promise<{ missionId: string; operationId: string; chapterId: string; groupId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   // Cheap existence + enrollment check first — avoids fetching the

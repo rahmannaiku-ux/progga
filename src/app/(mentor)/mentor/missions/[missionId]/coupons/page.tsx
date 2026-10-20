@@ -7,8 +7,9 @@ import { getMissionsBase } from "@/lib/mission-paths";
 import { assertOwnsCourse } from "@/server/services/mission-builder";
 import { CouponManager } from "@/components/mentor-dashboard/coupon-manager";
 
-export default async function MentorCouponsPage({ params }: { params: { missionId: string } }) {
-  const missionsBase = getMissionsBase();
+export default async function MentorCouponsPage(props: { params: Promise<{ missionId: string }> }) {
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({

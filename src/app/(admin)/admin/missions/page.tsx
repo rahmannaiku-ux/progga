@@ -70,11 +70,12 @@ function MissionPrice({
   );
 }
 
-export default async function AdminMissionsPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function AdminMissionsPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
   const page = Math.max(1, Number(searchParams.page) || 1);
 

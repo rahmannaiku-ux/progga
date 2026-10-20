@@ -9,11 +9,12 @@ import { AssignmentSubmissionForm } from "@/components/course/assignment-submiss
 
 type Rubric = { criterion: string; points: number }[];
 
-export default async function ChallengePage({
-  params,
-}: {
-  params: { challengeId: string };
-}) {
+export default async function ChallengePage(
+  props: {
+    params: Promise<{ challengeId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   const assignment = await db.assignment.findUnique({

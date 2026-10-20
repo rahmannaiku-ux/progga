@@ -29,7 +29,7 @@ export default async function SettingsPage() {
   const dob = dateOfBirthParts(studentProfile?.dateOfBirth);
   const vapid = getVapidConfig();
   // Inside the Proggaa app: its own notifications replace browser push, and it can check for updates.
-  const inApp = detectApp(headers().get("user-agent"));
+  const inApp = detectApp((await headers()).get("user-agent"));
 
   return (
     <StaggerContainer className="mx-auto max-w-2xl space-y-6">

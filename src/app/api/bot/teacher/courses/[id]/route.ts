@@ -10,7 +10,8 @@ import { isCourseMentor } from "@/lib/auth/course-access";
  * returning anything — the core "course ownership bypass" check called
  * out in the security requirements.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

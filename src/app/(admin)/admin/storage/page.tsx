@@ -38,11 +38,12 @@ const CATEGORIES: { context: UploadContext; label: string; icon: typeof UserIcon
   { context: "OTHER", label: "Other Files", icon: FolderOpen },
 ];
 
-export default async function AdminStoragePage({
-  searchParams,
-}: {
-  searchParams: { error?: string; connected?: string; category?: string; q?: string };
-}) {
+export default async function AdminStoragePage(
+  props: {
+    searchParams: Promise<{ error?: string; connected?: string; category?: string; q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const connection = await db.googleDriveConnection.findUnique({ where: { id: "singleton" } });

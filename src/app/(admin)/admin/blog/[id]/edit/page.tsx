@@ -5,7 +5,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { BlogPostForm } from "@/components/admin-dashboard/blog-post-form";
 
-export default async function EditBlogPostPage({ params }: { params: { id: string } }) {
+export default async function EditBlogPostPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const admin = await requireRole("ADMIN");
 
   const [post, categories, adminUser] = await Promise.all([

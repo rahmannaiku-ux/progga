@@ -24,7 +24,8 @@ import { isLiveRoomEnabled } from "@/lib/live/flag";
  * source of truth for this: on a unique violation (P2002) we reuse the
  * existing open session and bump reconnectCount instead of erroring.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const authResult = await resolveLiveApiUser();
   if (!authResult.ok) return authResult.response;
   const { user } = authResult;

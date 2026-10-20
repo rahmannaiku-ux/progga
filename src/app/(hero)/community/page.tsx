@@ -24,7 +24,8 @@ const EMPTY: Record<(typeof TABS)[number]["key"], { title: string; body: string 
 };
 
 /** Proggaa Community: the feed. */
-export default async function CommunityFeedPage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function CommunityFeedPage(props: { searchParams: Promise<{ tab?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const tab = TABS.find((t) => t.key === searchParams.tab) ?? TABS[0];
 

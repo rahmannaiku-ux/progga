@@ -17,7 +17,7 @@ import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session"
  * in through this path; their data is untouched.
  */
 export const getCurrentUser = cache(async () => {
-  const token = getSessionCookieToken();
+  const token = await getSessionCookieToken();
   if (!token) redirect("/login");
 
   const validated = await validateSessionToken(token);
@@ -45,7 +45,7 @@ export const getCurrentUser = cache(async () => {
  * request share a single lookup.
  */
 export const getCurrentUserRoleOptional = cache(async () => {
-  const token = getSessionCookieToken();
+  const token = await getSessionCookieToken();
   if (!token) return null;
 
   const validated = await validateSessionToken(token);
@@ -66,7 +66,7 @@ export const getCurrentUserRoleOptional = cache(async () => {
  * not signed in.
  */
 export const getCurrentUserOptional = cache(async () => {
-  const token = getSessionCookieToken();
+  const token = await getSessionCookieToken();
   if (!token) return null;
 
   const validated = await validateSessionToken(token);

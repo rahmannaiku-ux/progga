@@ -6,7 +6,8 @@ import { getGroupChat } from "@/server/services/chats";
 export const metadata = { title: "Group chat · Community" };
 
 /** One group chat. Someone who is not a member gets a 404. */
-export default async function GroupChatPage({ params }: { params: { chatId: string } }) {
+export default async function GroupChatPage(props: { params: Promise<{ chatId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   const chat = await getGroupChat(user.id, params.chatId);
   if (!chat) notFound();

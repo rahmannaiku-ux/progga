@@ -3,7 +3,8 @@ import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
 import { db } from "@/lib/db/client";
 
 /** GET /api/bot/results/:id?userId=... — ownership enforced by userId match, not just id lookup. */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

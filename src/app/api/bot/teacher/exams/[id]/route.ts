@@ -5,7 +5,8 @@ import { db } from "@/lib/db/client";
 import { isCourseMentor } from "@/lib/auth/course-access";
 
 /** GET /api/bot/teacher/exams/:id?teacherId=... — verifies the exam belongs to one of this teacher's courses. */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

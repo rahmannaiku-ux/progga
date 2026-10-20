@@ -11,11 +11,12 @@ import { formatMoney, PAYMENT_STATUS_META, verificationMethodLabel, MFS_PROVIDER
 import type { MfsProvider } from "@/lib/payments/sms/types";
 import { paymentCourseTitle } from "@/lib/payments/course-title";
 
-export default async function PaymentPage({
-  params,
-}: {
-  params: { paymentId: string };
-}) {
+export default async function PaymentPage(
+  props: {
+    params: Promise<{ paymentId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   // `settings` (a singleton row) doesn't depend on `payment` at all — no

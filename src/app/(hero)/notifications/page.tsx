@@ -15,11 +15,12 @@ const TABS = [
 ] as const;
 
 
-export default async function NotificationsPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function NotificationsPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const tab = TABS.find((t) => t.key === searchParams.tab)?.key ?? "all";
 

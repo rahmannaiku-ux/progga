@@ -9,7 +9,8 @@ import { submitPaymentTxid } from "@/server/services/checkout";
  * service as the website's form: format checks, one payment per TXID, admin and device
  * notification, and matching against SMS the payment device already saw.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

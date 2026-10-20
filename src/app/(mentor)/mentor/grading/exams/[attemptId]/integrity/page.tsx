@@ -16,11 +16,12 @@ import {
  * access rule, and links back to it since grading and integrity review
  * are two views onto the same attempt, not two separate features.
  */
-export default async function InvestigateAttemptPage({
-  params,
-}: {
-  params: { attemptId: string };
-}) {
+export default async function InvestigateAttemptPage(
+  props: {
+    params: Promise<{ attemptId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await requireRole("TEACHER");
 
   const attempt = await db.assessmentAttempt.findUnique({

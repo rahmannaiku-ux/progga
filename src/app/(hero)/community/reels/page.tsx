@@ -9,7 +9,10 @@ export const metadata = { title: "Reels · Community" };
  * Proggaa Reels. `?r=<id>` opens at that reel (a shared link), `?u=<userId>`
  * shows one person's reels, `?create=1` opens "Create reel" straight away.
  */
-export default async function ReelsPage({ searchParams }: { searchParams: { r?: string; u?: string; create?: string } }) {
+export default async function ReelsPage(
+  props: { searchParams: Promise<{ r?: string; u?: string; create?: string }> }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const userId = searchParams.u?.slice(0, 40);
   const scope: FeedScope = userId ? { type: "reels", userId } : { type: "reels" };

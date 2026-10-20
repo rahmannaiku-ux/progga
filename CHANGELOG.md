@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-20 — Next.js 16
+- **Upgraded Next.js 14.2.35 → 16.4.2 and React 18 → 19.2.** Next 14 is end-of-life with unpatched advisories.
+  Builds now use Turbopack. Node 20.9+ is required.
+- `params`, `searchParams`, `cookies()` and `headers()` are now awaited everywhere (the session cookie helpers and
+  `getMissionsBase()` are async).
+- Config: `serverExternalPackages` and `outputFileTracingIncludes` moved out of `experimental`; the `eslint` and
+  `esmExternals` options are gone.
+- ESLint 9 flat config (`eslint.config.mjs`). The new React Compiler lint rules are warnings.
+- The lesson resource uploader uses `uploadthing/client` directly; `@uploadthing/react` (React 18 only) was removed.
+  `next-themes` and the Radix packages were bumped for React 19.
+- `src/middleware.ts` is kept on the Edge runtime. Next 16 calls the `middleware` name deprecated (renamed `proxy`,
+  which runs on Node); rename it in a later change.
+
 ## 2026-10-19 — Apps, chats, groups, reels and more
 Migrations (all additive): `20261019000000_community_comment_likes`, `20261019010000_community_reels`,
 `20261019020000_birthday_sms`, `20261019030000_heartbeat`, `20261019040000_lesson_progress_duration`,

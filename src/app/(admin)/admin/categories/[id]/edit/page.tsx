@@ -5,7 +5,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { CategoryForm } from "@/components/admin-dashboard/category-form";
 
-export default async function EditCategoryPage({ params }: { params: { id: string } }) {
+export default async function EditCategoryPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await requireRole("ADMIN");
 
   const category = await db.category.findUnique({ where: { id: params.id } });

@@ -94,7 +94,7 @@ export async function createAssignment(formData: FormData) {
   });
 
   revalidateMissionPage(`/${data.courseId}/assignments`);
-  redirect(`${getMissionsBase()}/${data.courseId}/assignments`);
+  redirect(`${await getMissionsBase()}/${data.courseId}/assignments`);
 }
 
 export async function deleteAssignment(courseId: string, assignmentId: string) {

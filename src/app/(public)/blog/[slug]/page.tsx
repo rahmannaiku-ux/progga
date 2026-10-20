@@ -5,11 +5,12 @@ import { sanitizeHtml } from "@/lib/sanitize-html";
 import { formatDhakaDate } from "@/lib/timezone";
 import { isSafeDestinationUrl } from "@/lib/config/destinations";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const post = await db.blogPost.findFirst({
     where: { slug: params.slug, status: "PUBLISHED" },
     select: { title: true, excerpt: true, seoTitle: true, seoDescription: true },
@@ -21,11 +22,12 @@ export async function generateMetadata({
   };
 }
 
-export default async function BlogPostPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function BlogPostPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   // Draft/archived posts 404 here exactly like a nonexistent slug —
   // status is never leaked to a visitor who doesn't already have admin
   // access, and a direct link to an unpublished post fails the same

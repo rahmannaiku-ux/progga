@@ -139,7 +139,7 @@ const MAX_TILT = 7;
  * rigged motion (blinks, limbs) would need Rive/Lottie art; these
  * layered whole-body moves are what flat PNG poses can support.
  */
-function useFidgets(enabled: boolean, rootRef: React.RefObject<HTMLElement>) {
+function useFidgets(enabled: boolean, rootRef: React.RefObject<HTMLElement | null>) {
   const [fidget, setFidget] = useState<Fidget | null>(null);
   const [visible, setVisible] = useState(true);
   const clearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,7 +185,7 @@ function useFidgets(enabled: boolean, rootRef: React.RefObject<HTMLElement>) {
  * via CSS variables; the CSS transition does the easing. Touch devices
  * get no tilt — there's no hovering pointer to look at.
  */
-function usePointerTilt(enabled: boolean, rootRef: React.RefObject<HTMLElement>, tiltRef: React.RefObject<HTMLElement>) {
+function usePointerTilt(enabled: boolean, rootRef: React.RefObject<HTMLElement | null>, tiltRef: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const root = rootRef.current;
     const tilt = tiltRef.current;

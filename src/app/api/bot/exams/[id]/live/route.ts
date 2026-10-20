@@ -9,7 +9,8 @@ import { db } from "@/lib/db/client";
  * live exam's detail card open in the bot — same enrollment check as
  * the detail route, kept deliberately thin (no attempt/answer data).
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

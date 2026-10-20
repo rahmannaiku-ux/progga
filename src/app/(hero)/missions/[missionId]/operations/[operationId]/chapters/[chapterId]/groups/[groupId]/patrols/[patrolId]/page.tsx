@@ -31,17 +31,18 @@ import { flattenLessons, getAdjacentLessons } from "@/lib/course-tree";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { formatDhakaDate } from "@/lib/timezone";
 
-export default async function LessonPlayerPage({
-  params,
-}: {
-  params: {
-    missionId: string;
-    operationId: string;
-    chapterId: string;
-    groupId: string;
-    patrolId: string;
-  };
-}) {
+export default async function LessonPlayerPage(
+  props: {
+    params: Promise<{
+      missionId: string;
+      operationId: string;
+      chapterId: string;
+      groupId: string;
+      patrolId: string;
+    }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   // Only the minimal course row + the lesson itself are fetched up

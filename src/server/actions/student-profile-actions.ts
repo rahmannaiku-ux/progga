@@ -92,7 +92,7 @@ export async function confirmPhoneChangeAction(input: { phone: string; otp: stri
  */
 export async function changePasswordAction(input: { currentPassword: string; newPassword: string }) {
   const user = await requireAuth();
-  const token = getSessionCookieToken();
+  const token = await getSessionCookieToken();
   const current = token ? await validateSessionToken(token) : null;
   return changePassword(user.id, current?.session.id, input.currentPassword, input.newPassword);
 }
@@ -101,6 +101,6 @@ export async function changePasswordAction(input: { currentPassword: string; new
 export async function signOutEverywhereAction() {
   const user = await requireAuth();
   await signOutEverywhere(user.id);
-  clearSessionCookie();
+  await clearSessionCookie();
   return { ok: true as const };
 }

@@ -9,7 +9,8 @@ import { db } from "@/lib/db/client";
  * One published Mission with its description, today's price, whether the hero is
  * enrolled, and any payment of theirs for it that is still open.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

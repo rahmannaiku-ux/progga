@@ -5,11 +5,12 @@ import { db } from "@/lib/db/client";
 import { CategoryForm } from "@/components/admin-dashboard/category-form";
 import { CategoryDeleteControl } from "@/components/admin-dashboard/category-delete-control";
 
-export default async function AdminCategoriesPage({
-  searchParams,
-}: {
-  searchParams: { q?: string };
-}) {
+export default async function AdminCategoriesPage(
+  props: {
+    searchParams: Promise<{ q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const q = searchParams.q?.trim();

@@ -57,7 +57,7 @@ export async function submitBugReport(input: z.input<typeof submitSchema>): Prom
     }
   }
 
-  const userAgent = headers().get("user-agent")?.slice(0, 500) ?? null;
+  const userAgent = (await headers()).get("user-agent")?.slice(0, 500) ?? null;
 
   const report = await db.$transaction(async (tx) => {
     const created = await tx.bugReport.create({

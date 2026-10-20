@@ -21,11 +21,12 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-export default async function MyCoursesPage({
-  searchParams,
-}: {
-  searchParams: { filter?: string };
-}) {
+export default async function MyCoursesPage(
+  props: {
+    searchParams: Promise<{ filter?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const filter: TabKey = TABS.some((t) => t.key === searchParams.filter)
     ? (searchParams.filter as TabKey)

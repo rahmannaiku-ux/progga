@@ -8,11 +8,12 @@ import { contactLabel } from "@/lib/contact-label";
 
 const PAGE_SIZE = 25;
 
-export default async function MentorStudentsPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; page?: string };
-}) {
+export default async function MentorStudentsPage(
+  props: {
+    searchParams: Promise<{ q?: string; page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const mentor = await requireRole("TEACHER");
   const isAdmin = mentor.role === "ADMIN" || mentor.role === "SUPER_ADMIN";
   const q = searchParams.q?.trim() ?? "";

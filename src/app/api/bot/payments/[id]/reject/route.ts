@@ -20,7 +20,8 @@ const bodySchema = z.object({
  * notification are identical to the website flow — Telegram input
  * never bypasses the WHERE-guarded status transition.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

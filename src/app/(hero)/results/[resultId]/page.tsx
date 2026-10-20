@@ -15,7 +15,8 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 const COURSE_TITLE = { select: { module: { select: { course: { select: { title: true } } } } } } as const;
 
 /** One attempt's result. `resultId` is the attempt id; only its owner can open it. */
-export default async function ResultPage({ params }: { params: { resultId: string } }) {
+export default async function ResultPage(props: { params: Promise<{ resultId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   const attempt = await db.assessmentAttempt.findUnique({

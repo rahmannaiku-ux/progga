@@ -8,7 +8,8 @@ import { db } from "@/lib/db/client";
  * One Operation (module) with its chapters, class types and Patrols. Each Patrol says
  * whether the hero finished it and whether it is locked for them.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

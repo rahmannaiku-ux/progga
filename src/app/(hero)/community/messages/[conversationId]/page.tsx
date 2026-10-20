@@ -6,7 +6,8 @@ import { getConversation } from "@/server/services/community";
 export const metadata = { title: "Chat · Community" };
 
 /** One direct conversation. Someone who is not one of its two people gets a 404. */
-export default async function ConversationPage({ params }: { params: { conversationId: string } }) {
+export default async function ConversationPage(props: { params: Promise<{ conversationId: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   const conversation = await getConversation(user.id, params.conversationId);
   if (!conversation) notFound();

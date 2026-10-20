@@ -36,7 +36,7 @@ async function latestRelease(): Promise<LatestRelease | null> {
 const mb = (bytes: number | null) => (bytes ? `${(bytes / 1_048_576).toFixed(1)} MB` : null);
 
 export default async function DownloadPage() {
-  const ua = headers().get("user-agent");
+  const ua = (await headers()).get("user-agent");
   const inApp = detectApp(ua);
   const platform = guessPlatform(ua);
   const release = await latestRelease();

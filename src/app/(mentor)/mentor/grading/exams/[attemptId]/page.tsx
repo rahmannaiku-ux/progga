@@ -6,11 +6,12 @@ import { isCourseMentor } from "@/lib/auth/course-access";
 import { GradeAnswerForm } from "@/components/mentor-dashboard/grade-answer-form";
 import { CheckCircle2, XCircle } from "lucide-react";
 
-export default async function GradeAttemptPage({
-  params,
-}: {
-  params: { attemptId: string };
-}) {
+export default async function GradeAttemptPage(
+  props: {
+    params: Promise<{ attemptId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await requireRole("TEACHER");
 
   const attempt = await db.assessmentAttempt.findUnique({

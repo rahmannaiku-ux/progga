@@ -25,11 +25,12 @@ const METHOD_TABS: { key: string; label: string; method?: VerificationMethod }[]
 
 const PAGE_SIZE = 25;
 
-export default async function AdminPaymentsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string; method?: string; page?: string };
-}) {
+export default async function AdminPaymentsPage(
+  props: {
+    searchParams: Promise<{ status?: string; method?: string; page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const statusTab = STATUS_TABS.find((t) => t.key === searchParams.status) ?? STATUS_TABS[0]!;

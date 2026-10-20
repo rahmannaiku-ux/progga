@@ -2,11 +2,12 @@ import { requireRole } from "@/lib/auth/require-role";
 import { UserManagementTable } from "@/components/admin-dashboard/user-management-table";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
-export default async function AdminHeroesPage({
-  searchParams,
-}: {
-  searchParams: { page?: string; q?: string };
-}) {
+export default async function AdminHeroesPage(
+  props: {
+    searchParams: Promise<{ page?: string; q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const admin = await requireRole("ADMIN");
 
   return (

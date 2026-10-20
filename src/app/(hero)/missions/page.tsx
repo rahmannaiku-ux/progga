@@ -20,11 +20,12 @@ const STUDY_GOAL_MINUTES = 30;
 const WEEKLY_LESSON_GOAL = 5;
 const WEEKLY_XP_GOAL = 200;
 
-export default async function MissionsPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function MissionsPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const tab: TabKey = searchParams.tab === "weekly" ? "weekly" : "daily";
 

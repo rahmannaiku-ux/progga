@@ -92,8 +92,8 @@ function Reel({
   const [expanded, setExpanded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const video = useRef<HTMLVideoElement>(null);
-  const tapTimer = useRef<number>();
-  const watchTimer = useRef<number>();
+  const tapTimer = useRef<number | undefined>(undefined);
+  const watchTimer = useRef<number | undefined>(undefined);
 
   // Play when it scrolls into view, pause (and rewind) when it leaves.
   useEffect(() => {

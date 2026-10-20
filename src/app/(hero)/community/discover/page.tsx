@@ -33,7 +33,8 @@ function People({ people }: { people: PersonCardDTO[] }) {
 }
 
 /** Search posts, people and groups; with no search, suggestions. */
-export default async function DiscoverPage({ searchParams }: { searchParams: { q?: string } }) {
+export default async function DiscoverPage(props: { searchParams: Promise<{ q?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const q = (searchParams.q ?? "").trim().slice(0, 80);
   const searching = q.length >= 2;

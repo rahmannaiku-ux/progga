@@ -145,7 +145,7 @@ export async function startAttempt(assessmentId: string): Promise<StartAttemptRe
   // Coarse fingerprint captured once at start, from the request's own
   // User-Agent header (never client-supplied data) — see
   // lib/exam-integrity.ts.
-  const userAgent = headers().get("user-agent") ?? "unknown";
+  const userAgent = (await headers()).get("user-agent") ?? "unknown";
   const sessionFingerprint = buildSessionFingerprint({ userAgent, viewport: "" });
 
   // The count-then-create above is not airtight on its own: two
@@ -605,7 +605,7 @@ export async function checkSessionFingerprint(attemptId: string) {
     return { anomaly: false };
   }
 
-  const userAgent = headers().get("user-agent") ?? "unknown";
+  const userAgent = (await headers()).get("user-agent") ?? "unknown";
   const currentFingerprint = buildSessionFingerprint({ userAgent, viewport: "" });
   if (!attempt.sessionFingerprint || currentFingerprint === attempt.sessionFingerprint) {
     return { anomaly: false };

@@ -7,11 +7,12 @@ import { PaginationControls, parsePageParam } from "@/components/shared/paginati
 
 const ENDED_PAGE_SIZE = 10;
 
-export default async function LiveClassesPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function LiveClassesPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const endedPage = parsePageParam(searchParams.page);
   const { live, upcoming, ended, endedTotal } = await getStudentLiveClasses(user, endedPage);

@@ -44,7 +44,7 @@ async function exitNativeFullscreen(): Promise<void> {
   else if (d.webkitExitFullscreen) await d.webkitExitFullscreen();
 }
 
-export function useFullscreen(ref: RefObject<HTMLElement>) {
+export function useFullscreen(ref: RefObject<HTMLElement | null>) {
   const [isNative, setIsNative] = useState(false);
   const [isPseudo, setIsPseudo] = useState(false);
 

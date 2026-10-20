@@ -7,12 +7,13 @@ import { getMissionsBase } from "@/lib/mission-paths";
 import { createAssessment } from "@/server/actions/assessment-actions";
 import { Badge } from "@/components/ui/badge";
 
-export default async function AssessmentsListPage({
-  params,
-}: {
-  params: { missionId: string };
-}) {
-  const missionsBase = getMissionsBase();
+export default async function AssessmentsListPage(
+  props: {
+    params: Promise<{ missionId: string }>;
+  }
+) {
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({

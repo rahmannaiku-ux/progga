@@ -20,8 +20,8 @@ export type MissionsBase = "/admin/missions" | "/mentor/missions";
  * Purely navigational — every page and action still does its own
  * role/ownership check.
  */
-export function getMissionsBase(): MissionsBase {
-  const pathname = headers().get(PATHNAME_HEADER) ?? "";
+export async function getMissionsBase(): Promise<MissionsBase> {
+  const pathname = (await headers()).get(PATHNAME_HEADER) ?? "";
   return pathname.startsWith("/admin/") ? "/admin/missions" : "/mentor/missions";
 }
 

@@ -11,7 +11,8 @@ import { isCourseMentor } from "@/lib/auth/course-access";
  * is per-assessment, not per-course), so this is a small new read-only
  * aggregation rather than a duplication of existing business logic.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

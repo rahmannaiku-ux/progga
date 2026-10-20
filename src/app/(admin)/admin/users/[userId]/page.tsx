@@ -18,7 +18,8 @@ import { AdminStudentEditor } from "@/components/admin-dashboard/admin-student-e
  * on the list page's UserRowControls so there's still exactly one place those
  * happen.
  */
-export default async function AdminUserDetailPage({ params }: { params: { userId: string } }) {
+export default async function AdminUserDetailPage(props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   await requireRole("ADMIN");
 
   const user = await db.user.findUnique({

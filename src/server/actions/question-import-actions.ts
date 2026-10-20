@@ -80,7 +80,7 @@ export async function parseGoogleDocAction(
     return { error: "Google Docs import isn't configured on this server yet." };
   }
 
-  const encryptedToken = cookies().get("gdocs_access_token")?.value;
+  const encryptedToken = (await cookies()).get("gdocs_access_token")?.value;
   if (!encryptedToken) {
     return { error: "Your Google Docs connection has expired — reconnect and try again." };
   }

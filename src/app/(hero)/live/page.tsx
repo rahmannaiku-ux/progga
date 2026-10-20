@@ -16,11 +16,12 @@ const ENDED_PAGE_SIZE = 10;
  * change once /live/[liveClassId] fully replaces the old patrol-page
  * live experience (see the architecture plan's migration section).
  */
-export default async function LiveRoomDashboardPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function LiveRoomDashboardPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   await requireLiveRoomEnabledOrNotFound(user);
 

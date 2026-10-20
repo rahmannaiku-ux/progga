@@ -20,13 +20,14 @@ import { getConnections, getFeedPage, getProfile } from "@/server/services/commu
  * bio, level, streak, badges and their posts. Never phone, email, grades
  * or enrolments.
  */
-export default async function CommunityProfilePage({
-  params,
-  searchParams,
-}: {
-  params: { userId: string };
-  searchParams: { show?: string; edit?: string };
-}) {
+export default async function CommunityProfilePage(
+  props: {
+    params: Promise<{ userId: string }>;
+    searchParams: Promise<{ show?: string; edit?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await getCurrentUser();
   const profile = await getProfile(user, params.userId);
   if (!profile) notFound();

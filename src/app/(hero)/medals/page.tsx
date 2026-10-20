@@ -17,11 +17,12 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-export default async function MedalsPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function MedalsPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const tab: TabKey = TABS.some((t) => t.key === searchParams.tab) ? (searchParams.tab as TabKey) : "all";
 

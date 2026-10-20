@@ -10,11 +10,12 @@ import { BlogDeleteButton } from "@/components/admin-dashboard/blog-delete-butto
 
 const PAGE_SIZE = 20;
 
-export default async function AdminBlogPage({
-  searchParams,
-}: {
-  searchParams: { page?: string; q?: string; status?: string; category?: string };
-}) {
+export default async function AdminBlogPage(
+  props: {
+    searchParams: Promise<{ page?: string; q?: string; status?: string; category?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const page = parsePageParam(searchParams.page);

@@ -27,7 +27,7 @@ const ROLE_RANK: Record<Role, number> = {
  * this codebase.
  */
 export const getCurrentSessionUser = cache(async (): Promise<User | null> => {
-  const token = getSessionCookieToken();
+  const token = await getSessionCookieToken();
   if (!token) return null;
   const validated = await validateSessionToken(token);
   return validated?.user ?? null;

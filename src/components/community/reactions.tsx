@@ -32,8 +32,8 @@ export function ReactionButton({
 }) {
   const [open, setOpen] = useState(false);
   const [bounce, setBounce] = useState(0);
-  const holdTimer = useRef<number>();
-  const hoverTimer = useRef<number>();
+  const holdTimer = useRef<number | undefined>(undefined);
+  const hoverTimer = useRef<number | undefined>(undefined);
   const held = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 

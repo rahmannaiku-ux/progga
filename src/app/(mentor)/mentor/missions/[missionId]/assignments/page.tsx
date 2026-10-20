@@ -9,12 +9,13 @@ import { formatDhakaDate } from "@/lib/timezone";
 import { ConfirmDeleteButton } from "@/components/mentor-dashboard/confirm-delete-button";
 import { RubricBuilder } from "@/components/mentor-dashboard/rubric-builder";
 
-export default async function AssignmentsListPage({
-  params,
-}: {
-  params: { missionId: string };
-}) {
-  const missionsBase = getMissionsBase();
+export default async function AssignmentsListPage(
+  props: {
+    params: Promise<{ missionId: string }>;
+  }
+) {
+  const params = await props.params;
+  const missionsBase = await getMissionsBase();
   const user = await requireRole("TEACHER");
 
   const course = await db.course.findUnique({

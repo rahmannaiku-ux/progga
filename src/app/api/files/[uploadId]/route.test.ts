@@ -48,7 +48,7 @@ beforeEach(() => {
 
 describe("GET /api/files/[uploadId]", () => {
   it("streams from Drive with a private, long-lived browser cache", async () => {
-    const res = await GET(req(), { params: { uploadId: "up_1" } });
+    const res = await GET(req(), { params: Promise.resolve({ uploadId: "up_1" }) });
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
     expect(res.headers.get("etag")).toBe('"up_1"');
@@ -57,7 +57,7 @@ describe("GET /api/files/[uploadId]", () => {
   });
 
   it("answers a cached revalidation with 304 without calling Drive", async () => {
-    const res = await GET(req({ "if-none-match": '"up_1"' }), { params: { uploadId: "up_1" } });
+    const res = await GET(req({ "if-none-match": '"up_1"' }), { params: Promise.resolve({ uploadId: "up_1" }) });
     expect(res.status).toBe(304);
     expect(streamFromDrive).not.toHaveBeenCalled();
   });
@@ -69,7 +69,7 @@ describe("GET /api/files/[uploadId]", () => {
       contentRange: "bytes 0-1/4",
       contentLength: "2",
     });
-    const res = await GET(req({ range: "bytes=0-1" }), { params: { uploadId: "up_1" } });
+    const res = await GET(req({ range: "bytes=0-1" }), { params: Promise.resolve({ uploadId: "up_1" }) });
     expect(streamFromDrive).toHaveBeenCalledWith("drive_1", { range: "bytes=0-1" });
     expect(res.status).toBe(206);
     expect(res.headers.get("content-range")).toBe("bytes 0-1/4");
@@ -77,7 +77,7 @@ describe("GET /api/files/[uploadId]", () => {
 
   it("still enforces access on private files before touching Drive", async () => {
     uploadFindUnique.mockResolvedValue({ ...AVATAR, context: "CERTIFICATE" });
-    const res = await GET(req(), { params: { uploadId: "up_1" } });
+    const res = await GET(req(), { params: Promise.resolve({ uploadId: "up_1" }) });
     expect(res.status).toBe(403);
     expect(streamFromDrive).not.toHaveBeenCalled();
   });

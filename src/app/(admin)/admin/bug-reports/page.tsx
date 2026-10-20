@@ -10,11 +10,12 @@ import { BugReportControls } from "@/components/admin-dashboard/bug-report-contr
 
 const PAGE_SIZE = 20;
 
-export default async function AdminBugReportsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string; page?: string; open?: string };
-}) {
+export default async function AdminBugReportsPage(
+  props: {
+    searchParams: Promise<{ status?: string; page?: string; open?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const status = BUG_REPORT_STATUSES.includes(searchParams.status as BugReportStatus)

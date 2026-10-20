@@ -16,7 +16,8 @@ export const maxDuration = 60;
  * holds, so the browser can resume after a dropped connection, and the
  * video's address once the last chunk lands.
  */
-export async function POST(req: NextRequest, { params }: { params: { uploadId: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ uploadId: string }> }) {
+  const params = await props.params;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.uploadId)) {
     return NextResponse.json({ error: "Upload not found." }, { status: 404 });
   }

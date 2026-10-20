@@ -10,7 +10,8 @@ import { db } from "@/lib/db/client";
  * hero's progress, and the Patrol to continue with. Content is only listed for a
  * published Mission, and "enrolled" means an active or completed enrolment.
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

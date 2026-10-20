@@ -38,7 +38,8 @@ const BROWSER_CACHE = "private, max-age=31536000, immutable";
  * uploads (including the fallback path) keep using UploadThing's own
  * hosted URL directly and never route through here.
  */
-export async function GET(req: NextRequest, { params }: { params: { uploadId: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ uploadId: string }> }) {
+  const params = await props.params;
   // Upload ids are cuids. Anything else (e.g. a NUL byte, which Postgres
   // rejects with a 500) is simply "not found" without touching the DB.
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.uploadId)) {

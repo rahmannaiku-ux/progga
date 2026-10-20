@@ -4,11 +4,12 @@ import { PaginationControls, parsePageParam } from "@/components/shared/paginati
 
 const PAGE_SIZE = 25;
 
-export default async function AdminAnalyticsPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function AdminAnalyticsPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireRole("ADMIN");
 
   const page = parsePageParam(searchParams.page);

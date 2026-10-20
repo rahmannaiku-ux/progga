@@ -11,7 +11,8 @@ import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
  * a cached one (a website-side role change should apply on the bot
  * immediately, matching src/bot/middleware/auth.ts's own contract).
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const botAuth = requireBotApiKey(req);
   if (!botAuth.ok) return botAuth.error;
 

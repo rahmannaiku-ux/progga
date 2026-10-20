@@ -44,11 +44,12 @@ const STATUS_BADGE: Record<ExamStatus, string> = {
  * (linked below) for active monitoring, not mixed into this
  * management list.
  */
-export default async function ExamsHubPage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function ExamsHubPage(
+  props: {
+    searchParams: Promise<{ page?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await requireRole("TEACHER");
   const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 

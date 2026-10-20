@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing";
+import { uploadFiles } from "@/lib/uploadthing";
 import { attachLessonResource } from "@/server/actions/mission-actions";
 
 export function ResourceUploader({
@@ -15,27 +15,22 @@ export function ResourceUploader({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { startUpload } = useUploadThing("lessonResourceUploader", {
-    onUploadError: (e) => {
-      setBusy(false);
-      setError(e.message);
-    },
-    onClientUploadComplete: async (res) => {
-      try {
-        for (const file of res ?? []) {
-          await attachLessonResource(courseId, lessonId, {
-            title: file.name,
-            url: file.url,
-            type: file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "FILE",
-          });
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to attach file.");
-      } finally {
-        setBusy(false);
+  async function startUpload(files: File[]) {
+    try {
+      const res = await uploadFiles("lessonResourceUploader", { files });
+      for (const file of res) {
+        await attachLessonResource(courseId, lessonId, {
+          title: file.name,
+          url: file.url,
+          type: file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "FILE",
+        });
       }
-    },
-  });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to attach file.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div>

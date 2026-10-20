@@ -10,11 +10,12 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function VerifyCertificateIndexPage({
-  searchParams,
-}: {
-  searchParams: { id?: string };
-}) {
+export default async function VerifyCertificateIndexPage(
+  props: {
+    searchParams: Promise<{ id?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const id = normalizeCertificateNo(searchParams.id ?? "");
   if (id) redirect(certificateVerifyPath(id));
 

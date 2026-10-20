@@ -8,7 +8,8 @@ import { listGroupTopics, listGroups } from "@/server/services/community";
 export const metadata = { title: "Groups · Community" };
 
 /** Study groups: yours, all of them by topic, and a form to start one. */
-export default async function GroupsPage({ searchParams }: { searchParams: { topic?: string } }) {
+export default async function GroupsPage(props: { searchParams: Promise<{ topic?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const topic = (searchParams.topic ?? "").slice(0, 40) || null;
   const [mine, all, topics] = await Promise.all([

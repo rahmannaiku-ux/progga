@@ -20,11 +20,12 @@ import { mediaSrc, mediaViewUrl } from "@/lib/media-url";
  * that flat "everything on one page" layout is what students found
  * overwhelming; each subject is now its own tap.
  */
-export default async function MissionOverviewPage({
-  params,
-}: {
-  params: { missionId: string };
-}) {
+export default async function MissionOverviewPage(
+  props: {
+    params: Promise<{ missionId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   // Cheap existence + enrollment check first — avoids fetching the full

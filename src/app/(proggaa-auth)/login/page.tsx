@@ -5,7 +5,8 @@ import { safeReturnTo } from "@/lib/auth/safe-redirect";
 
 export const metadata = { title: "Sign in — Proggaa" };
 
-export default async function LoginPage({ searchParams }: { searchParams: { returnTo?: string } }) {
+export default async function LoginPage(props: { searchParams: Promise<{ returnTo?: string }> }) {
+  const searchParams = await props.searchParams;
   await redirectIfSignedIn(searchParams.returnTo ? safeReturnTo(searchParams.returnTo) : undefined);
 
   return (

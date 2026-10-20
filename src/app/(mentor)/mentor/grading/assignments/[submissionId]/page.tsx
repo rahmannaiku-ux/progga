@@ -7,11 +7,12 @@ import { AssignmentGradingForm } from "@/components/mentor-dashboard/assignment-
 
 type Rubric = { criterion: string; points: number }[];
 
-export default async function GradeSubmissionPage({
-  params,
-}: {
-  params: { submissionId: string };
-}) {
+export default async function GradeSubmissionPage(
+  props: {
+    params: Promise<{ submissionId: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await requireRole("TEACHER");
 
   const submission = await db.assignmentSubmission.findUnique({
