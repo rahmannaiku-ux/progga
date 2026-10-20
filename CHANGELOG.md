@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-20 - Reel posting switch
+- New feature flag **Posting reels** (`reel_posting`, Admin -> Control Center -> Feature flags, on by default). Off hides
+  every Create reel button and refuses new reel uploads and reel posts on the server (`startReelUpload`, `createPost`,
+  `/api/reels/upload/*`). Watching, liking and commenting on existing reels is never affected.
+
 ## 2026-10-20 — Next.js 16
 - **Upgraded Next.js 14.2.35 → 16.4.2 and React 18 → 19.2.** Next 14 is end-of-life with unpatched advisories.
   Builds now use Turbopack. Node 20.9+ is required.

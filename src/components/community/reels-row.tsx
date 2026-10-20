@@ -8,10 +8,21 @@ function views(n: number) {
 }
 
 /**
- * The "Reels" row at the top of the feed: a "Create reel" card, then the
- * newest reels as tall cards that open the full-screen player.
+ * The "Reels" row at the top of the feed: a "Create reel" card (when the
+ * "reel_posting" switch is on), then the newest reels as tall cards that
+ * open the full-screen player.
  */
-export function ReelsRow({ reels, me }: { reels: PostDTO[]; me: { name: string; avatarUrl: string | null } }) {
+export function ReelsRow({
+  reels,
+  me,
+  canCreate,
+}: {
+  reels: PostDTO[];
+  me: { name: string; avatarUrl: string | null };
+  canCreate: boolean;
+}) {
+  // Nothing to watch and nothing to create: leave the row out.
+  if (!canCreate && reels.length === 0) return null;
   return (
     <section className="comic-panel bg-surface py-3 max-sm:-mx-4 max-sm:!rounded-none max-sm:border-x-0" aria-label="Reels">
       <div className="flex items-center justify-between px-3 sm:px-4">
@@ -25,22 +36,24 @@ export function ReelsRow({ reels, me }: { reels: PostDTO[]; me: { name: string; 
         )}
       </div>
       <ul className="mt-3 flex snap-x gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
-        <li className="w-28 shrink-0 snap-start">
-          <Link
-            href="/community/reels?create=1"
-            className="flex aspect-[9/16] flex-col overflow-hidden rounded-xl border border-border/25 bg-muted transition-transform active:scale-[0.98]"
-          >
-            <span className="relative flex flex-1 items-center justify-center">
-              <Avatar fallbackClassName="bg-primary/15 text-2xl text-primary" src={me.avatarUrl} name={me.name} size={56} />
-            </span>
-            <span className="relative flex flex-col items-center bg-surface pb-2 pt-5">
-              <span className="absolute -top-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground ring-4 ring-surface">
-                <Plus className="h-5 w-5" aria-hidden="true" />
+        {canCreate && (
+          <li className="w-28 shrink-0 snap-start">
+            <Link
+              href="/community/reels?create=1"
+              className="flex aspect-[9/16] flex-col overflow-hidden rounded-xl border border-border/25 bg-muted transition-transform active:scale-[0.98]"
+            >
+              <span className="relative flex flex-1 items-center justify-center">
+                <Avatar fallbackClassName="bg-primary/15 text-2xl text-primary" src={me.avatarUrl} name={me.name} size={56} />
               </span>
-              <span className="text-xs font-bold text-foreground">Create reel</span>
-            </span>
-          </Link>
-        </li>
+              <span className="relative flex flex-col items-center bg-surface pb-2 pt-5">
+                <span className="absolute -top-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground ring-4 ring-surface">
+                  <Plus className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-bold text-foreground">Create reel</span>
+              </span>
+            </Link>
+          </li>
+        )}
         {reels.map((r) => (
           <li key={r.id} className="w-28 shrink-0 snap-start">
             <Link

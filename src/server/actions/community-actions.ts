@@ -68,6 +68,13 @@ async function paused(user: { id: string; role: string }): Promise<boolean> {
   return !(await isFeatureEnabled("community", { userId: user.id, role: user.role }));
 }
 
+const REELS_OFF = "Posting reels is switched off for now.";
+
+/** The admin "reel_posting" switch: new reels only, watching existing ones is never affected. */
+async function reelsOff(user: { id: string; role: string }): Promise<boolean> {
+  return !(await isFeatureEnabled("reel_posting", { userId: user.id, role: user.role }));
+}
+
 type Limit = "post" | "comment" | "react" | "report" | "group" | "follow" | "lookup" | "username";
 const LIMIT_KIND: Record<Limit, "write" | "api" | "strict"> = {
   lookup: "api",
@@ -245,6 +252,7 @@ export async function createPost(input: unknown): Promise<Result<{ postId: strin
 
   let videoUploadId: string | null = null;
   if (data.kind === "REEL") {
+    if (await reelsOff(user)) return fail(REELS_OFF);
     // The video must be this user's own, fully uploaded reel file, not yet used by another reel.
     const uploadId = data.videoUrl!.split("/").pop()!;
     const video = await db.upload.findFirst({
@@ -368,6 +376,7 @@ export async function startReelUpload(input: {
 }): Promise<Result<{ uploadId: string; chunkBytes: number }>> {
   const user = await requireActiveUser();
   if (await paused(user)) return fail(PAUSED);
+  if (await reelsOff(user)) return fail(REELS_OFF);
   if (await limited("post", user.id)) return fail(TOO_FAST);
 
   const type = String(input?.type ?? "");

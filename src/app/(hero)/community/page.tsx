@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/community/rules";
 import { Feed } from "@/components/community/feed";
@@ -29,12 +30,13 @@ export default async function CommunityFeedPage(props: { searchParams: Promise<{
   const user = await getCurrentUser();
   const tab = TABS.find((t) => t.key === searchParams.tab) ?? TABS[0];
 
-  const [initial, sidebar, helpers, suggestedGroups, reels] = await Promise.all([
+  const [initial, sidebar, helpers, suggestedGroups, reels, canPostReels] = await Promise.all([
     getFeedPage(user, tab.scope),
     getSidebar(user),
     getTopHelpers(),
     listGroups(user, { take: 8 }),
     tab.key === "for-you" ? getFeedPage(user, { type: "reels" }) : null,
+    isFeatureEnabled("reel_posting", { userId: user.id, role: user.role }),
   ]);
   const me = { name: displayName(user), avatarUrl: user.avatarUrl };
 
@@ -64,8 +66,8 @@ export default async function CommunityFeedPage(props: { searchParams: Promise<{
           scope={tab.scope}
           initial={initial}
           me={me}
-          composer={{ me }}
-          afterComposer={reels ? <ReelsRow reels={reels.posts} me={me} /> : undefined}
+          composer={{ me, reels: canPostReels }}
+          afterComposer={reels ? <ReelsRow reels={reels.posts} me={me} canCreate={canPostReels} /> : undefined}
           suggestions={{ people: sidebar.people, groups: suggestedGroups.filter((g) => !g.myRole) }}
           emptyTitle={EMPTY[tab.key].title}
           emptyBody={EMPTY[tab.key].body}

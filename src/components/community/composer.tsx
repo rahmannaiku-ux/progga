@@ -54,6 +54,8 @@ export type ComposerConfig = {
   /** Post into this group instead of the user's own timeline. */
   groupId?: string;
   groupName?: string;
+  /** Show the Reel shortcut (the admin "reel_posting" switch). */
+  reels: boolean;
 };
 
 /**
@@ -170,12 +172,14 @@ export function Composer({ config, onCreated }: { config: ComposerConfig; onCrea
           >
             <ImagePlus className="h-5 w-5 text-accent" aria-hidden="true" /> Photo
           </button>
-          <Link
-            href="/community/reels?create=1"
-            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted"
-          >
-            <Clapperboard className="h-5 w-5 text-danger" aria-hidden="true" /> Reel
-          </Link>
+          {config.reels && (
+            <Link
+              href="/community/reels?create=1"
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted"
+            >
+              <Clapperboard className="h-5 w-5 text-danger" aria-hidden="true" /> Reel
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => start("QUESTION")}

@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { displayName } from "@/lib/community/rules";
 import { ReelsViewer } from "@/components/community/reels-viewer";
 import { getFeedPage, getPost, type FeedScope } from "@/server/services/community";
@@ -17,9 +18,10 @@ export default async function ReelsPage(
   const userId = searchParams.u?.slice(0, 40);
   const scope: FeedScope = userId ? { type: "reels", userId } : { type: "reels" };
 
-  const [page, first] = await Promise.all([
+  const [page, first, canCreate] = await Promise.all([
     getFeedPage(user, scope),
     searchParams.r ? getPost(user, searchParams.r.slice(0, 40)) : null,
+    isFeatureEnabled("reel_posting", { userId: user.id, role: user.role }),
   ]);
   const start = first?.kind === "REEL" && (!userId || first.author.id === userId) ? first : null;
   const reels = start ? [start, ...page.posts.filter((p) => p.id !== start.id)] : page.posts;
@@ -31,7 +33,8 @@ export default async function ReelsPage(
       initial={reels}
       initialCursor={page.nextCursor}
       me={{ name: displayName(user), avatarUrl: user.avatarUrl }}
-      openCreate={searchParams.create === "1"}
+      canCreate={canCreate}
+      openCreate={canCreate && searchParams.create === "1"}
     />
   );
 }

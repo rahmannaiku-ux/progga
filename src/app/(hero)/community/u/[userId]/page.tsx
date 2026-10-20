@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Bookmark, CalendarDays, Camera, Clapperboard, Flame, Lock, Pencil, Play, Zap } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/community/rules";
 import { formatDhakaDate } from "@/lib/timezone";
@@ -34,10 +35,11 @@ export default async function CommunityProfilePage(
 
   const show =
     searchParams.show === "followers" || searchParams.show === "following" || searchParams.show === "reels" ? searchParams.show : "posts";
-  const [initial, connections, reels] = await Promise.all([
+  const [initial, connections, reels, canPostReels] = await Promise.all([
     show === "posts" && profile.canSeePosts ? getFeedPage(user, { type: "profile", userId: profile.id }) : null,
     (show === "followers" || show === "following") && profile.canSeePosts ? getConnections(user, profile.id, show) : null,
     show === "reels" && profile.canSeePosts ? getFeedPage(user, { type: "reels", userId: profile.id }) : null,
+    isFeatureEnabled("reel_posting", { userId: user.id, role: user.role }),
   ]);
   const me = { name: displayName(user), avatarUrl: user.avatarUrl };
   const base = `/community/u/${profile.id}`;
@@ -192,7 +194,7 @@ export default async function CommunityProfilePage(
             </div>
           ) : reels ? (
             <section className="comic-panel bg-surface p-1.5" aria-label="Reels">
-              {profile.isSelf && (
+              {profile.isSelf && canPostReels && (
                 <Link
                   href="/community/reels?create=1"
                   className="mb-1.5 flex h-11 items-center justify-center gap-2 rounded-xl bg-muted text-sm font-bold text-foreground hover:bg-muted/70"
@@ -229,7 +231,7 @@ export default async function CommunityProfilePage(
               scope={{ type: "profile", userId: profile.id }}
               initial={initial}
               me={me}
-              composer={profile.isSelf ? { me } : undefined}
+              composer={profile.isSelf ? { me, reels: canPostReels } : undefined}
               emptyTitle={profile.isSelf ? "You haven't posted yet" : "No posts yet"}
               emptyBody={profile.isSelf ? "Share something with the community." : `${profile.name} hasn't posted anything yet.`}
             />

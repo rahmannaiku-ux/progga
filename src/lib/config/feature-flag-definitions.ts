@@ -54,6 +54,14 @@ export const FEATURE_FLAG_DEFINITIONS = {
     description: "Allow students to post in mission-level and course-level discussion threads.",
     defaultEnabled: true,
   },
+  reel_posting: {
+    key: "reel_posting",
+    category: "Core",
+    label: "Posting reels",
+    description:
+      "Allow posting new reels in the Community (the Create reel buttons, video uploads and publishing). Existing reels can still be watched, liked and commented on while this is off.",
+    defaultEnabled: true,
+  },
   live_room: {
     key: "live_room",
     category: "Live",

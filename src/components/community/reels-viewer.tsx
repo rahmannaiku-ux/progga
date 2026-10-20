@@ -374,12 +374,15 @@ export function ReelsViewer({
   initial,
   initialCursor,
   me,
+  canCreate,
   openCreate,
 }: {
   scope: FeedScope;
   initial: PostDTO[];
   initialCursor: string | null;
   me: Viewer;
+  /** The admin "reel_posting" switch: hides every way to create a reel. */
+  canCreate: boolean;
   openCreate?: boolean;
 }) {
   const router = useRouter();
@@ -497,14 +500,18 @@ export function ReelsViewer({
           <ArrowLeft className="h-6 w-6" aria-hidden="true" />
         </Link>
         <h1 className="font-display text-lg font-extrabold drop-shadow">Reels</h1>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          aria-label="Create a reel"
-          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/10"
-        >
-          <Camera className="h-6 w-6" aria-hidden="true" />
-        </button>
+        {canCreate ? (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            aria-label="Create a reel"
+            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/10"
+          >
+            <Camera className="h-6 w-6" aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="h-11 w-11" aria-hidden="true" />
+        )}
       </header>
 
       <div
@@ -539,10 +546,14 @@ export function ReelsViewer({
               <Play className="ml-1 h-10 w-10" aria-hidden="true" />
             </span>
             <p className="font-display text-xl font-extrabold">No reels yet</p>
-            <p className="text-sm text-white/70">Share a short video: a study tip, a quick explanation, your desk setup.</p>
-            <button type="button" onClick={() => setCreating(true)} className="comic-btn h-11 bg-primary px-6 text-sm font-bold text-primary-foreground">
-              Create the first reel
-            </button>
+            {canCreate && (
+              <>
+                <p className="text-sm text-white/70">Share a short video: a study tip, a quick explanation, your desk setup.</p>
+                <button type="button" onClick={() => setCreating(true)} className="comic-btn h-11 bg-primary px-6 text-sm font-bold text-primary-foreground">
+                  Create the first reel
+                </button>
+              </>
+            )}
           </div>
         )}
         {cursor && (
@@ -634,7 +645,7 @@ export function ReelsViewer({
         )}
       </Sheet>
 
-      <ReelComposer open={creating} onOpenChange={setCreating} onCreated={(id) => void created(id)} />
+      {canCreate && <ReelComposer open={creating} onOpenChange={setCreating} onCreated={(id) => void created(id)} />}
     </div>
   );
 }

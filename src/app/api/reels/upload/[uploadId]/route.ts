@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
 import { getCurrentSessionUser } from "@/lib/auth/require-auth";
+import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import { REEL_CHUNK_BYTES } from "@/lib/community/rules";
 import { putResumableChunk } from "@/lib/storage/google-drive";
 import { matchesSignature } from "@/lib/storage/limits";
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ uploadId
   }
   const user = await getCurrentSessionUser();
   if (!user || !user.isActive || user.isSuspended) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
+  if (!(await isFeatureEnabled("reel_posting", { userId: user.id, role: user.role }))) {
+    return NextResponse.json({ error: "Posting reels is switched off for now." }, { status: 403 });
+  }
 
   const upload = await db.upload.findUnique({
     where: { id: params.uploadId },

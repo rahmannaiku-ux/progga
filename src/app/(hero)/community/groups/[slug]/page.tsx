@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Globe, Lock, ShieldCheck, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isFeatureEnabled } from "@/lib/config/feature-flags";
 import {
   canManageGroup,
   canModerateGroup,
@@ -35,10 +36,11 @@ export default async function GroupPage(props: { params: Promise<{ slug: string 
   const canSee = canSeeGroupContent({ viewerRole: user.role, privacy: group.privacy, membership: group.myRole });
   const canManage = canManageGroup({ viewerRole: user.role, membership: group.myRole });
   const canModerate = canModerateGroup({ viewerRole: user.role, membership: group.myRole });
-  const [initial, members, requests] = await Promise.all([
+  const [initial, members, requests, canPostReels] = await Promise.all([
     canSee ? getFeedPage(user, { type: "group", groupId: group.id }) : null,
     canSee ? listGroupMembers(group.id) : [],
     canModerate && group.privacy === "PRIVATE" ? listJoinRequests(group.id) : [],
+    isFeatureEnabled("reel_posting", { userId: user.id, role: user.role }),
   ]);
   const me = { name: displayName(user), avatarUrl: user.avatarUrl };
 
@@ -101,7 +103,7 @@ export default async function GroupPage(props: { params: Promise<{ slug: string 
               scope={{ type: "group", groupId: group.id }}
               initial={initial ?? { posts: [], nextCursor: null }}
               me={me}
-              composer={group.myRole ? { me, groupId: group.id, groupName: group.name } : undefined}
+              composer={group.myRole ? { me, groupId: group.id, groupName: group.name, reels: canPostReels } : undefined}
               emptyTitle="No posts in this group yet"
               emptyBody={group.myRole ? "Start the first discussion." : "Join to start the first discussion."}
             />
