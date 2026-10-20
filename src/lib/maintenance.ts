@@ -3,9 +3,9 @@ import { getSiteSettingsRow } from "@/lib/site-branding";
 
 /**
  * Checked at the layout level (Node runtime, same DB the rest of the app
- * uses) rather than in `middleware.ts`, which runs on the Edge runtime
- * and isn't a safe place to add a Prisma call — see the RBAC comment in
- * middleware.ts for the same reasoning applied to role checks.
+ * uses) rather than in `proxy.ts`, which runs before every request and
+ * deliberately makes no Prisma calls — see the RBAC comment in proxy.ts
+ * for the same reasoning applied to role checks.
  *
  * Admins/super-admins always bypass maintenance mode so there's always a
  * way to turn it back off; sign-in stays reachable since the auth

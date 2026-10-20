@@ -4,8 +4,8 @@ import { SESSION_COOKIE_NAME, SESSION_TTL_DAYS } from "@/lib/auth/session-cookie
 import { legacyHostRedirect } from "@/lib/site-url";
 
 // Kept in sync with PATHNAME_HEADER in src/lib/mission-paths.ts (not
-// imported: that module pulls in next/headers, which Edge middleware
-// doesn't need).
+// imported: that module pulls in next/headers, which the proxy doesn't
+// need).
 const PATHNAME_HEADER = "x-proggaa-pathname";
 
 /** The tag the Proggaa apps add to their user agent (kept in sync with detectApp in src/lib/apps.ts). */
@@ -14,9 +14,8 @@ const APP_USER_AGENT = /ProggaaApp\/Android\/|ProggaaDesktop\//;
 /**
  * Route-group based RBAC.
  *
- * This middleware runs on the Edge
- * runtime, which cannot load the Prisma Client — so, same division of
- * labor as before, just with a different boundary: this layer only
+ * This proxy (Next.js's request middleware) runs before every request,
+ * so it deliberately never loads the Prisma Client: this layer only
  * checks "is there a session cookie that could plausibly be valid" (a
  * presence/shape check, no DB call). It does NOT verify the session is
  * unrevoked/unexpired, and it does NOT know the caller's role. Real
@@ -126,10 +125,9 @@ function isBotAuthRoute(pathname: string): boolean {
 
 /**
  * SHA-256 of the raw session cookie, used only as a rate-limit
- * identifier — never as a substitute for real session validation. This
- * is Edge-safe (Web Crypto's SubtleCrypto is available in the Edge
- * runtime, unlike Node's `crypto` module) and avoids ever putting the
- * raw cookie value itself into a Redis key / rate-limiter log.
+ * identifier — never as a substitute for real session validation. It
+ * avoids ever putting the raw cookie value itself into a Redis key /
+ * rate-limiter log.
  */
 async function hashForRateLimit(value: string): Promise<string> {
   const data = new TextEncoder().encode(value);
@@ -194,7 +192,7 @@ function dinaaPage(req: NextRequest): NextResponse | null {
   return res;
 }
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
 

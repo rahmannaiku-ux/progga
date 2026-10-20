@@ -80,9 +80,8 @@ const fallbackBuckets = new Map<string, { count: number; resetAt: number }>();
 
 // Drop expired entries opportunistically (on use) so this Map can't grow
 // unbounded. Deliberately NOT a module-scope setInterval: this file is
-// imported by middleware.ts, which runs on the Edge runtime where global
-// timers aren't reliable, and a timer would also keep serverless
-// instances alive for nothing.
+// imported by proxy.ts, and a timer would keep serverless instances
+// alive for nothing.
 const PRUNE_EVERY_N_CALLS = 500;
 let callsSincePrune = 0;
 function pruneExpiredBuckets(now: number) {
@@ -136,7 +135,7 @@ export async function checkRateLimit(kind: LimiterKind, identifier: string) {
 /**
  * Without Upstash, the limits that guard sign-in, codes and money are kept in
  * the database (src/lib/db/client.ts registers the store, in the Node runtime
- * only, since this file also runs in the Edge middleware), so they hold across
+ * only, since this file also runs in src/proxy.ts), so they hold across
  * every serverless instance: an in-memory window per instance would let
  * someone guessing passwords or codes multiply their attempts by the number of
  * instances.

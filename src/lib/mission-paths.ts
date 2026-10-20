@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 /**
- * Request header the middleware stamps with the page's pathname
+ * Request header src/proxy.ts stamps with the page's pathname
  * (overwriting anything a client sent). Server actions POST to the page
  * URL, so inside an action it's the page the action was fired from.
  */

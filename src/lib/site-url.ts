@@ -1,7 +1,7 @@
 /**
  * The site's own address, in one place. Everything that needs an absolute
  * URL (metadata, sitemap, robots, SMS and certificate links) reads it from
- * here. No imports on purpose: the Edge middleware uses this file too.
+ * here. No imports on purpose: src/proxy.ts uses this file too.
  */
 
 /** The one canonical production origin: https, apex host, no trailing slash. */

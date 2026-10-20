@@ -105,7 +105,7 @@ prisma/
   manual-migrations/     # historical hand-written SQL (see its README)
   seed.ts
 src/
-  middleware.ts          # Edge: public-route list, session-cookie presence check, per-IP API rate limit
+  proxy.ts               # Request proxy: public-route list, session-cookie presence check, per-IP API rate limit
   app/
     (public)/            # marketing site + course catalog, no login
     (proggaa-auth)/      # /login, /register, /forgot-password
@@ -172,7 +172,7 @@ docs/                    # deeper design docs + archived build history
 - **Money** is stored as integers in poisha (`*Cents` columns = 1/100 taka). Display with `formatMoney()` from `src/lib/payments/format.ts`. Prices are always recomputed on the server.
 - **Dates:** use only the helpers in `src/lib/timezone.ts` (see below). Never use `getHours()` / `toLocaleString()` on a date a person will read.
 - **Schema changes:** edit `prisma/schema.prisma`, then run `npm run db:migrate -- --name <what_changed>` and commit the generated folder under `prisma/migrations/`. Don't use `db push` against a shared or production DB. When existing rows need data moved, hand-edit the generated SQL (use `--create-only` first).
-- **New public route?** Add it to `PUBLIC_ROUTE_PATTERNS` in `src/middleware.ts`, or signed-out visitors get redirected to `/login`.
+- **New public route?** Add it to `PUBLIC_ROUTE_PATTERNS` in `src/proxy.ts`, or signed-out visitors get redirected to `/login`.
 - **New feature switch?** Add it to `src/lib/config/feature-flag-definitions.ts` and check it with `isFeatureEnabled(key)`. Current flags: `registration`, `course_purchases`, `exams`, `devtools_protection`, `community`, `live_room` (default off), `ai_question_generator` (default off).
 - **Tests** sit next to the code as `*.test.ts` and cover pure logic only. Put business rules in a pure function in `lib/` so they can be tested.
 

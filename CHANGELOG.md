@@ -10,8 +10,8 @@
 - ESLint 9 flat config (`eslint.config.mjs`). The new React Compiler lint rules are warnings.
 - The lesson resource uploader uses `uploadthing/client` directly; `@uploadthing/react` (React 18 only) was removed.
   `next-themes` and the Radix packages were bumped for React 19.
-- `src/middleware.ts` is kept on the Edge runtime. Next 16 calls the `middleware` name deprecated (renamed `proxy`,
-  which runs on Node); rename it in a later change.
+- `src/middleware.ts` is now `src/proxy.ts`, Next 16's name for it. It runs on Node instead of Edge; its logic is
+  unchanged and it still makes no database calls.
 
 ## 2026-10-19 — Apps, chats, groups, reels and more
 Migrations (all additive): `20261019000000_community_comment_likes`, `20261019010000_community_reels`,
