@@ -160,38 +160,6 @@ function withRefreshedSession(req: NextRequest, res: NextResponse): NextResponse
   return res;
 }
 
-/**
- * /dinaa: a private, static birthday page that is not part of this app or
- * this (public) repository. It is deployed on its own and its address is
- * only in the DINAA_ORIGIN environment variable; this forwards /dinaa/* to
- * it. Until DINAA_UNLOCK only the page's countdown is served: the page
- * itself, its photos and its song answer 404 before that moment.
- */
-const DINAA_UNLOCK = Date.parse(process.env.DINAA_UNLOCK ?? "2026-10-19T00:00:00+06:00");
-
-function dinaaPage(req: NextRequest): NextResponse | null {
-  const { pathname, search } = req.nextUrl;
-  if (pathname !== "/dinaa" && !pathname.startsWith("/dinaa/")) return null;
-  const origin = process.env.DINAA_ORIGIN?.replace(/\/+$/, "");
-  if (!origin) return new NextResponse("Not found", { status: 404 });
-  // The owner can look at the unlocked page early with ?preview=<DINAA_PREVIEW_KEY>; a cookie on /dinaa then
-  // carries that through to the photos and the song. Without the variable set there is no preview at all.
-  const key = process.env.DINAA_PREVIEW_KEY;
-  const asked = req.nextUrl.searchParams.get("preview");
-  const previewing = !!key && (asked === key || req.cookies.get("dinaa_preview")?.value === key);
-  const locked = !previewing && Date.now() < DINAA_UNLOCK;
-  let rest = pathname.slice("/dinaa".length).replace(/^\/+/, "");
-  if (rest === "" || rest === "index.html") rest = locked ? "countdown.html" : "index.html";
-  else if (locked && /^assets\/(photos|audio)\//.test(rest)) return new NextResponse("Not found", { status: 404 });
-  const res = NextResponse.rewrite(new URL(`${origin}/${rest}${search}`));
-  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, noimageindex");
-  if (rest.endsWith(".html")) res.headers.set("Cache-Control", "no-store");
-  if (key && asked === key) {
-    res.cookies.set("dinaa_preview", key, { httpOnly: true, secure: true, sameSite: "lax", path: "/dinaa", maxAge: 60 * 60 * 24 });
-  }
-  return res;
-}
-
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
@@ -200,9 +168,6 @@ export default async function proxy(req: NextRequest) {
   // one. API routes are left where they are (see legacyHostRedirect).
   const canonicalUrl = legacyHostRedirect(req.headers.get("host"), req.method, pathname, req.nextUrl.search);
   if (canonicalUrl) return NextResponse.redirect(canonicalUrl, 308);
-
-  const dinaa = dinaaPage(req);
-  if (dinaa) return dinaa;
 
   // The Windows and Android apps (src/lib/apps.ts) never show the marketing
   // landing page: their home is the login screen, then the student side.
@@ -256,5 +221,5 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)", "/dinaa/:path*"],
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 };
