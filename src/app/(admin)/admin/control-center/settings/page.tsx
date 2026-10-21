@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/require-role";
-import { SETTING_DEFINITIONS, SETTING_CATEGORIES, type SettingKey } from "@/lib/config/setting-definitions";
+import { SETTING_DEFINITIONS, SETTING_CATEGORIES, settingDefinitionForClient, type SettingKey } from "@/lib/config/setting-definitions";
 import { getSettingWithMeta } from "@/lib/config/settings-service";
 import { SettingRow } from "@/components/admin-dashboard/setting-row";
 
@@ -30,7 +30,7 @@ export default async function ControlCenterSettingsPage() {
             <h2 className="mb-3 font-display text-sm font-bold text-foreground">{category}</h2>
             <div className="space-y-3">
               {inCategory.map((def) => (
-                <SettingRow key={def.key} def={def} meta={metaByKey.get(def.key)!} />
+                <SettingRow key={def.key} def={settingDefinitionForClient(def)} meta={metaByKey.get(def.key)!} />
               ))}
             </div>
           </div>

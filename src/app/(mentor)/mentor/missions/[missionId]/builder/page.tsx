@@ -100,15 +100,16 @@ export default async function MissionBuilderPage(
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-semibold text-foreground">
+      {/* min-w-0 + break-all: a long slug can't push the Publish button off a phone screen */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="break-words font-display text-2xl font-semibold text-foreground">
               {course.title}
             </h1>
             <CourseStatusBadge status={course.status} />
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">/{course.slug}</p>
+          <p className="mt-1 break-all text-sm text-muted-foreground">/{course.slug}</p>
         </div>
         <PublishToggle courseId={course.id} status={course.status} />
       </div>

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, RotateCcw, AlertCircle } from "lucide-react";
 import { updateSettingAction } from "@/server/actions/control-center-actions";
 import { formatDhakaDate } from "@/lib/timezone";
-import type { SettingDefinition } from "@/lib/config/setting-definitions";
+import type { ClientSettingDefinition } from "@/lib/config/setting-definitions";
 import type { SettingWithMeta } from "@/lib/config/settings-service";
 
 function toInputString(type: string, value: unknown): string {
@@ -17,7 +17,7 @@ export function SettingRow({
   def,
   meta,
 }: {
-  def: SettingDefinition;
+  def: ClientSettingDefinition;
   meta: SettingWithMeta<unknown>;
 }) {
   const [value, setValue] = useState(toInputString(def.type, meta.effective));

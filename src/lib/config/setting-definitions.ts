@@ -36,6 +36,16 @@ export type SettingDefinition<T = unknown> = {
   validate?: (value: T) => boolean;
 };
 
+/** What a client component may receive: everything but `validate`. React can't send a function to the browser, and
+ * passing one made the Control Center settings page fail to render its Apps section. The server still validates on save. */
+export type ClientSettingDefinition = Omit<SettingDefinition, "validate">;
+
+export function settingDefinitionForClient(def: SettingDefinition): ClientSettingDefinition {
+  const plain: SettingDefinition = { ...def };
+  delete plain.validate;
+  return plain;
+}
+
 export const SETTING_DEFINITIONS = {
   "apps.minVersionAndroid": {
     key: "apps.minVersionAndroid",

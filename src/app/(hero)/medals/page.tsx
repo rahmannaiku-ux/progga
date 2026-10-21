@@ -71,7 +71,8 @@ export default async function MedalsPage(
         ))}
       </StaggerItem>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* grid-cols-1 = minmax(0, 1fr): without it a long mission title made the column wider than a phone screen */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {showCompleted &&
             certificates.map((c) => (
