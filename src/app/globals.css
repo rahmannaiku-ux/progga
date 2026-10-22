@@ -584,14 +584,20 @@
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 999px;
-  border: 2px solid hsl(var(--background));
+  /* a see-through gap, so the thumb looks right on any panel (the purple sidebar too) */
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.5);
 }
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--border)) transparent;
+/* Firefox only: in Chrome/Edge these standard properties would override the
+   rules above and bring back the Windows arrow buttons (seen in the sidebar). */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
 }
 
 /* Placeholders: the browser default (#9ca3af) is ~2.5:1 on white cards. */
@@ -1135,6 +1141,32 @@ html.proggaa-app :is(a, button, [role="button"], [role="tab"]) {
 html.proggaa-app a[href="/download"],
 html.proggaa-app .app-hide {
   display: none !important;
+}
+
+/* The Windows app (1.1.1+, components/shared/desktop-window-controls.tsx) has no Windows
+   title bar: the page goes to the top edge. The top bar and the sidebar's logo move the
+   window (double-click maximises) while their buttons and fields keep working, and the top
+   bar keeps clear of the window buttons in the corner. A thin strip along the top moves the
+   window on pages without a top bar. */
+html.proggaa-frameless :is([data-app-topbar], [data-app-drag]) {
+  -webkit-app-region: drag;
+}
+html.proggaa-frameless :is([data-app-topbar], [data-app-drag])
+  :is(a, button, input, select, textarea, label, [role="button"], [role="combobox"], [tabindex]),
+html.proggaa-frameless [data-window-controls],
+html.proggaa-frameless [role="dialog"] {
+  -webkit-app-region: no-drag;
+}
+html.proggaa-frameless [data-app-topbar] {
+  padding-right: calc(138px + 0.75rem);
+}
+html.proggaa-frameless body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 6px;
+  z-index: 99;
+  -webkit-app-region: drag;
 }
 
 /* The Android app has its own native tab bar, so the site's bottom bar and the

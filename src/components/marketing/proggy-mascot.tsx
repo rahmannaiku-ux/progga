@@ -58,14 +58,14 @@ const POSE_FOR_STATE: Record<MascotState, Pose> = {
  * just a `w-full` and lets height follow (the landing-page hero does
  * the latter). */
 const POSE_ASSET: Record<Pose, { src: string; w: number; h: number }> = {
-  welcome: { src: "/character/poses/welcome.png", w: 427, h: 585 },
-  "thumbs-up": { src: "/character/poses/thumbs-up.png", w: 295, h: 587 },
-  excited: { src: "/character/poses/excited.png", w: 474, h: 675 },
-  thinking: { src: "/character/poses/thinking.png", w: 307, h: 589 },
-  sad: { src: "/character/poses/sad.png", w: 305, h: 432 },
-  working: { src: "/character/poses/working.png", w: 334, h: 434 },
-  pointing: { src: "/character/poses/pointing.png", w: 285, h: 425 },
-  waving: { src: "/character/poses/waving.png", w: 304, h: 431 },
+  welcome: { src: "/character/proggy/welcome.png", w: 431, h: 587 },
+  "thumbs-up": { src: "/character/proggy/thumbs-up.png", w: 295, h: 588 },
+  excited: { src: "/character/proggy/excited.png", w: 475, h: 676 },
+  thinking: { src: "/character/proggy/thinking.png", w: 284, h: 586 },
+  sad: { src: "/character/proggy/sad.png", w: 301, h: 432 },
+  working: { src: "/character/proggy/working.png", w: 331, h: 435 },
+  pointing: { src: "/character/proggy/pointing.png", w: 291, h: 427 },
+  waving: { src: "/character/proggy/waving.png", w: 303, h: 419 },
 };
 
 type Motion = "wave" | "gentle" | "restrained" | "energetic";

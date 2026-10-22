@@ -19,6 +19,14 @@ export const APP_NOTIFICATIONS_URL = "proggaa://notifications";
 export const APP_NOTIFICATIONS_SINCE = "1.0.9";
 
 /**
+ * From this Windows version the app window has no Windows title bar: the site
+ * draws the minimise / maximise / close buttons as these links, which the app
+ * catches (`proggaa://window/minimize`, `/maximize` toggles, `/close`).
+ */
+export const APP_FRAMELESS_SINCE = "1.1.1";
+export const APP_WINDOW_URL = "proggaa://window/";
+
+/**
  * A link the apps catch to open `url` in the person's normal browser instead
  * of the app window (used where something is only done on the website, like
  * buying a mission). Only meant to be shown inside the apps.

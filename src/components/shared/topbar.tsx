@@ -35,7 +35,7 @@ export async function Topbar({
 
   return (
     <div className="bg-background print:hidden">
-      <header className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
+      <header data-app-topbar className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           {mobileNav}
           {showSearch ? (

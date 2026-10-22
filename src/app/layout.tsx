@@ -8,6 +8,7 @@ import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { CookieConsentBanner } from "@/components/shared/cookie-consent-banner";
 import { AppUpdateGate } from "@/components/shared/app-update-gate";
 import { AppMode } from "@/components/shared/app-mode";
+import { DesktopWindowControls } from "@/components/shared/desktop-window-controls";
 
 // Display face: bold, bouncy, comic-poster energy — the Proggaa brand
 // voice. Loaded once here and used everywhere via the --font-display
@@ -167,6 +168,7 @@ export default async function RootLayout({
             {children}
             <AppUpdateGate />
             <AppMode />
+            <DesktopWindowControls />
           </div>
           <CookieConsentBanner />
         </ThemeProvider>
