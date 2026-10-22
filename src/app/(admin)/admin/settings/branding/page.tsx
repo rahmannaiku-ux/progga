@@ -1,9 +1,9 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { updateSiteSettings } from "@/server/actions/admin-settings-actions";
 
 export default async function AdminBrandingPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const settings = await db.siteSettings.findUnique({ where: { id: "singleton" } });
 

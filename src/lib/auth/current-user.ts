@@ -1,6 +1,8 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
+import { getSessionCookieToken } from "@/lib/auth/session";
+import { getCurrentSession, sessionTwoStepState } from "@/lib/auth/require-auth";
+import { TWO_STEP_PATH } from "@/lib/auth/admin-mfa";
 
 /**
  * Identity comes from the custom session cookie
@@ -20,7 +22,7 @@ export const getCurrentUser = cache(async () => {
   const token = await getSessionCookieToken();
   if (!token) redirect("/login");
 
-  const validated = await validateSessionToken(token);
+  const validated = await getCurrentSession();
   if (!validated) redirect("/login");
 
   const { user } = validated;
@@ -28,6 +30,8 @@ export const getCurrentUser = cache(async () => {
   if (!user.isActive || user.isSuspended) {
     redirect("/login?error=account_inactive");
   }
+  // an admin account opens nothing before its two-step check (src/lib/auth/admin-mfa.ts)
+  if (sessionTwoStepState(validated) !== "ok") redirect(TWO_STEP_PATH);
 
   return user;
 });
@@ -48,8 +52,9 @@ export const getCurrentUserRoleOptional = cache(async () => {
   const token = await getSessionCookieToken();
   if (!token) return null;
 
-  const validated = await validateSessionToken(token);
-  if (!validated) return null;
+  const validated = await getCurrentSession();
+  // an admin who has not passed the two-step check is treated as signed out
+  if (!validated || sessionTwoStepState(validated) !== "ok") return null;
 
   const { user } = validated;
   if (!user.isActive || user.isSuspended) return null;
@@ -69,8 +74,8 @@ export const getCurrentUserOptional = cache(async () => {
   const token = await getSessionCookieToken();
   if (!token) return null;
 
-  const validated = await validateSessionToken(token);
-  if (!validated) return null;
+  const validated = await getCurrentSession();
+  if (!validated || sessionTwoStepState(validated) !== "ok") return null;
 
   const { user } = validated;
   if (!user.isActive || user.isSuspended) return null;

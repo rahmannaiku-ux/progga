@@ -7,10 +7,11 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/shared/avatar";
 import { SiteLogo } from "@/components/marketing/site-logo";
-import { heroNav, mentorNav, adminNav, isNavItemActive } from "@/lib/nav-config";
+import { heroNav, mentorNav, adminNav, adminNavForAdmin, isNavItemActive } from "@/lib/nav-config";
 import { useMountTransition } from "@/hooks/use-mount-transition";
 
-const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNav };
+// "admin" is the menu without the super-admin-only system pages; "superAdmin" is all of it
+const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNavForAdmin, superAdmin: adminNav };
 
 export type DrawerHeroProfile = {
   name: string;
@@ -40,7 +41,7 @@ export function MobileNavDrawer({
   onOpenChange,
   hideTrigger = false,
 }: {
-  navKey: "hero" | "mentor" | "admin";
+  navKey: "hero" | "mentor" | "admin" | "superAdmin";
   brandLabel: string;
   /** Same official-logo props the desktop Sidebar takes — passed down
    *  from the layout's getSiteBranding() call so the drawer's brand

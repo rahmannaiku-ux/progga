@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { DESTINATION_DEFINITIONS, type DestinationKey } from "@/lib/config/destination-definitions";
 import { DestinationRow } from "@/components/admin-dashboard/destination-row";
 
 export default async function ControlCenterDestinationsPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const keys = Object.keys(DESTINATION_DEFINITIONS) as DestinationKey[];
   const rows = await db.destination.findMany({ where: { key: { in: keys } } });

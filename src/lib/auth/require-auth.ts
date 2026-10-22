@@ -1,8 +1,10 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Role, User } from "@prisma/client";
-import { getSessionCookieToken, validateSessionToken } from "@/lib/auth/session";
+import { getSessionCookieToken, validateSessionToken, type ValidatedSession } from "@/lib/auth/session";
 import { studentNeedsProfileStep } from "@/lib/auth/profile-gate";
+import { needsTwoStep, twoStepState, TWO_STEP_PATH } from "@/lib/auth/admin-mfa";
+import { db } from "@/lib/db/client";
 
 /**
  * Session-based guards for route handlers and Server Actions. Page
@@ -26,11 +28,37 @@ const ROLE_RANK: Record<Role, number> = {
  * `getCurrentUser` / `requireRole` / `requireActiveUser` elsewhere in
  * this codebase.
  */
-export const getCurrentSessionUser = cache(async (): Promise<User | null> => {
+/**
+ * The current session and its user, or null. An admin's session is always read fresh from the
+ * database (skipCache): a revoked admin session, or one whose two-step check has lapsed, must
+ * stop working at once, not up to 30 seconds later.
+ */
+export const getCurrentSession = cache(async (): Promise<ValidatedSession | null> => {
   const token = await getSessionCookieToken();
   if (!token) return null;
   const validated = await validateSessionToken(token);
-  return validated?.user ?? null;
+  if (!validated || !needsTwoStep(validated.user.role)) return validated;
+  const fresh = await validateSessionToken(token, { skipCache: true });
+  // A lapsed check (12 hours, or 2 idle hours) is cleared for good. Reading the session also
+  // refreshes lastActivityAt, so without this a second request would look "not idle" again.
+  if (fresh && fresh.session.mfaVerifiedAt && twoStepState(fresh.user, fresh.session, Date.now()) === "verify") {
+    await db.session.update({ where: { id: fresh.session.id }, data: { mfaVerifiedAt: null } }).catch(() => {});
+    return { ...fresh, session: { ...fresh.session, mfaVerifiedAt: null } };
+  }
+  return fresh;
+});
+
+/** This session's two-step state (always "ok" for students and mentors; see admin-mfa.ts). */
+export const sessionTwoStepState = (s: ValidatedSession) => twoStepState(s.user, s.session, Date.now());
+
+/**
+ * The signed-in user, or null. An admin who has not passed the two-step check counts as not
+ * signed in here, so no API route or action built on this can be reached with a password alone.
+ */
+export const getCurrentSessionUser = cache(async (): Promise<User | null> => {
+  const s = await getCurrentSession();
+  if (!s) return null;
+  return sessionTwoStepState(s) === "ok" ? s.user : null;
 });
 
 /**
@@ -42,10 +70,20 @@ export const getCurrentSessionUser = cache(async (): Promise<User | null> => {
  * render.
  */
 export async function requireAuth(): Promise<User> {
-  const user = await getCurrentSessionUser();
-  if (!user) throw new Error("Your session has expired. Please sign in again.");
-  if (!user.isActive || user.isSuspended) throw new Error("Your session has expired. Please sign in again.");
-  return user;
+  const s = await getCurrentSession();
+  if (!s || !s.user.isActive || s.user.isSuspended) throw new Error("Your session has expired. Please sign in again.");
+  if (sessionTwoStepState(s) !== "ok") throw new Error("Enter your two-step sign-in code first: reload the page.");
+  return s.user;
+}
+
+/**
+ * requireAuth for the two-step pages themselves (setting up the authenticator, entering a code):
+ * the only things an admin may do before passing the check. Returns the session too.
+ */
+export async function requireAuthPendingTwoStep(): Promise<ValidatedSession> {
+  const s = await getCurrentSession();
+  if (!s || !s.user.isActive || s.user.isSuspended) throw new Error("Your session has expired. Please sign in again.");
+  return s;
 }
 
 /**
@@ -110,7 +148,9 @@ export async function requireCompletedProfile(): Promise<User> {
  * and is available to any page that needs the profile gate.
  */
 export async function requireCompletedProfileForPage(returnTo?: string): Promise<User> {
-  const user = await getCurrentSessionUser();
+  const s = await getCurrentSession();
+  if (s && sessionTwoStepState(s) !== "ok") redirect(TWO_STEP_PATH);
+  const user = s?.user ?? null;
   if (!user) {
     redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login");
   }

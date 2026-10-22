@@ -6,6 +6,8 @@ import { formatMoney } from "@/lib/payments/format";
 import { categoryCreateSchema } from "@/lib/validation/admin";
 import { courseDiscountSchema } from "@/lib/validation/discount";
 import { adjustCoinsAsAdmin, InsufficientCoinsError } from "@/lib/gamification/coins";
+import { isAdminRole as isAdminRoleName, roleChangeBlock, suspendBlock } from "@/lib/auth/admin-hierarchy";
+import { notifySuperAdmins } from "@/server/services/super-admin-alerts";
 
 /**
  * Admin tools shared by the website's Server Actions (server/actions/admin-*.ts,
@@ -47,20 +49,27 @@ function revalidateUserLists() {
 // USERS & ROLES
 // ---------------------------------------------------------------------
 
+/** Active, unsuspended super admins: the last one is never demoted or suspended (admin-hierarchy.ts). */
+const countActiveSuperAdmins = () =>
+  db.user.count({ where: { role: "SUPER_ADMIN", isActive: true, isSuspended: false } });
+
 export async function setUserRoleCore(admin: AdminActor, targetUserId: string, newRole: Role) {
   assertAdminActor(admin);
-  if (admin.role !== "SUPER_ADMIN" && (newRole === "ADMIN" || newRole === "SUPER_ADMIN")) {
-    throw new Error("Only a super admin can grant admin access.");
+  if (admin.role !== "SUPER_ADMIN" && isAdminRoleName(newRole)) {
+    throw new Error("Only a super admin can grant admin access. Ask for it under Admin → Requests.");
   }
 
   const target = await db.user.findUnique({ where: { id: targetUserId } });
   if (!target) throw new Error("User not found.");
-  if (target.id === admin.id) throw new Error("You can't change your own role.");
-  // A regular ADMIN must never touch a SUPER_ADMIN's role at all: demoting
-  // one is as much an escalation as promoting to admin.
-  if (target.role === "SUPER_ADMIN" && admin.role !== "SUPER_ADMIN") {
-    throw new Error("Only a super admin can change another super admin's role.");
-  }
+  const blocked = roleChangeBlock({
+    actorId: admin.id,
+    actorRole: admin.role as Role,
+    targetId: target.id,
+    targetRole: target.role,
+    newRole,
+    activeSuperAdmins: await countActiveSuperAdmins(),
+  });
+  if (blocked) throw new Error(blocked);
 
   await db.$transaction([
     db.user.update({ where: { id: targetUserId }, data: { role: newRole } }),
@@ -70,23 +79,47 @@ export async function setUserRoleCore(admin: AdminActor, targetUserId: string, n
   ]);
 
   await logAdminActivity(admin.id, "ROLE_CHANGE", "User", targetUserId, { from: target.role, to: newRole });
+  if (isAdminRoleName(target.role) || isAdminRoleName(newRole)) {
+    await notifySuperAdmins({
+      title: "Admin access changed",
+      body: `${userLabel(target)} went from ${target.role} to ${newRole}.`,
+      linkUrl: "/admin/users",
+    });
+  }
   revalidateUserLists();
 }
 
 export async function setUserSuspendedCore(admin: AdminActor, targetUserId: string, isSuspended: boolean) {
   assertAdminActor(admin);
-  if (targetUserId === admin.id) throw new Error("You can't suspend your own account.");
-
-  const target = await db.user.findUnique({ where: { id: targetUserId }, select: { role: true } });
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, role: true, firstName: true, lastName: true, email: true, phone: true },
+  });
   if (!target) throw new Error("User not found.");
-  // Same hierarchy rule as role changes.
-  if (target.role === "SUPER_ADMIN" && admin.role !== "SUPER_ADMIN") {
-    throw new Error("Only a super admin can suspend another super admin.");
-  }
+  const blocked = suspendBlock({
+    actorId: admin.id,
+    actorRole: admin.role as Role,
+    targetId: target.id,
+    targetRole: target.role,
+    suspend: isSuspended,
+    activeSuperAdmins: await countActiveSuperAdmins(),
+  });
+  if (blocked) throw new Error(blocked);
 
   await db.user.update({ where: { id: targetUserId }, data: { isSuspended } });
   await logAdminActivity(admin.id, "UPDATE", "User", targetUserId, { isSuspended });
+  if (isAdminRoleName(target.role)) {
+    await notifySuperAdmins({
+      title: isSuspended ? "An admin was suspended" : "An admin was restored",
+      body: `${userLabel(target)} (${target.role}) was ${isSuspended ? "suspended" : "restored"}.`,
+      linkUrl: "/admin/users",
+    });
+  }
   revalidateUserLists();
+}
+
+function userLabel(u: { firstName?: string | null; lastName?: string | null; email?: string | null; phone?: string | null }) {
+  return [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.phone || "A user";
 }
 
 /** Manual Proggy Coin correction for a student, always with a reason in the ledger. */

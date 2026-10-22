@@ -38,6 +38,7 @@ import {
   Wrench,
   GraduationCap,
   ClipboardList,
+  Inbox,
 } from "lucide-react";
 
 export type NavItem = {
@@ -59,6 +60,8 @@ export type NavItem = {
    * own `href` and everything beneath it.
    */
   match?: (pathname: string) => boolean;
+  /** Admin menu: shown to SUPER_ADMIN only (the pages check it too: requireSuperAdmin). */
+  superAdminOnly?: boolean;
 };
 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(base + "/");
@@ -150,7 +153,7 @@ export const adminNav: NavSection[] = [
       { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
       { label: "Reports", href: "/admin/reports", icon: BarChart3 },
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-      { label: "Activity Logs", href: "/admin/activity-logs", icon: FileClock, prefetch: false },
+      { label: "Activity Logs", href: "/admin/activity-logs", icon: FileClock, prefetch: false, superAdminOnly: true },
       { label: "Bug Reports", href: "/admin/bug-reports", icon: Bug, prefetch: false },
       { label: "Community Reports", href: "/admin/community", icon: ShieldAlert, prefetch: false },
     ],
@@ -163,16 +166,19 @@ export const adminNav: NavSection[] = [
       { label: "Mentors", href: "/admin/mentors", icon: Shield },
       { label: "Co-mentor Requests", href: "/admin/co-mentor-requests", icon: Share2, prefetch: false },
       { label: "Payments", href: "/admin/payments", icon: CreditCard },
-      { label: "Payment Devices", href: "/admin/payments/devices", icon: Smartphone, prefetch: false },
-      { label: "Provider Rules", href: "/admin/payments/provider-rules", icon: ListTree, prefetch: false },
+      { label: "Payment Devices", href: "/admin/payments/devices", icon: Smartphone, prefetch: false, superAdminOnly: true },
+      { label: "Provider Rules", href: "/admin/payments/provider-rules", icon: ListTree, prefetch: false, superAdminOnly: true },
       { label: "Suspicious Transactions", href: "/admin/payments/suspicious", icon: ShieldAlert, prefetch: false },
       { label: "Heroes", href: "/admin/heroes", icon: User },
       { label: "Leaderboard", href: "/admin/leaderboard", icon: Trophy, prefetch: false },
+      // admins ask here for what only a super admin may do (receiving numbers, admin access)
+      { label: "Requests", href: "/admin/requests", icon: Inbox, prefetch: false },
       {
         label: "Roles & Permissions",
         href: "/admin/roles-permissions",
         icon: Shield,
         prefetch: false,
+        superAdminOnly: true,
       },
     ],
   },
@@ -191,28 +197,39 @@ export const adminNav: NavSection[] = [
   {
     title: "System",
     items: [
-      { label: "Control Center", href: "/admin/control-center", icon: Wrench },
-      { label: "Branding", href: "/admin/settings/branding", icon: Settings, prefetch: false },
+      { label: "Control Center", href: "/admin/control-center", icon: Wrench, superAdminOnly: true },
+      { label: "Branding", href: "/admin/settings/branding", icon: Settings, prefetch: false, superAdminOnly: true },
       {
         label: "Payment Settings",
         href: "/admin/settings/payments",
         icon: Wallet,
         prefetch: false,
+        superAdminOnly: true,
       },
       {
         label: "Email Templates",
         href: "/admin/settings/email-templates",
         icon: Mail,
         prefetch: false,
+        superAdminOnly: true,
       },
       {
         label: "Backup & Restore",
         href: "/admin/backup-restore",
         icon: DatabaseBackup,
         prefetch: false,
+        superAdminOnly: true,
       },
-      { label: "Storage", href: "/admin/storage", icon: HardDrive, prefetch: false },
-      { label: "Apps", href: "/admin/apps", icon: Smartphone, prefetch: false },
+      { label: "Storage", href: "/admin/storage", icon: HardDrive, prefetch: false, superAdminOnly: true },
+      { label: "Apps", href: "/admin/apps", icon: Smartphone, prefetch: false, superAdminOnly: true },
     ],
   },
 ];
+
+/** The admin menu for an ADMIN: without the super-admin-only system pages. */
+export const adminNavForAdmin: NavSection[] = adminNav
+  .map((s) => ({ ...s, items: s.items.filter((i) => !i.superAdminOnly) }))
+  .filter((s) => s.items.length > 0);
+
+/** Which admin menu a role sees. */
+export const adminNavKey = (role: string): "admin" | "superAdmin" => (role === "SUPER_ADMIN" ? "superAdmin" : "admin");

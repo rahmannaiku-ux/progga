@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { FEATURE_FLAG_DEFINITIONS, FEATURE_FLAG_CATEGORIES, type FeatureFlagKey } from "@/lib/config/feature-flag-definitions";
 import { getFeatureFlagWithMeta } from "@/lib/config/feature-flags";
 import { FeatureFlagRow } from "@/components/admin-dashboard/feature-flag-row";
 
 export default async function ControlCenterFeatureFlagsPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const keys = Object.keys(FEATURE_FLAG_DEFINITIONS) as FeatureFlagKey[];
   const withMeta = await Promise.all(keys.map((k) => getFeatureFlagWithMeta(k)));

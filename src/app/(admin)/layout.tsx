@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/require-role";
+import { adminNavKey } from "@/lib/nav-config";
 import { getSiteBranding, isSafeLogoUrl } from "@/lib/site-branding";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
@@ -10,7 +11,9 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireRole("ADMIN");
+  const admin = await requireRole("ADMIN");
+  // an ADMIN does not see the super-admin-only system pages in the menu
+  const navKey = adminNavKey(admin.role);
 
   const branding = await getSiteBranding();
   const brandLabel = `${branding.siteName} · Admin`;
@@ -18,7 +21,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-dvh bg-background">
-      <Sidebar navKey="admin" brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
+      <Sidebar navKey={navKey} brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
       {/* min-w-0: see the identical comment in (hero)/layout.tsx —
           same missing-shrink bug, same fix. */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -28,7 +31,7 @@ export default async function AdminLayout({
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
-      <RoleMobileNav navKey="admin" brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
+      <RoleMobileNav navKey={navKey} brandLabel={brandLabel} siteName={branding.siteName} logoUrl={logoUrl} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { contactLabel } from "@/lib/contact-label";
@@ -12,7 +12,7 @@ function formatChange(value: unknown): string {
 }
 
 export default async function ActivityLogsPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const logs = await db.activityLog.findMany({
     orderBy: { createdAt: "desc" },

@@ -1,5 +1,5 @@
 import { AlertTriangle, Download, Monitor, Smartphone } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { getSetting } from "@/lib/config/settings-service";
 import { formatDhakaDate } from "@/lib/timezone";
 import { APPS_RELEASES_URL, compareVersions, nextPatch } from "@/lib/apps";
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
  * version, withdrawing a broken one, and the oldest version allowed.
  */
 export default async function AdminAppsPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
   const canManage = canManageReleases();
   const [releases, runs, minAndroid, minWindows] = await Promise.all([
     listAppReleases().catch(() => null as AppReleaseDTO[] | null),

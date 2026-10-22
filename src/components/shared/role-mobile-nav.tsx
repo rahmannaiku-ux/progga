@@ -64,14 +64,14 @@ export function RoleMobileNav({
   siteName,
   logoUrl,
 }: {
-  navKey: "mentor" | "admin";
+  navKey: "mentor" | "admin" | "superAdmin";
   brandLabel: string;
   siteName: string;
   logoUrl: string | null;
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const items = ROLE_MOBILE_NAV_ITEMS[navKey];
+  const items = ROLE_MOBILE_NAV_ITEMS[navKey === "superAdmin" ? "admin" : navKey];
 
   return (
     <>

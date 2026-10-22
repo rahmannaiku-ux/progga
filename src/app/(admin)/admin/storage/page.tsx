@@ -13,7 +13,7 @@ import {
   Bug,
   Trash2,
 } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { getDriveQuota } from "@/lib/storage/google-drive";
 import { formatBytes, getQuotaWarning } from "@/lib/storage/quota-thresholds";
@@ -44,7 +44,7 @@ export default async function AdminStoragePage(
   }
 ) {
   const searchParams = await props.searchParams;
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const connection = await db.googleDriveConnection.findUnique({ where: { id: "singleton" } });
   const isConnected = connection?.status === "CONNECTED";

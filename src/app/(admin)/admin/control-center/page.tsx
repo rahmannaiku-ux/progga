@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SlidersHorizontal, Flag, Link2, Wrench, ArrowRight } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { SETTING_DEFINITIONS } from "@/lib/config/setting-definitions";
 import { FEATURE_FLAG_DEFINITIONS } from "@/lib/config/feature-flag-definitions";
@@ -17,7 +17,7 @@ import { getFeatureFlagWithMeta } from "@/lib/config/feature-flags";
  * during an incident, not because they're a separate mechanism.
  */
 export default async function ControlCenterPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const [settings, flags, destinations] = await Promise.all([
     db.platformSetting.count().catch(() => 0),

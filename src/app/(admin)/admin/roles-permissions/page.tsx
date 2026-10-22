@@ -1,17 +1,24 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { formatDhakaDateTime } from "@/lib/timezone";
 import { PromoteUserForm } from "@/components/admin-dashboard/promote-user-form";
+import { ResetTwoStepForm } from "@/components/admin-dashboard/two-step-admin-tools";
 
 const ROLE_DESCRIPTIONS = [
   { role: "STUDENT", desc: "Default role. Enrolls in missions, tracks progress, earns XP." },
   { role: "TEACHER", desc: "Authors missions, grades assignments/exams, sees analytics for their own courses." },
-  { role: "ADMIN", desc: "Full platform management: users, content moderation, categories, branding, reports." },
-  { role: "SUPER_ADMIN", desc: "Everything an Admin can do, plus granting Admin access to other users." },
+  {
+    role: "ADMIN",
+    desc: "The daily work: verifying payments, students and mentors, granting access, missions and content, moderation, reports. Asks a super admin (Requests) for a new payment receiving number or for admin access.",
+  },
+  {
+    role: "SUPER_ADMIN",
+    desc: "Everything an Admin can do, plus: admin roles, payment numbers, rules and devices, branding, email templates, Control Center, storage, apps, data export, activity logs, deleting missions. Approves admins' requests. The last active super admin can't be demoted or suspended.",
+  },
 ];
 
 export default async function RolesPermissionsPage() {
-  const admin = await requireRole("ADMIN");
+  const admin = await requireSuperAdmin();
 
   const recentChanges = await db.roleChangeLog.findMany({
     orderBy: { createdAt: "desc" },
@@ -53,6 +60,17 @@ export default async function RolesPermissionsPage() {
         </p>
         <div className="mt-3">
           <PromoteUserForm canGrantAdmin={admin.role === "SUPER_ADMIN"} />
+        </div>
+      </div>
+
+      <div className="glass-panel mt-6 p-5">
+        <h2 className="font-display text-sm font-bold text-foreground">Reset an admin&apos;s two-step sign-in</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          For an admin who lost their phone and recovery codes. They are signed out everywhere and set up a new
+          authenticator at their next sign-in. Your own needs another super admin.
+        </p>
+        <div className="mt-3">
+          <ResetTwoStepForm />
         </div>
       </div>
 

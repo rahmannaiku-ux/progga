@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { requireAdminUser } from "./require-user";
+import { requireSuperAdminUser } from "./require-user";
+import { notifySuperAdmins } from "@/server/services/super-admin-alerts";
 
 export async function updateSiteSettings(formData: FormData) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
 
   await db.siteSettings.upsert({
     where: { id: "singleton" },
@@ -40,12 +41,13 @@ export async function updateSiteSettings(formData: FormData) {
 }
 
 export async function updatePaymentSettings(formData: FormData) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
 
   const bkashNumber = String(formData.get("bkashNumber") ?? "").trim() || null;
   const bkashInstructions = String(formData.get("bkashInstructions") ?? "").trim() || null;
   const autoVerifyPayments = formData.get("autoVerifyPayments") === "on";
 
+  const before = await db.siteSettings.findUnique({ where: { id: "singleton" }, select: { bkashNumber: true, autoVerifyPayments: true } });
   await db.siteSettings.upsert({
     where: { id: "singleton" },
     create: { id: "singleton", bkashNumber, bkashInstructions, autoVerifyPayments },
@@ -55,12 +57,19 @@ export async function updatePaymentSettings(formData: FormData) {
   await db.activityLog.create({
     data: { userId: admin.id, action: "SETTINGS_CHANGE", entityType: "SiteSettings", entityId: "payments" },
   });
+  if ((before?.bkashNumber ?? null) !== bkashNumber || (before?.autoVerifyPayments ?? null) !== autoVerifyPayments) {
+    await notifySuperAdmins({
+      title: "Payment settings changed",
+      body: `bKash number: ${bkashNumber ?? "none"}${before?.bkashNumber && before.bkashNumber !== bkashNumber ? ` (was ${before.bkashNumber})` : ""}; auto-verify ${autoVerifyPayments ? "on" : "off"}.`,
+      linkUrl: "/admin/settings/payments",
+    });
+  }
 
   revalidatePath("/admin/settings/payments");
 }
 
 export async function upsertEmailTemplate(formData: FormData) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const key = String(formData.get("key") ?? "").trim();
   const subject = String(formData.get("subject") ?? "").trim();
   const bodyHtml = String(formData.get("bodyHtml") ?? "");

@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { upsertEmailTemplate } from "@/server/actions/admin-settings-actions";
 
@@ -10,7 +10,7 @@ const KNOWN_TEMPLATES = [
 ];
 
 export default async function EmailTemplatesPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const templates = await db.emailTemplate.findMany();
   const byKey = new Map(templates.map((t) => [t.key, t]));

@@ -1,8 +1,8 @@
 import { Download, ShieldAlert, DatabaseBackup } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 
 export default async function BackupRestorePage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   return (
     <div className="mx-auto max-w-2xl">

@@ -7,7 +7,8 @@ export async function GET() {
   // Identity comes from the custom session via getCurrentActiveSessionUser
   // (already checks isActive/isSuspended); the role is checked here.
   const admin = await getCurrentActiveSessionUser();
-  if (!admin || (admin.role !== "ADMIN" && admin.role !== "SUPER_ADMIN")) {
+  // every user's contact details in one file: super admins only (docs/ADMIN-ROLES.md)
+  if (!admin || admin.role !== "SUPER_ADMIN") {
     return new NextResponse("Forbidden", { status: 403 });
   }
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { disconnectGoogleDriveAccount } from "@/lib/storage/google-drive";
 import { deleteUserFile } from "@/lib/storage";
-import { requireAdminUser } from "./require-user";
+import { requireSuperAdminUser } from "./require-user";
 
 /**
  * Disconnects the Drive OAuth connection only — never touches a single
@@ -13,7 +13,7 @@ import { requireAdminUser } from "./require-user";
  * who reconnects the same account later.
  */
 export async function disconnectGoogleDrive() {
-  await requireAdminUser();
+  await requireSuperAdminUser();
   await disconnectGoogleDriveAccount();
   revalidatePath("/admin/storage");
 }
@@ -25,7 +25,7 @@ export async function disconnectGoogleDrive() {
  * dangling Drive file is ever left behind.
  */
 export async function adminDeleteUpload(uploadId: string) {
-  await requireAdminUser();
+  await requireSuperAdminUser();
   await deleteUserFile(uploadId);
   revalidatePath("/admin/storage");
 }

@@ -603,6 +603,14 @@ model User {
   activityLogs      ActivityLog[]
   rolesAssignedByMe RoleChangeLog[]     @relation("RoleAssignedBy")
   rolesAssignedToMe RoleChangeLog[]     @relation("RoleAssignedTo")
+  // Two-step sign-in (authenticator app), required for ADMIN and SUPER_ADMIN (src/lib/auth/admin-mfa.ts).
+  // The secret is AES-256-GCM encrypted (lib/storage/token-crypto.ts); recovery codes are stored hashed.
+  mfaSecretEncrypted       String?
+  mfaEnabledAt             DateTime?
+  mfaLastUsedStep          Int? // the last 30-second window used: a code can't be replayed
+  mfaRecoveryCodeHashes    String[]   @default([])
+  sensitiveRequestsMade    SensitiveChangeRequest[] @relation("SensitiveRequestRequester")
+  sensitiveRequestsDecided SensitiveChangeRequest[] @relation("SensitiveRequestDecider")
 
   // Content authored (as blog admin)
   blogPostsAuthored BlogPost[]
@@ -711,6 +719,41 @@ model RoleChangeLog {
   createdAt    DateTime @default(now())
 }
 
+// Two people for the riskiest changes: an ADMIN asks (a new payment receiving number, admin
+// access for someone), a SUPER_ADMIN other than the asker approves, and only then is it applied
+// (src/server/services/sensitive-requests.ts). A super admin can still make these changes
+// directly; every change alerts all super admins.
+enum SensitiveRequestKind {
+  PAYMENT_NUMBER
+  GRANT_ADMIN
+}
+
+enum SensitiveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model SensitiveChangeRequest {
+  id            String                 @id @default(cuid())
+  kind          SensitiveRequestKind
+  status        SensitiveRequestStatus @default(PENDING)
+  // PAYMENT_NUMBER: { provider, receivingNumber, displayName, enabled }; GRANT_ADMIN: { userId }
+  payload       Json
+  reason        String
+  requestedById String
+  requestedBy   User                   @relation("SensitiveRequestRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  decidedById   String?
+  decidedBy     User?                  @relation("SensitiveRequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decisionNote  String?
+  decidedAt     DateTime?
+  createdAt     DateTime               @default(now())
+
+  @@index([status, createdAt])
+  @@index([requestedById])
+}
+
 // Server-side session for the Proggaa custom auth system. The browser only
 // ever holds a random opaque token in an HttpOnly cookie — `tokenHash` is
 // the SHA-256 (or equivalent) hash of that token; the raw token itself is
@@ -729,6 +772,8 @@ model Session {
   lastActivityAt DateTime  @default(now())
   expiresAt      DateTime
   revokedAt      DateTime?
+  // when this session last passed the two-step check (admins only; see src/lib/auth/admin-mfa.ts)
+  mfaVerifiedAt  DateTime?
 
   @@index([userId])
   @@index([userId, revokedAt])

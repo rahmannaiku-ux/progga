@@ -12,7 +12,7 @@ import {
   setReleaseWithdrawn,
   type ReleaseRunDTO,
 } from "@/server/services/app-releases";
-import { requireAdminUser } from "./require-user";
+import { requireSuperAdminUser } from "./require-user";
 
 // ---------------------------------------------------------------------
 // Admin -> Apps: publish a new version of the Windows and Android apps,
@@ -34,7 +34,7 @@ async function log(adminId: string, action: "PUBLISH" | "UNPUBLISH" | "SETTINGS_
 
 /** Starts a build of both apps at `version` with `notes` as what's new; it is live when the build finishes. */
 export async function publishAppVersion(input: { version?: unknown; notes?: unknown }): Promise<Result> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const version = typeof input?.version === "string" ? input.version.trim().replace(/^v/, "") : "";
   const notes = typeof input?.notes === "string" ? input.notes.trim().slice(0, 1500) : "";
   if (!isAppVersion(version)) return fail("Use a version like 1.0.3 (numbers only; the last two parts up to 99).");
@@ -59,7 +59,7 @@ export async function publishAppVersion(input: { version?: unknown; notes?: unkn
 
 /** For the page to follow a build while it runs. */
 export async function loadReleaseRuns(): Promise<Result<{ runs: ReleaseRunDTO[] }>> {
-  await requireAdminUser();
+  await requireSuperAdminUser();
   try {
     return { ok: true, runs: await listReleaseRuns(5) };
   } catch (err) {
@@ -68,7 +68,7 @@ export async function loadReleaseRuns(): Promise<Result<{ runs: ReleaseRunDTO[] 
 }
 
 export async function setAppReleaseWithdrawn(input: { id?: unknown; version?: unknown; withdrawn?: unknown }): Promise<Result> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const id = typeof input?.id === "number" ? input.id : NaN;
   if (!Number.isInteger(id)) return fail("That release isn't available.");
   const withdrawn = input?.withdrawn === true;
@@ -84,7 +84,7 @@ export async function setAppReleaseWithdrawn(input: { id?: unknown; version?: un
 
 /** The oldest app versions people may keep using; older apps are asked to update first. Empty = no minimum. */
 export async function setMinimumAppVersions(input: { android?: unknown; windows?: unknown }): Promise<Result> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const android = typeof input?.android === "string" ? input.android.trim().replace(/^v/, "") : "";
   const windows = typeof input?.windows === "string" ? input.windows.trim().replace(/^v/, "") : "";
   for (const v of [android, windows]) {

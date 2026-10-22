@@ -6,8 +6,14 @@ import { formatMoney } from "@/lib/payments/format";
 import { dhakaStartOfMonth, formatDhakaDateTime } from "@/lib/timezone";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
-export default async function AdminDashboardPage() {
-  await requireRole("ADMIN");
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const admin = await requireRole("ADMIN");
+  const isSuper = admin.role === "SUPER_ADMIN";
+  const { error } = await searchParams;
 
   const [
     studentCount,
@@ -28,7 +34,9 @@ export default async function AdminDashboardPage() {
     db.user.count({
       where: { lastLoginAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
     }),
+    // everyone's actions are the super admins' to review; an admin sees their own
     db.activityLog.findMany({
+      where: isSuper ? undefined : { userId: admin.id },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { user: { select: { firstName: true, lastName: true } } },
@@ -53,6 +61,12 @@ export default async function AdminDashboardPage() {
     <StaggerContainer>
       <StaggerItem>
         <h1 className="font-display text-2xl font-extrabold text-foreground">Admin dashboard</h1>
+        {error === "super_admin_only" && (
+          <p role="alert" className="comic-panel mt-3 bg-danger/10 p-3 text-sm font-semibold text-danger">
+            That page is for super admins only. To change a payment receiving number or to give someone admin
+            access, send a request under <Link href="/admin/requests" className="underline">Requests</Link>.
+          </p>
+        )}
       </StaggerItem>
 
       <StaggerItem className="mt-6">
@@ -95,11 +109,13 @@ export default async function AdminDashboardPage() {
       <StaggerItem className="comic-panel mt-8 bg-surface p-5">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 font-display text-sm font-bold text-foreground">
-            <FileClock className="h-4 w-4" /> Recent activity
+            <FileClock className="h-4 w-4" /> {isSuper ? "Recent activity" : "Your recent activity"}
           </h2>
-          <Link href="/admin/activity-logs" className="text-xs font-semibold text-accent hover:text-accent/80">
-            View all
-          </Link>
+          {isSuper && (
+            <Link href="/admin/activity-logs" className="text-xs font-semibold text-accent hover:text-accent/80">
+              View all
+            </Link>
+          )}
         </div>
         <ul className="mt-3 space-y-2">
           {recentLogs.map((log) => (

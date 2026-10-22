@@ -5,8 +5,9 @@ import { getCurrentActiveSessionUser } from "@/lib/auth/require-auth";
 export async function GET(req: NextRequest) {
   const user = await getCurrentActiveSessionUser();
   if (!user) return NextResponse.redirect(new URL("/login", req.url));
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard?error=insufficient_permissions", req.url));
+  // where every upload is stored: super admins only (docs/ADMIN-ROLES.md)
+  if (user.role !== "SUPER_ADMIN") {
+    return NextResponse.redirect(new URL("/admin/dashboard?error=super_admin_only", req.url));
   }
 
   const url = new URL(req.url);

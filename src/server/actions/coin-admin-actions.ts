@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { requireAdminUser } from "./require-user";
+import { requireAdminUser, requireSuperAdminUser } from "./require-user";
 import { logAdminActivity as logActivity } from "@/server/services/admin-tools";
 import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { adjustCoinsAsAdmin as adjustCoinsCore } from "@/lib/gamification/coins";
@@ -57,7 +57,7 @@ export async function toggleStoreItemPublished(itemId: string, isPublished: bool
 }
 
 export async function deleteStoreItem(itemId: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   await db.coinStoreItem.delete({ where: { id: itemId } });
   await logActivity(admin.id, "DELETE", "CoinStoreItem", itemId);
   revalidatePath("/admin/store");

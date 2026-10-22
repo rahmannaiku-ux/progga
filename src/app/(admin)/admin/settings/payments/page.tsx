@@ -1,11 +1,11 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { updatePaymentSettings } from "@/server/actions/admin-settings-actions";
 import { BridgeDeviceManager } from "@/components/admin-dashboard/bridge-device-manager";
 import { SmsAutomationSettings } from "@/components/admin-dashboard/sms-automation-settings";
 
 export default async function AdminPaymentSettingsPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const [settings, devices, paymentConfigs] = await Promise.all([
     db.siteSettings.findUnique({ where: { id: "singleton" } }),

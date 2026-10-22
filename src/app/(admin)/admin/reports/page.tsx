@@ -3,7 +3,9 @@ import { requireRole } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 
 export default async function AdminReportsPage() {
-  await requireRole("ADMIN");
+  const admin = await requireRole("ADMIN");
+  // the JSON export holds every user's contact details: super admins only (api/admin/reports)
+  const canExport = admin.role === "SUPER_ADMIN";
 
   const [
     totalEnrollments,
@@ -37,12 +39,14 @@ export default async function AdminReportsPage() {
         <h1 className="font-display text-2xl font-extrabold text-foreground">
           Reports
         </h1>
-        <a
-          href="/api/admin/reports"
-          className="comic-btn flex items-center gap-1.5 bg-surface px-4 py-2 text-xs font-bold text-foreground"
-        >
-          <Download className="h-3.5 w-3.5" /> Export JSON
-        </a>
+        {canExport && (
+          <a
+            href="/api/admin/reports"
+            className="comic-btn flex items-center gap-1.5 bg-surface px-4 py-2 text-xs font-bold text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" /> Export JSON
+          </a>
+        )}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">

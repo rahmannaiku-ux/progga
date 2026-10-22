@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { SETTING_DEFINITIONS, SETTING_CATEGORIES, settingDefinitionForClient, type SettingKey } from "@/lib/config/setting-definitions";
 import { getSettingWithMeta } from "@/lib/config/settings-service";
 import { SettingRow } from "@/components/admin-dashboard/setting-row";
 
 export default async function ControlCenterSettingsPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const keys = Object.keys(SETTING_DEFINITIONS) as SettingKey[];
   const withMeta = await Promise.all(keys.map((k) => getSettingWithMeta(k)));

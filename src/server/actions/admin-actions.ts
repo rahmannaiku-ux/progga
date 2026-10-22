@@ -5,7 +5,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
 import { categoryUpdateSchema, categoryDeleteSchema } from "@/lib/validation/admin";
 import type { Role } from "@prisma/client";
-import { requireAdminUser } from "./require-user";
+import { requireAdminUser, requireSuperAdminUser } from "./require-user";
 import { findUserByIdentifier } from "@/lib/auth/find-user-by-identifier";
 import { isCourseDeleteConfirmed } from "@/lib/validation/course-delete";
 import {
@@ -137,7 +137,7 @@ export async function deleteCategory(
   categoryId: string,
   reassignToCategoryId?: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
 
   const parsed = categoryDeleteSchema.safeParse({
     id: categoryId,
@@ -220,7 +220,7 @@ export async function adminSetCourseStatus(
  * re-checked here; the dialog is not the only guard.
  */
 export async function adminDeleteCourse(courseId: string, confirmation: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
 
   const course = await db.course.findUnique({
     where: { id: courseId },

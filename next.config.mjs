@@ -99,6 +99,14 @@ const nextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      // the admin portal and its sign-in step: never cached by a browser or proxy, never indexed
+      ...["/admin/:path*", "/security/:path*"].map((source) => ({
+        source,
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      })),
     ];
   },
   // argon2 loads a prebuilt .node binary at runtime via node-gyp-build

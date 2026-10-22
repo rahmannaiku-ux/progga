@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { requireAdminUser } from "./require-user";
+import { requireSuperAdminUser } from "./require-user";
 import { setSetting } from "@/lib/config/settings-service";
 import type { SettingKey } from "@/lib/config/setting-definitions";
 import { setFeatureFlag } from "@/lib/config/feature-flags";
@@ -14,17 +14,16 @@ import {
 } from "@/lib/config/destinations";
 import type { DestinationKey } from "@/lib/config/destination-definitions";
 import { DESTINATION_DEFINITIONS } from "@/lib/config/destination-definitions";
+import { notifySuperAdmins } from "@/server/services/super-admin-alerts";
 
-// requireAdminUser() throws a plain Error on failure (see require-user.ts),
-// which Next.js surfaces to the client as a generic error boundary for a
-// server action — acceptable here since every caller is already gated by
-// the (admin) layout's requireRole("ADMIN") redirect; this is a defense
-// -in-depth check for the action itself, not the primary gate.
+// The Control Center is SUPER_ADMIN only (docs/ADMIN-ROLES.md): its pages call requireSuperAdmin()
+// and every action here requireSuperAdminUser(), which throws a plain Error (see require-user.ts).
+// Changes that send people somewhere else (destinations) or switch features off alert every super admin.
 
 export async function updateSettingAction(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const key = String(formData.get("key") ?? "") as SettingKey;
   const rawValue = String(formData.get("value") ?? "");
 
@@ -39,7 +38,7 @@ export async function updateSettingAction(
 export async function updateFeatureFlagAction(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const key = String(formData.get("key") ?? "") as FeatureFlagKey;
   const enabled = formData.get("enabled") === "on";
 
@@ -63,6 +62,9 @@ export async function updateFeatureFlagAction(
   }
 
   const result = await setFeatureFlag(key, { enabled, rolloutPercent, allowedRoles }, admin);
+  if (result.ok) {
+    await notifySuperAdmins({ title: "Feature switch changed", body: `"${key}" is now ${enabled ? "on" : "off"}.`, linkUrl: "/admin/control-center/feature-flags" });
+  }
   revalidatePath("/admin/control-center/feature-flags");
   revalidatePath("/admin/control-center");
   return result.ok ? { ok: true } : { ok: false, error: result.error };
@@ -71,7 +73,7 @@ export async function updateFeatureFlagAction(
 export async function upsertDestinationAction(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const key = String(formData.get("key") ?? "") as DestinationKey;
 
   if (!(key in DESTINATION_DEFINITIONS)) {
@@ -89,6 +91,13 @@ export async function upsertDestinationAction(
     },
     admin
   );
+  if (result.ok) {
+    await notifySuperAdmins({
+      title: "Site link changed",
+      body: `"${key}" now points to ${String(formData.get("url") ?? "").trim() || "(empty)"}.`,
+      linkUrl: "/admin/control-center/destinations",
+    });
+  }
 
   revalidatePath("/admin/control-center/destinations");
   revalidatePath("/"); // footer reads destinations
@@ -97,19 +106,21 @@ export async function upsertDestinationAction(
 }
 
 export async function toggleDestinationAction(formData: FormData): Promise<void> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const key = String(formData.get("key") ?? "") as DestinationKey;
   const isActive = formData.get("isActive") === "true";
   await setDestinationActive(key, isActive, admin);
+  await notifySuperAdmins({ title: "Site link switched", body: `"${key}" was switched ${isActive ? "on" : "off"}.`, linkUrl: "/admin/control-center/destinations" });
   revalidatePath("/admin/control-center/destinations");
   revalidatePath("/");
   revalidatePath("/support");
 }
 
 export async function deleteDestinationAction(formData: FormData): Promise<void> {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const key = String(formData.get("key") ?? "") as DestinationKey;
   await deleteDestination(key, admin);
+  await notifySuperAdmins({ title: "Site link removed", body: `"${key}" was deleted.`, linkUrl: "/admin/control-center/destinations" });
   revalidatePath("/admin/control-center/destinations");
   revalidatePath("/");
   revalidatePath("/support");

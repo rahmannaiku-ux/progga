@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { heroNav, mentorNav, adminNav, isNavItemActive } from "@/lib/nav-config";
+import { heroNav, mentorNav, adminNav, adminNavForAdmin, isNavItemActive } from "@/lib/nav-config";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { SiteLogo } from "@/components/marketing/site-logo";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 
-const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNav };
+// "admin" is the menu without the super-admin-only system pages; "superAdmin" is all of it
+const NAV_MAP = { hero: heroNav, mentor: mentorNav, admin: adminNavForAdmin, superAdmin: adminNav };
 
 /**
  * heroStats is only passed by the (hero) layout — mentor/admin sidebars
@@ -27,7 +28,7 @@ export function Sidebar({
   logoUrl,
   heroStats,
 }: {
-  navKey: "hero" | "mentor" | "admin";
+  navKey: "hero" | "mentor" | "admin" | "superAdmin";
   brandLabel: string;
   siteName: string;
   logoUrl: string | null;

@@ -10,8 +10,11 @@ import { hashRules, providerRulesSchema } from "@/lib/payments/sms/rules";
 import { MFS_PROVIDERS, type MfsProvider } from "@/lib/payments/sms/types";
 import { canTransitionTransaction } from "@/lib/payments/sms/state-machine";
 import { normalizeMsisdn } from "@/lib/payments/sms/amount";
-import { requireAdminUser } from "./require-user";
+import { requireAdminUser, requireSuperAdminUser } from "./require-user";
 import { writeAudit } from "@/server/services/payment-audit";
+import { notifySuperAdmins } from "@/server/services/super-admin-alerts";
+import { applyPaymentConfiguration } from "@/server/services/payment-configuration";
+import { parsePaymentNumberPayload } from "@/lib/admin/sensitive-requests";
 
 /**
  * Admin-only management of the SMS payment pipeline. Every mutation writes a
@@ -25,7 +28,7 @@ function assertProvider(p: string): MfsProvider {
 
 /** Creates a device slot and a one-time registration code (shown once, expires in 15 minutes). */
 export async function createPaymentDevice(formData: FormData) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const name = String(formData.get("name") ?? "").trim();
   if (!name || name.length > 60) throw new Error("Give the device a short name, e.g. \"Payment phone (bKash SIM)\".");
 
@@ -41,24 +44,28 @@ export async function createPaymentDevice(formData: FormData) {
     },
   });
   await writeAudit({ event: "device.created", actor: `user:${admin.id}`, deviceId: device.id, metadata: { name } });
+  await notifySuperAdmins({ title: "Payment phone added", body: `A new payment device "${name}" was created.`, linkUrl: "/admin/payments/devices" });
   revalidatePath("/admin/settings/payments");
   return { deviceId: device.id, name, registrationCode: code, expiresAt: expiresAt.toISOString() };
 }
 
 /** Immediately blocks all future uploads from the device (checked on every request). */
 export async function revokePaymentDevice(deviceId: string, reason?: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const r = await db.paymentBridgeDevice.updateMany({
     where: { id: deviceId, isActive: true },
     // installId is released so the same phone can be registered again under a NEW device record.
     data: { isActive: false, revokedAt: new Date(), registrationCodeHash: null, registrationCodeExpiresAt: null, installId: null },
   });
-  if (r.count === 1) await writeAudit({ event: "device.revoked", actor: `user:${admin.id}`, deviceId, metadata: { reason: reason?.slice(0, 200) ?? null } });
+  if (r.count === 1) {
+    await writeAudit({ event: "device.revoked", actor: `user:${admin.id}`, deviceId, metadata: { reason: reason?.slice(0, 200) ?? null } });
+    await notifySuperAdmins({ title: "Payment phone revoked", body: "A payment device was revoked and can no longer upload.", linkUrl: "/admin/payments/devices" });
+  }
   revalidatePath("/admin/settings/payments");
 }
 
 export async function renamePaymentDevice(deviceId: string, name: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const clean = name.trim();
   if (!clean || clean.length > 60) throw new Error("Invalid device name.");
   await db.paymentBridgeDevice.update({ where: { id: deviceId }, data: { name: clean } });
@@ -68,7 +75,7 @@ export async function renamePaymentDevice(deviceId: string, name: string) {
 
 /** Publishes a NEW immutable provider-rule version. Existing versions are never edited. */
 export async function publishProviderConfiguration(provider: string, rulesJson: string, enable: boolean) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const p = assertProvider(provider);
   let raw: unknown;
   try {
@@ -86,41 +93,36 @@ export async function publishProviderConfiguration(provider: string, rulesJson: 
     data: { provider: p, version, enabled: enable, rules: parsed.data as unknown as Prisma.InputJsonValue, rulesHash: hashRules(parsed.data), createdById: admin.id },
   });
   await writeAudit({ event: "providerConfig.published", actor: `user:${admin.id}`, metadata: { provider: p, version, enabled: enable, rulesHash: row.rulesHash } });
+  await notifySuperAdmins({ title: "Payment SMS rules changed", body: `${p} rules version ${version} was published${enable ? " and switched on" : ""}.`, linkUrl: "/admin/payments/provider-rules" });
   revalidatePath("/admin/settings/payments");
   return { provider: p, version };
 }
 
 export async function setProviderConfigurationEnabled(provider: string, version: number, enabled: boolean) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   const p = assertProvider(provider);
   await db.providerConfiguration.update({ where: { provider_version: { provider: p, version } }, data: { enabled } });
   await writeAudit({ event: "providerConfig.toggled", actor: `user:${admin.id}`, metadata: { provider: p, version, enabled } });
+  await notifySuperAdmins({ title: "Payment SMS rules switched", body: `${p} rules version ${version} was switched ${enabled ? "on" : "off"}.`, linkUrl: "/admin/payments/provider-rules" });
   revalidatePath("/admin/settings/payments");
 }
 
 /** Per-provider receiving number shown at checkout (bumps its own version on every change). */
 export async function upsertPaymentConfiguration(provider: string, receivingNumber: string, displayName: string, enabled: boolean) {
-  const admin = await requireAdminUser();
-  const p = assertProvider(provider);
-  const number = normalizeMsisdn(receivingNumber);
-  if (!number) throw new Error("Enter a valid 11-digit mobile number.");
-  const existing = await db.paymentConfiguration.findUnique({ where: { provider: p } });
-  await db.paymentConfiguration.upsert({
-    where: { provider: p },
-    create: { provider: p, receivingNumber: number, displayName: displayName.trim() || p, enabled },
-    update: { receivingNumber: number, displayName: displayName.trim() || p, enabled, configurationVersion: { increment: 1 } },
-  });
-  await writeAudit({ event: "paymentConfig.updated", actor: `user:${admin.id}`, metadata: { provider: p, enabled, previousNumberChanged: existing ? existing.receivingNumber !== number : null } });
-  revalidatePath("/admin/settings/payments");
+  const admin = await requireSuperAdminUser();
+  const parsed = parsePaymentNumberPayload({ provider, receivingNumber, displayName, enabled });
+  if (!parsed.ok) throw new Error(parsed.error);
+  await applyPaymentConfiguration(admin.id, parsed.value);
 }
 
 /** OFF / SHADOW / ENFORCE rollout switch. The existing autoVerifyPayments kill switch still applies on top. */
 export async function setSmsAutoVerifyMode(mode: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireSuperAdminUser();
   if (mode !== "OFF" && mode !== "SHADOW" && mode !== "ENFORCE") throw new Error("Invalid mode.");
   const before = await db.siteSettings.findUnique({ where: { id: "singleton" }, select: { smsAutoVerifyMode: true } });
   await db.siteSettings.upsert({ where: { id: "singleton" }, create: { id: "singleton", smsAutoVerifyMode: mode }, update: { smsAutoVerifyMode: mode } });
   await writeAudit({ event: "smsAutoVerifyMode.changed", actor: `user:${admin.id}`, metadata: { from: before?.smsAutoVerifyMode ?? null, to: mode } });
+  await notifySuperAdmins({ title: "Payment auto-verify mode changed", body: `From ${before?.smsAutoVerifyMode ?? "OFF"} to ${mode}.`, linkUrl: "/admin/settings/payments" });
   revalidatePath("/admin/settings/payments");
 }
 

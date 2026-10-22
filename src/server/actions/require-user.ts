@@ -45,3 +45,17 @@ export async function requireAdminUser() {
   }
   return user;
 }
+
+/**
+ * requireActiveUser, plus SUPER_ADMIN only: payment receiving numbers and rules, branding, email
+ * templates, Control Center, storage, app releases, data exports, deleting missions and the like
+ * (the list is in docs/ADMIN-ROLES.md). An ADMIN does the daily work and asks for the rest under
+ * Admin → Requests.
+ */
+export async function requireSuperAdminUser() {
+  const user = await requireActiveUser();
+  if (user.role !== "SUPER_ADMIN") {
+    throw new Error("Only a super admin can do this.");
+  }
+  return user;
+}

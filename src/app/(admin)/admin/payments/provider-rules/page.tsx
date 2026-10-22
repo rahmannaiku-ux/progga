@@ -1,10 +1,10 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { ProviderRulesManager } from "@/components/admin-dashboard/provider-rules-manager";
 import { MFS_PROVIDERS } from "@/lib/payments/sms/types";
 
 export default async function AdminProviderRulesPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const rows = await db.providerConfiguration.findMany({
     orderBy: [{ provider: "asc" }, { version: "desc" }],

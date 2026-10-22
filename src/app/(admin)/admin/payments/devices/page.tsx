@@ -1,9 +1,9 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { requireSuperAdmin } from "@/lib/auth/require-role";
 import { db } from "@/lib/db/client";
 import { PaymentDeviceManager } from "@/components/admin-dashboard/payment-device-manager";
 
 export default async function AdminPaymentDevicesPage() {
-  await requireRole("ADMIN");
+  await requireSuperAdmin();
 
   const devices = await db.paymentBridgeDevice.findMany({
     // Only rows created through the Android registration-code flow — legacy bridge tokens (never
