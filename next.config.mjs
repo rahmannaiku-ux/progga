@@ -133,6 +133,9 @@ const nextConfig = {
       "node_modules/argon2/prebuilds/**/*",
       "src/lib/certificate/fonts/*.ttf",
       "public/branding/proggaa-logo-512.png",
+      // Ad Studio (lib/ad-studio/render.tsx) draws with these fonts and Proggy's poses.
+      "src/lib/ad-studio/fonts/*.woff",
+      "public/character/proggy/*.png",
     ],
   },
   experimental: {

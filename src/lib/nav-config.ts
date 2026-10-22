@@ -39,6 +39,7 @@ import {
   GraduationCap,
   ClipboardList,
   Inbox,
+  ImagePlus,
 } from "lucide-react";
 
 export type NavItem = {
@@ -190,6 +191,7 @@ export const adminNav: NavSection[] = [
       { label: "Blog", href: "/admin/blog", icon: Newspaper },
       { label: "Medals", href: "/admin/medals", icon: Award },
       { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
+      { label: "Ad Studio", href: "/admin/ad-studio", icon: ImagePlus, prefetch: false },
       { label: "Calendar", href: "/admin/calendar", icon: Calendar },
       { label: "Proggy Store", href: "/admin/store", icon: Store },
     ],

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23 - Ad Studio
+- Admin -> **Ad Studio** (`/admin/ad-studio`, admins and super admins): 20 ready-made Prooggaa ad templates (Mission launch,
+  enrolment, coupons, live classes, mentor spotlight, roadmap, exam alerts, Top Heroes, Medal, reviews, streaks, stories,
+  app, Facebook cover, YouTube thumbnail). Type the text, pick Proggy's pose, add a photo where there is one, download
+  a PNG. Drawn on the server with next/og (`lib/ad-studio/`, POST `/api/admin/ad-studio`); nothing is stored.
+
 ## 2026-10-22 - Cleaner Proggy, Windows app without a title bar
 - Proggy's pose pictures (`public/character/proggy/`, made from `public/character/reference/`) are cleaned up: no
   grey haze or bits of other poses around him, fully solid, and a white sticker outline so he stands out in dark mode.
