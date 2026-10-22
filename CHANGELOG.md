@@ -7,6 +7,8 @@
 - Scrollbars in Chrome/Edge (and the apps) no longer show the Windows arrow buttons; the sidebar's is light on purple.
 - Windows app 1.1.1+: no Windows title bar. The site draws the window buttons
   (`components/shared/desktop-window-controls.tsx`, links `proggaa://window/...`) and the top bar moves the window.
+- Certificate verification opens in the browser, not inside the apps (`components/shared/open-on-website-in-app.tsx`;
+  the apps also send `/certificates/verify` links there themselves). Its ID field no longer makes iPhones zoom in.
 ## 2026-10-20 - Reel posting switch
 - New feature flag **Posting reels** (`reel_posting`, Admin -> Control Center -> Feature flags, on by default). Off hides
   every Create reel button and refuses new reel uploads and reel posts on the server (`startReelUpload`, `createPost`,

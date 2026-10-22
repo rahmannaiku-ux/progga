@@ -3,6 +3,7 @@ import { CircleAlert, ShieldCheck, ShieldX } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { normalizeCertificateNo } from "@/lib/certificate/certificate-no";
 import { formatDhakaDate } from "@/lib/timezone";
+import { OpenOnWebsiteInApp } from "@/components/shared/open-on-website-in-app";
 
 export const metadata = {
   title: "Verify a Certificate",
@@ -37,6 +38,7 @@ export default async function VerifyCertificatePage(
 
   return (
     <div className="container max-w-lg py-14">
+      <OpenOnWebsiteInApp />
       <div className="comic-panel bg-surface p-6 text-center">
         {valid ? (
           <ShieldCheck className="mx-auto h-12 w-12 text-primary" />

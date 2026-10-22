@@ -4,6 +4,7 @@ import {
   certificateVerifyPath,
   normalizeCertificateNo,
 } from "@/lib/certificate/certificate-no";
+import { OpenOnWebsiteInApp } from "@/components/shared/open-on-website-in-app";
 
 export const metadata = {
   title: "Verify a Certificate",
@@ -21,6 +22,7 @@ export default async function VerifyCertificateIndexPage(
 
   return (
     <div className="container max-w-lg py-14">
+      <OpenOnWebsiteInApp />
       <div className="comic-panel bg-surface p-6 text-center">
         <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
         <h1 className="mt-3 font-display text-2xl font-extrabold text-foreground">Verify a certificate</h1>
@@ -34,7 +36,7 @@ export default async function VerifyCertificateIndexPage(
             maxLength={40}
             placeholder="PRG-XXXX-XXXX-XXXX"
             autoComplete="off"
-            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm uppercase text-foreground"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-base uppercase sm:text-sm text-foreground"
           />
           <button type="submit" className="comic-btn bg-primary px-5 py-2 text-sm font-bold text-primary-foreground">
             Verify
