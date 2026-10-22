@@ -103,7 +103,13 @@ export async function GET(req: NextRequest, props: { params: Promise<{ uploadId:
 
     return new NextResponse(webStream, { status: status === 206 ? 206 : 200, headers });
   } catch (err) {
-    console.error(`Failed to stream upload ${upload.id} from Drive:`, err);
+    // The message only: the full error carries the request, including its Drive access token.
+    console.error(`Failed to stream upload ${upload.id} from Drive:`, err instanceof Error ? err.message : err);
+    // Deleted from the Drive by the owner: say so, rather than "try again later".
+    const driveStatus = (err as { status?: unknown; code?: unknown } | null)?.status ?? (err as { code?: unknown } | null)?.code;
+    if (driveStatus === 404 || driveStatus === "404") {
+      return NextResponse.json({ error: "This file has been removed." }, { status: 404 });
+    }
     return NextResponse.json(
       { error: "This file is temporarily unavailable. Please try again later." },
       { status: 502 }

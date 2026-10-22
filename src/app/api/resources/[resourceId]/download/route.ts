@@ -151,7 +151,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ resourceI
     if (length) headers["Content-Length"] = length;
     return new NextResponse(res.body, { headers });
   } catch (err) {
-    console.error(`Failed to stream lesson resource ${params.resourceId}:`, err);
+    // The message only: a Drive error carries the request, including its access token.
+    console.error(`Failed to stream lesson resource ${params.resourceId}:`, err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "This file is temporarily unavailable. Try again shortly." }, { status: 502 });
   }
 }
