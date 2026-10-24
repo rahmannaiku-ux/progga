@@ -50,27 +50,32 @@ type FieldKey =
   | "exam" | "minutes" | "marks" | "syllabus" | "n1" | "n2" | "n3" | "hero" | "certNo" | "patrol";
 type V = Record<FieldKey, string>;
 
-const root = process.cwd();
 let cache: { logo: string; poses: Record<AdPose, string>; fonts: { name: string; data: Buffer; weight: 400 | 600 | 700 | 800 }[] } | null = null;
 
 function loadStatic() {
   if (cache) return cache;
-  const dataUri = (file: string) => `data:image/png;base64,${fs.readFileSync(path.join(root, file)).toString("base64")}`;
+  // Each path.join spells out its folder literally: a folder passed in as a
+  // variable makes Turbopack trace (and deploy) the whole project.
+  const png = (file: string) => `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
   const poses = Object.fromEntries(
-    (Object.keys(POSE_SIZE) as AdPose[]).map((p) => [p, dataUri(`public/character/proggy/${p}.png`)])
+    (Object.keys(POSE_SIZE) as AdPose[]).map((p) => [
+      p,
+      png(path.join(process.cwd(), "public", "character", "proggy", `${p}.png`)),
+    ])
   ) as Record<AdPose, string>;
-  const font = (dir: string, file: string) => fs.readFileSync(path.join(root, dir, file));
+  const adFont = (file: string) => fs.readFileSync(path.join(process.cwd(), "src", "lib", "ad-studio", "fonts", file));
+  const hindFont = (file: string) => fs.readFileSync(path.join(process.cwd(), "src", "lib", "certificate", "fonts", file));
   cache = {
-    logo: dataUri("public/branding/proggaa-logo-512.png"),
+    logo: png(path.join(process.cwd(), "public", "branding", "proggaa-logo-512.png")),
     poses,
     fonts: [
-      { name: "Baloo", data: font("src/lib/ad-studio/fonts", "Baloo2-ExtraBold.woff"), weight: 800 },
-      { name: "Baloo", data: font("src/lib/ad-studio/fonts", "Baloo2-SemiBold.woff"), weight: 600 },
-      { name: "Inter", data: font("src/lib/ad-studio/fonts", "Inter-Regular.woff"), weight: 400 },
-      { name: "Inter", data: font("src/lib/ad-studio/fonts", "Inter-Bold.woff"), weight: 700 },
+      { name: "Baloo", data: adFont("Baloo2-ExtraBold.woff"), weight: 800 },
+      { name: "Baloo", data: adFont("Baloo2-SemiBold.woff"), weight: 600 },
+      { name: "Inter", data: adFont("Inter-Regular.woff"), weight: 400 },
+      { name: "Inter", data: adFont("Inter-Bold.woff"), weight: 700 },
       // Bangla text and the ৳ sign
-      { name: "Hind", data: font("src/lib/certificate/fonts", "HindSiliguri-Regular.ttf"), weight: 400 },
-      { name: "Hind", data: font("src/lib/certificate/fonts", "HindSiliguri-Bold.ttf"), weight: 700 },
+      { name: "Hind", data: hindFont("HindSiliguri-Regular.ttf"), weight: 400 },
+      { name: "Hind", data: hindFont("HindSiliguri-Bold.ttf"), weight: 700 },
     ],
   };
   return cache;
