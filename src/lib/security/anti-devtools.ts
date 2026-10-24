@@ -276,27 +276,49 @@ function probeConsoleTimingMs(): number {
   }
 }
 
-let debuggerProbeSupported = true;
+let evalProbeSupported = true;
+const STATIC_PROBE_SRC = "/anti-devtools-probe.js";
+type WindowWithProbe = Window & { __proggaaDebuggerProbe?: () => void };
+
+/** Loads public/anti-devtools-probe.js once; it defines window.__proggaaDebuggerProbe. */
+function loadStaticDebuggerProbe() {
+  if (document.querySelector(`script[src="${STATIC_PROBE_SRC}"]`)) return;
+  const script = document.createElement("script");
+  script.src = STATIC_PROBE_SRC;
+  script.async = true;
+  document.head.appendChild(script);
+}
+
 /**
  * Runs ONE `debugger;` statement and measures how long it took. With DevTools
  * closed it is a no-op (microseconds). With DevTools open and breakpoints
  * active the page stops until the user resumes. It runs every tick (see
  * TICK_MS) until the first detection, then backs off; it is never a tight
- * loop. Created via `new Function` because the production minifier strips
- * literal `debugger` statements. Each call gets a fresh random `sourceURL`,
- * so "Never pause here" / adding the script to DevTools' ignore list can't
- * be made to stick (best effort — browsers may ignore the comment). Needs
- * 'unsafe-eval' in the CSP (the app's next.config.mjs already allows it); if
- * that is ever removed the probe disables itself instead of throwing.
+ * loop. The production minifier strips literal `debugger` statements, so the
+ * statement comes from either:
+ *   1. `new Function` with a fresh random `sourceURL` per call, so "Never
+ *      pause here" can't be made to stick. Needs 'unsafe-eval', which the
+ *      CSP in next.config.mjs only allows in `next dev`.
+ *   2. Otherwise (production), public/anti-devtools-probe.js, a static
+ *      unminified file allowed by script-src 'self'.
  */
 function probeDebuggerMs(): number {
-  if (!debuggerProbeSupported) return 0;
   try {
     const t0 = performance.now();
-    new Function(`debugger;\n//# sourceURL=pd-${Math.random().toString(36).slice(2)}.js`)();
+    if (evalProbeSupported) {
+      new Function(`debugger;\n//# sourceURL=pd-${Math.random().toString(36).slice(2)}.js`)();
+    } else {
+      const probe = (window as WindowWithProbe).__proggaaDebuggerProbe;
+      if (!probe) return 0; // static probe still loading
+      probe();
+    }
     return performance.now() - t0;
   } catch {
-    debuggerProbeSupported = false;
+    // CSP blocked eval: switch to the static probe.
+    if (evalProbeSupported) {
+      evalProbeSupported = false;
+      loadStaticDebuggerProbe();
+    }
     return 0;
   }
 }
