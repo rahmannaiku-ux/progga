@@ -14,7 +14,7 @@ vi.mock("@/lib/auth/require-auth", () => ({
 const { resolveLiveApiUser } = await import("./route-auth");
 
 function user(overrides: Partial<{ id: string; role: string; profileCompleted: boolean; email: string | null }>) {
-  return { id: "user_1", role: "STUDENT", profileCompleted: true, email: "student@example.com", ...overrides };
+  return { id: "user_1", role: "STUDENT", profileCompleted: true, email: "student@example.com", schoolVerifiedAt: new Date(), ...overrides };
 }
 
 beforeEach(() => {

@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PhoneField } from "@/components/auth/phone-field";
+import { CollegeField } from "@/components/auth/college-field";
+import { DistrictField } from "@/components/auth/district-field";
 import { DateOfBirthField } from "@/components/auth/date-of-birth-field";
 import { cn } from "@/lib/utils";
 import { completeStudentProfileAction } from "@/server/actions/student-profile-actions";
@@ -143,9 +145,8 @@ export function CompleteProfileForm({ maxDateOfBirth }: { maxDateOfBirth: string
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
+        <DistrictField
           id="district"
-          label="District"
           value={values.district}
           onChange={(v) => set("district", v)}
           error={fieldErrors.district}
@@ -163,23 +164,19 @@ export function CompleteProfileForm({ maxDateOfBirth }: { maxDateOfBirth: string
         />
       </div>
 
-      <TextField
-        id="collegeName"
-        label="College name"
-        value={values.collegeName}
-        onChange={(v) => set("collegeName", v)}
-        error={fieldErrors.collegeName}
+      <CollegeField
+        idPrefix="profile"
+        name={values.collegeName}
+        eiin={values.collegeEIIN ?? ""}
+        onChange={(c) => {
+          set("collegeName", c.name);
+          set("collegeEIIN", c.eiin);
+        }}
+        notListed={values.collegeNotListed ?? false}
+        onNotListedChange={(v) => set("collegeNotListed", v)}
+        nameError={fieldErrors.collegeName}
+        eiinError={fieldErrors.collegeEIIN}
         required
-        disabled={isPending}
-      />
-
-      <TextField
-        id="collegeEIIN"
-        label="College EIIN"
-        value={values.collegeEIIN ?? ""}
-        onChange={(v) => set("collegeEIIN", v)}
-        error={fieldErrors.collegeEIIN}
-        placeholder="Optional"
         disabled={isPending}
       />
 

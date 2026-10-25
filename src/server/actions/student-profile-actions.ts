@@ -2,11 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { searchInstitutions } from "@/server/services/institutions";
 import {
   completeStudentProfile,
   updateStudentProfile,
   addStudentEmail,
   setStudentDateOfBirth,
+  confirmSchoolDetails,
+  type ConfirmSchoolInput,
   type CompleteStudentProfileInput,
   type EditableStudentProfileInput,
 } from "@/server/services/profile-service";
@@ -31,7 +34,9 @@ import { clearSessionCookie, getSessionCookieToken, validateSessionToken } from 
  */
 export async function completeStudentProfileAction(input: CompleteStudentProfileInput) {
   const user = await requireAuth();
-  return completeStudentProfile(user.id, input);
+  const result = await completeStudentProfile(user.id, input);
+  if (result.ok) await refreshSessionCache();
+  return result;
 }
 
 /** Edits the post-completion profile fields (never the parent phones). Same userId rule as above. */
@@ -43,6 +48,7 @@ export async function updateStudentProfileAction(input: EditableStudentProfileIn
     zipCode: input.zipCode,
     collegeName: input.collegeName,
     collegeEIIN: input.collegeEIIN,
+    collegeNotListed: input.collegeNotListed,
     hscBatch: input.hscBatch,
     studyVersion: input.studyVersion,
   });
@@ -103,4 +109,24 @@ export async function signOutEverywhereAction() {
   await signOutEverywhere(user.id);
   await clearSessionCookie();
   return { ok: true as const };
+}
+
+/** College suggestions for the profile forms (name or EIIN). */
+export async function searchInstitutionsAction(query: string) {
+  await requireAuth();
+  return searchInstitutions(String(query ?? ""));
+}
+
+/** The college and district check for students who filled in their profile before the official lists. */
+export async function confirmSchoolDetailsAction(input: ConfirmSchoolInput) {
+  const user = await requireAuth();
+  const result = await confirmSchoolDetails(user.id, input);
+  if (result.ok) await refreshSessionCache();
+  return result;
+}
+
+/** Re-reads this session's user so the profile gate sees the change on the very next page. */
+async function refreshSessionCache() {
+  const token = await getSessionCookieToken();
+  if (token) await validateSessionToken(token, { skipCache: true });
 }

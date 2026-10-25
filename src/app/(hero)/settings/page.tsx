@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { getLinkStatusForUser } from "@/server/actions/telegram-link-actions";
 import { PhoneNotificationsCard } from "@/components/profile/phone-notifications-card";
+import { DeleteAccountCard } from "@/components/profile/delete-account-card";
 import { dateOfBirthParts, dhakaCalendarDate, formatCalendarDate, toIsoDate } from "@/lib/birthday/dates";
 import { getVapidConfig } from "@/lib/push/web-push";
 import { APP_CHECK_UPDATE_URL, APP_NOTIFICATIONS_SINCE, APP_NOTIFICATIONS_URL, compareVersions, detectApp } from "@/lib/apps";
@@ -55,6 +56,7 @@ export default async function SettingsPage() {
               zipCode: studentProfile.zipCode ?? "",
               collegeName: studentProfile.collegeName ?? "",
               collegeEIIN: studentProfile.collegeEIIN ?? "",
+              collegeNotListed: !studentProfile.collegeEIIN && Boolean(studentProfile.collegeName),
               hscBatch: studentProfile.hscBatch ?? "",
               studyVersion: studentProfile.studyVersion ?? "",
             }}
@@ -129,6 +131,12 @@ export default async function SettingsPage() {
           <ThemeToggle />
         </div>
       </StaggerItem>
+
+      {user.role === "STUDENT" && (
+        <StaggerItem id="delete-account" className="scroll-mt-24">
+          <DeleteAccountCard />
+        </StaggerItem>
+      )}
     </StaggerContainer>
   );
 }

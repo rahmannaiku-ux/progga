@@ -10,10 +10,13 @@ describe("studentNeedsProfileStep", () => {
     expect(studentNeedsProfileStep({ role: "STUDENT", profileCompleted: true, email: "" })).toBe(true);
   });
   it("lets a finished student with an email through", () => {
-    expect(studentNeedsProfileStep({ role: "STUDENT", profileCompleted: true, email: "a@b.co" })).toBe(false);
+    expect(studentNeedsProfileStep({ role: "STUDENT", profileCompleted: true, email: "a@b.co", schoolVerifiedAt: new Date() })).toBe(false);
   });
   it("never gates teachers or admins", () => {
     expect(studentNeedsProfileStep({ role: "TEACHER", profileCompleted: false, email: null })).toBe(false);
     expect(studentNeedsProfileStep({ role: "ADMIN", profileCompleted: false, email: null })).toBe(false);
+  });
+  it("sends a student who hasn't confirmed college and district to the profile step", () => {
+    expect(studentNeedsProfileStep({ role: "STUDENT", profileCompleted: true, email: "a@b.co", schoolVerifiedAt: null })).toBe(true);
   });
 });

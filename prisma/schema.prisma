@@ -652,8 +652,26 @@ model User {
   communityReportsAbout  CommunityReport[]      @relation("CommunityReportTargetUser")
   communityReportsReviewed CommunityReport[]    @relation("CommunityReportReviewer")
 
+  // Mission switches (see src/server/services/course-migration.ts)
+  courseMigrations          CourseMigration[] @relation("CourseMigrationUser")
+  courseMigrationsHandled   CourseMigration[] @relation("CourseMigrationHandledBy")
+
+  // Account deletion (src/server/services/account-deletion.ts). The person asks, the account is
+  // closed straight away and kept for 30 days so they can change their mind; then personal data
+  // is erased and only deletedSummary (a short record for admins) is kept.
+  deletionRequestedAt     DateTime?
+  deletionScheduledFor    DateTime?
+  deletionReason          String?
+  deletedAt               DateTime?
+  deletedSummary          Json?
+
+  // When the student last confirmed their college and district against the official lists
+  // (Institution, lib/bd-districts.ts). Null sends a student to /complete-profile to confirm them.
+  schoolVerifiedAt        DateTime?
+
   @@index([role])
   @@index([email])
+  @@index([deletionScheduledFor])
 }
 
 model TeacherProfile {
@@ -873,6 +891,8 @@ model Course {
   payments         Payment[]
   discussionPosts  DiscussionPost[]
   courseAssignments Assignment[]
+  migrationsFrom   CourseMigration[] @relation("CourseMigrationFrom")
+  migrationsTo     CourseMigration[] @relation("CourseMigrationTo")
 
   // At most one discount per course — admin-managed, layered on top of
   // priceCents rather than mutating it, so the original price is never
@@ -1701,6 +1721,8 @@ model Payment {
   idempotencyKey    String?
   // Observed transactions the matching engine associated with this payment.
   observedTransactions PaymentTransaction[]
+  // Set when this payment is the price difference for a mission switch.
+  courseMigration   CourseMigration?
 
   expiresAt         DateTime?           // PENDING rows older than this can be swept to EXPIRED
   createdAt         DateTime            @default(now())
@@ -3001,4 +3023,64 @@ model RateLimitBucket {
   resetAt DateTime
 
   @@index([resetAt])
+}
+
+// ---------------------------------------------------------------------
+// MISSION SWITCHES
+// ---------------------------------------------------------------------
+
+enum CourseMigrationStatus {
+  REQUESTED        // the student asked an admin (their own free switch is used up)
+  AWAITING_PAYMENT // the new mission costs more: waiting for the difference to be paid
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+// A student moving from one mission to another. A student's first switch is self-service;
+// later ones go through an admin. Titles and prices are snapshots, so the record survives
+// a mission being edited or deleted.
+model CourseMigration {
+  id               String                @id @default(cuid())
+  userId           String
+  user             User                  @relation("CourseMigrationUser", fields: [userId], references: [id], onDelete: Cascade)
+  fromCourseId     String?
+  fromCourse       Course?               @relation("CourseMigrationFrom", fields: [fromCourseId], references: [id], onDelete: SetNull)
+  toCourseId       String?
+  toCourse         Course?               @relation("CourseMigrationTo", fields: [toCourseId], references: [id], onDelete: SetNull)
+  fromCourseTitle  String
+  toCourseTitle    String
+  fromPriceCents   Int
+  toPriceCents     Int
+  differenceCents  Int                   @default(0) // what the student pays; 0 when the new mission costs the same or less
+  status           CourseMigrationStatus
+  byAdmin          Boolean               @default(false) // made or approved by an admin (doesn't use up the student's own switch)
+  feeWaived        Boolean               @default(false)
+  reason           String?               @db.Text
+  adminNote        String?               @db.Text
+  handledById      String?
+  handledBy        User?                 @relation("CourseMigrationHandledBy", fields: [handledById], references: [id], onDelete: SetNull)
+  paymentId        String?               @unique
+  payment          Payment?              @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  completedAt      DateTime?
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// Bangladesh schools, colleges and madrasahs (BANBEIS list, loaded by the 20261025130000_institutions
+// migration). Suggests a college with its EIIN while a student fills in their profile. Read-only.
+model Institution {
+  eiin       String  @id
+  name       String
+  searchName String  // lowercase name, punctuation removed, for search
+  type       String  // College, School, School and College, Madrasha, Technical and Vocational
+  level      String?
+  district   String?
+  thana      String?
+  division   String?
+
+  @@index([searchName])
 }

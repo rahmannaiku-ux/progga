@@ -3,6 +3,7 @@ import { normalizeBangladeshPhone } from "@/lib/auth/phone";
 import { Prisma, type StudyVersion } from "@prisma/client";
 import { calendarDateToDb, parseDateOfBirth } from "@/lib/birthday/dates";
 import { ensureUsername } from "@/server/services/usernames";
+import { officialDistrictName } from "@/lib/bd-districts";
 
 /**
  * Phase 4 profile-completion service. Deliberately takes `userId` as a
@@ -22,6 +23,8 @@ export type CompleteStudentProfileInput = {
   zipCode: string;
   collegeName: string;
   collegeEIIN?: string;
+  /** Ticked when the student's college isn't in the institution list: the typed name is kept as is. */
+  collegeNotListed?: boolean;
   fatherPhone?: string;
   motherPhone?: string;
   hscBatch: string;
@@ -83,7 +86,9 @@ function validateEditable(input: EditableStudentProfileInput): {
   if (nameErr) fieldErrors.name = nameErr;
 
   const districtErr = requiredText(input.district, "District");
+  const district = officialDistrictName(input.district ?? "");
   if (districtErr) fieldErrors.district = districtErr;
+  else if (!district) fieldErrors.district = "Pick your district from the list.";
 
   const zipErr = requiredText(input.zipCode, "ZIP/postal code");
   if (zipErr) fieldErrors.zipCode = zipErr;
@@ -107,7 +112,7 @@ function validateEditable(input: EditableStudentProfileInput): {
     fieldErrors,
     data: {
       name: (input.name ?? "").trim(),
-      district: (input.district ?? "").trim(),
+      district: district ?? (input.district ?? "").trim(),
       zipCode: (input.zipCode ?? "").trim(),
       collegeName: (input.collegeName ?? "").trim(),
       collegeEIIN: collegeEIIN.length > 0 ? collegeEIIN : null,
@@ -180,6 +185,30 @@ function emailInUse(): CompleteStudentProfileResult {
 }
 
 /**
+ * Checks the college against the institution list (Institution): with an EIIN the official name
+ * is used; without one the student must say their college isn't listed. Returns a field error or
+ * the name and EIIN to save.
+ */
+async function resolveCollege(input: {
+  collegeName?: string;
+  collegeEIIN?: string | null;
+  collegeNotListed?: boolean;
+}): Promise<{ ok: true; collegeName: string; collegeEIIN: string | null } | { ok: false; field: "collegeName" | "collegeEIIN"; error: string }> {
+  const eiin = (input.collegeEIIN ?? "").trim();
+  if (eiin) {
+    const found = await db.institution.findUnique({ where: { eiin }, select: { name: true } });
+    if (!found) return { ok: false, field: "collegeEIIN", error: "No college has this EIIN. Pick your college from the list." };
+    return { ok: true, collegeName: found.name, collegeEIIN: eiin };
+  }
+  const name = (input.collegeName ?? "").trim();
+  if (!input.collegeNotListed) {
+    return { ok: false, field: "collegeName", error: "Pick your college from the list, or tick \"My college isn't listed\"." };
+  }
+  if (!name) return { ok: false, field: "collegeName", error: "College name is required." };
+  return { ok: true, collegeName: name, collegeEIIN: null };
+}
+
+/**
  * Persists the mandatory first-login profile for `userId` and, only on
  * successful persistence, sets `User.profileCompleted = true`. Both
  * writes happen in one transaction — a validation failure never
@@ -198,6 +227,10 @@ export async function completeStudentProfile(
 ): Promise<CompleteStudentProfileResult> {
   const validated = validate(input, now);
   if (!validated.ok) return { ok: false, reason: "validation", fieldErrors: validated.fieldErrors };
+  const college = await resolveCollege(input);
+  if (!college.ok) return { ok: false, reason: "validation", fieldErrors: { [college.field]: college.error } };
+  validated.data.collegeName = college.collegeName;
+  validated.data.collegeEIIN = college.collegeEIIN;
 
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!user) return { ok: false, reason: "not_found" };
@@ -224,7 +257,7 @@ export async function completeStudentProfile(
     db.user.update({
       where: { id: userId },
       // The name shown everywhere (Community, leaderboards, mentors' lists) comes from these.
-      data: { profileCompleted: true, email: validated.email, ...splitName(validated.data.name) },
+      data: { profileCompleted: true, schoolVerifiedAt: now, email: validated.email, ...splitName(validated.data.name) },
     }),
   ]);
   } catch (err) {
@@ -321,6 +354,10 @@ export type UpdateStudentProfileResult =
 export async function updateStudentProfile(userId: string, input: EditableStudentProfileInput): Promise<UpdateStudentProfileResult> {
   const { data, fieldErrors } = validateEditable(input);
   if (Object.keys(fieldErrors).length > 0) return { ok: false, reason: "validation", fieldErrors };
+  const college = await resolveCollege(input);
+  if (!college.ok) return { ok: false, reason: "validation", fieldErrors: { [college.field]: college.error } };
+  data.collegeName = college.collegeName;
+  data.collegeEIIN = college.collegeEIIN;
 
   const profile = await db.studentProfile.findUnique({ where: { userId }, select: { id: true } });
   if (!profile) return { ok: false, reason: "not_found" };
@@ -328,7 +365,7 @@ export async function updateStudentProfile(userId: string, input: EditableStuden
   await db.$transaction([
     db.studentProfile.update({ where: { userId }, data }),
     // Keep the displayed name (User.firstName/lastName) the same as the profile name.
-    ...(data.name ? [db.user.update({ where: { id: userId }, data: splitName(data.name) })] : []),
+    db.user.update({ where: { id: userId }, data: { ...(data.name ? splitName(data.name) : {}), schoolVerifiedAt: new Date() } }),
   ]);
   return { ok: true };
 }
@@ -348,4 +385,32 @@ export async function updateHeadlineAndBio(userId: string, input: { headline?: s
       ...(input.bio !== undefined ? { bio: input.bio.trim().slice(0, 2000) || null } : {}),
     },
   });
+}
+
+export type ConfirmSchoolInput = { district: string; collegeName: string; collegeEIIN?: string; collegeNotListed?: boolean };
+export type ConfirmSchoolResult =
+  | { ok: true }
+  | { ok: false; reason: "validation"; fieldErrors: Partial<Record<"district" | "collegeName" | "collegeEIIN", string>> }
+  | { ok: false; reason: "not_found" };
+
+/**
+ * For students who filled in their profile before the official lists existed: confirms the
+ * district (one of the 64) and the college (from the institution list) once.
+ */
+export async function confirmSchoolDetails(userId: string, input: ConfirmSchoolInput): Promise<ConfirmSchoolResult> {
+  const district = officialDistrictName(input.district ?? "");
+  if (!district) return { ok: false, reason: "validation", fieldErrors: { district: "Pick your district from the list." } };
+  const college = await resolveCollege(input);
+  if (!college.ok) return { ok: false, reason: "validation", fieldErrors: { [college.field]: college.error } };
+
+  const profile = await db.studentProfile.findUnique({ where: { userId }, select: { id: true } });
+  if (!profile) return { ok: false, reason: "not_found" };
+  await db.$transaction([
+    db.studentProfile.update({
+      where: { userId },
+      data: { district, collegeName: college.collegeName, collegeEIIN: college.collegeEIIN },
+    }),
+    db.user.update({ where: { id: userId }, data: { schoolVerifiedAt: new Date() } }),
+  ]);
+  return { ok: true };
 }

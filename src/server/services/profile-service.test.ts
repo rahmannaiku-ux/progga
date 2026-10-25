@@ -13,6 +13,7 @@ const studentProfileUpdateMany = vi.fn();
 const userUpdate = vi.fn();
 const userUpdateMany = vi.fn();
 const transaction = vi.fn();
+const institutionFindUnique = vi.fn();
 
 vi.mock("@/lib/db/client", () => ({
   db: {
@@ -27,6 +28,9 @@ vi.mock("@/lib/db/client", () => ({
       findUnique: (...args: unknown[]) => studentProfileFindUnique(...args),
       update: (...args: unknown[]) => studentProfileUpdate(...args),
       updateMany: (...args: unknown[]) => studentProfileUpdateMany(...args),
+    },
+    institution: {
+      findUnique: (...args: unknown[]) => institutionFindUnique(...args),
     },
     $transaction: (ops: Promise<unknown>[]) => transaction(ops),
   },
@@ -44,6 +48,7 @@ const VALID_INPUT = {
   zipCode: "1207",
   collegeName: "Dhaka City College",
   collegeEIIN: "",
+  collegeNotListed: true,
   fatherPhone: "01712345678",
   motherPhone: "",
   hscBatch: "2026",
@@ -60,6 +65,9 @@ beforeEach(() => {
   studentProfileUpdateMany.mockReset().mockResolvedValue({ count: 1 });
   userUpdate.mockReset().mockResolvedValue({});
   transaction.mockReset().mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
+  institutionFindUnique
+    .mockReset()
+    .mockImplementation(async ({ where }: { where: { eiin: string } }) => (where.eiin === "123456" ? { name: "Dhaka City College" } : null));
 });
 
 describe("completeStudentProfile — validation", () => {
@@ -167,7 +175,7 @@ describe("completeStudentProfile — email", () => {
     await completeStudentProfile("user_1", { ...VALID_INPUT, email: " Fahim@Example.COM " });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: "user_1" },
-      data: { profileCompleted: true, email: "fahim@example.com", firstName: "Fahim", lastName: "Rahman" },
+      data: { profileCompleted: true, schoolVerifiedAt: expect.any(Date), email: "fahim@example.com", firstName: "Fahim", lastName: "Rahman" },
     });
   });
 });
@@ -197,7 +205,7 @@ describe("completeStudentProfile — persistence", () => {
     const result = await completeStudentProfile("user_1", VALID_INPUT);
     expect(result).toEqual({ ok: true });
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(userUpdate).toHaveBeenCalledWith({ where: { id: "user_1" }, data: { profileCompleted: true, email: "fahim@example.com", firstName: "Fahim", lastName: "Rahman" } });
+    expect(userUpdate).toHaveBeenCalledWith({ where: { id: "user_1" }, data: { profileCompleted: true, schoolVerifiedAt: expect.any(Date), email: "fahim@example.com", firstName: "Fahim", lastName: "Rahman" } });
   });
 
   it("normalizes parent phone numbers through the shared phone utility before persisting", async () => {
@@ -216,7 +224,7 @@ describe("completeStudentProfile — persistence", () => {
   });
 });
 
-describe("completeStudentProfile � date of birth", () => {
+describe("completeStudentProfile � date of birth", () => {
   it("is required", async () => {
     const result = await completeStudentProfile("user_1", { ...VALID_INPUT, dateOfBirth: "" }, NOW);
     expect(result.ok).toBe(false);
@@ -360,5 +368,33 @@ describe("addStudentEmail", () => {
   it("does not overwrite when a second submission wins the race", async () => {
     userUpdateMany.mockResolvedValue({ count: 0 });
     expect(await addStudentEmail("user_1", "a@example.com")).toMatchObject({ ok: false, reason: "already_set" });
+  });
+});
+
+describe("college and district from the official lists", () => {
+  it("rejects a district that isn't one of the 64 and accepts an old spelling", async () => {
+    const bad = await completeStudentProfile("user_1", { ...VALID_INPUT, district: "Gotham" }, NOW);
+    expect(bad.ok).toBe(false);
+    const ok = await completeStudentProfile("user_1", { ...VALID_INPUT, district: "chittagong" }, NOW);
+    expect(ok.ok).toBe(true);
+    expect(studentProfileUpsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ district: "Chattogram" }) })
+    );
+  });
+
+  it("needs a listed college (EIIN) unless the student says it isn't listed", async () => {
+    const unpicked = await completeStudentProfile("user_1", { ...VALID_INPUT, collegeNotListed: false }, NOW);
+    expect(unpicked.ok).toBe(false);
+    const unknownEiin = await completeStudentProfile("user_1", { ...VALID_INPUT, collegeEIIN: "999999" }, NOW);
+    expect(unknownEiin.ok).toBe(false);
+  });
+
+  it("uses the official name for a picked college and marks the school as confirmed", async () => {
+    const result = await completeStudentProfile("user_1", { ...VALID_INPUT, collegeName: "dhaka city", collegeEIIN: "123456" }, NOW);
+    expect(result.ok).toBe(true);
+    expect(studentProfileUpsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ collegeName: "Dhaka City College", collegeEIIN: "123456" }) })
+    );
+    expect(userUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ schoolVerifiedAt: NOW }) }));
   });
 });

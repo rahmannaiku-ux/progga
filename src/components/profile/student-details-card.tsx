@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Lock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhoneField } from "@/components/auth/phone-field";
+import { CollegeField } from "@/components/auth/college-field";
+import { DistrictField } from "@/components/auth/district-field";
 import { OtpInput } from "@/components/auth/otp-input";
 import { AddDateOfBirthForm } from "@/components/profile/add-date-of-birth-form";
 import { cn } from "@/lib/utils";
@@ -167,17 +169,21 @@ export function StudentDetailsCard({
         <form onSubmit={save} className="mt-4 space-y-4">
           <TextField id="pf-name" label="Full name" value={values.name} onChange={(v) => set("name", v)} error={fieldErrors.name} disabled={isPending} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField id="pf-district" label="District" value={values.district} onChange={(v) => set("district", v)} error={fieldErrors.district} disabled={isPending} />
+            <DistrictField id="pf-district" value={values.district} onChange={(v) => set("district", v)} error={fieldErrors.district} disabled={isPending} />
             <TextField id="pf-zip" label="ZIP / postal code" value={values.zipCode} onChange={(v) => set("zipCode", v)} error={fieldErrors.zipCode} disabled={isPending} />
           </div>
-          <TextField id="pf-college" label="College name" value={values.collegeName} onChange={(v) => set("collegeName", v)} error={fieldErrors.collegeName} disabled={isPending} />
-          <TextField
-            id="pf-eiin"
-            label="College EIIN"
-            value={values.collegeEIIN ?? ""}
-            onChange={(v) => set("collegeEIIN", v)}
-            error={fieldErrors.collegeEIIN}
-            placeholder="Optional"
+          <CollegeField
+            idPrefix="pf"
+            name={values.collegeName}
+            eiin={values.collegeEIIN ?? ""}
+            onChange={(c) => {
+              set("collegeName", c.name);
+              set("collegeEIIN", c.eiin);
+            }}
+            notListed={values.collegeNotListed ?? false}
+            onNotListedChange={(v) => set("collegeNotListed", v)}
+            nameError={fieldErrors.collegeName}
+            eiinError={fieldErrors.collegeEIIN}
             disabled={isPending}
           />
           <div className="grid gap-4 sm:grid-cols-2">
