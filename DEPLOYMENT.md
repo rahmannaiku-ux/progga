@@ -60,7 +60,9 @@ The canonical production address is **`https://prooggaa.com`** (https, apex host
 
 ### Cron jobs
 
-There is **no `vercel.json` in the repo**, so schedule these in Vercel (add a `vercel.json`) or with any external scheduler. Each is a `GET` that must send `Authorization: Bearer $CRON_SECRET`. In production they refuse to run if `CRON_SECRET` is unset. **Schedules are UTC** (BST = UTC+6, so `0 20 * * *` = 02:00 Dhaka).
+**How they run in production:** `vercel.json` schedules only the daily birthday job and `/api/keepalive` (the Hobby plan allows daily crons only). The GitHub Actions keep-alive (`.github/workflows/keepalive.yml`) calls `/api/keepalive` every 10 minutes during the day, and that route starts whichever jobs below are due (`src/server/services/scheduled-jobs.ts`: live-class reminders every 5 min, live-class sweep and webhooks every 10, notification reminders every 15, payment expiry and birthday hourly, nonce pruning daily). Each job is claimed with a `Heartbeat` row (`job:<name>`), so it runs at most once per interval however often the keep-alive is called. Nothing else needs scheduling; an external scheduler hitting the routes directly still works too.
+
+The routes themselves: Each is a `GET` that must send `Authorization: Bearer $CRON_SECRET`. In production they refuse to run if `CRON_SECRET` is unset. **Schedules are UTC** (BST = UTC+6, so `0 20 * * *` = 02:00 Dhaka).
 
 | Route | Does | Suggested schedule |
 |---|---|---|
