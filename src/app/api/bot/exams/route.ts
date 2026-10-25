@@ -36,7 +36,11 @@ export async function GET(req: Request) {
   const { user, error } = await requireLinkedUser(userId);
   if (error) return error;
 
-  const enrollments = await db.enrollment.findMany({ where: { userId: user!.id }, select: { courseId: true } });
+  // Only missions whose exams are switched on (a mentor can switch them off after publishing).
+  const enrollments = await db.enrollment.findMany({
+    where: { userId: user!.id, course: { examsEnabled: true } },
+    select: { courseId: true },
+  });
   const courseIds = enrollments.map((e) => e.courseId);
   if (courseIds.length === 0) return NextResponse.json([]);
 

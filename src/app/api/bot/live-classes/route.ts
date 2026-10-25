@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
 import { db } from "@/lib/db/client";
 import { effectiveEndTime, getLiveClassStatus } from "@/lib/live-classes";
+import { lessonPaths } from "@/server/services/mission-paths";
 
 const LOOKBACK_MS = 3 * 60 * 60 * 1000;
 
@@ -51,6 +52,7 @@ export async function GET(req: Request) {
     },
   });
 
+  const paths = await lessonPaths(lessons.map((l) => l.id));
   const rows = lessons.flatMap((l) => {
     if (!l.scheduledStart) return [];
     const status = getLiveClassStatus(l.scheduledStart, l.scheduledEnd, now);
@@ -65,7 +67,9 @@ export async function GET(req: Request) {
         status,
         scheduledStart: l.scheduledStart,
         scheduledEnd: effectiveEndTime(l.scheduledStart, l.scheduledEnd),
-        path: `/missions/${operation.course.id}/operations/${operation.id}/chapters/${l.group.chapter.id}/groups/${l.group.id}/patrols/${l.id}`,
+        path:
+          paths.get(l.id) ??
+          `/missions/${operation.course.id}/operations/${operation.id}/chapters/${l.group.chapter.id}/groups/${l.group.id}/patrols/${l.id}`,
       },
     ];
   });

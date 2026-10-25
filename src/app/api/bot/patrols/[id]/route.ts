@@ -3,6 +3,7 @@ import { requireBotApiKey, requireLinkedUser } from "@/lib/auth/bot-auth";
 import { jsonError, patrolAccessFor, patrolPath } from "@/lib/bot-api/helpers";
 import { flattenLessons } from "@/lib/course-tree";
 import { db } from "@/lib/db/client";
+import { lessonPath } from "@/server/services/mission-paths";
 
 /**
  * GET /api/bot/patrols/:id?userId=...
@@ -64,7 +65,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     return jsonError("This Patrol is locked. Enrol in the Mission to open it.", 403, "LOCKED");
   }
 
-  const [progress, notes, tree] = await Promise.all([
+  const [progress, notes, tree, readablePath] = await Promise.all([
     db.lessonProgress.findUnique({
       where: { userId_lessonId: { userId: user!.id, lessonId: lesson.id } },
       select: { isCompleted: true, watchedSeconds: true },
@@ -92,6 +93,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         },
       },
     }),
+    lessonPath(lesson.id),
   ]);
 
   const flat = flattenLessons(tree);
@@ -116,12 +118,14 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     notes,
     previous: neighbour(index - 1),
     next: neighbour(index + 1),
-    path: patrolPath({
-      missionId: course.id,
-      operationId: operation.id,
-      chapterId: lesson.group.chapter.id,
-      groupId: lesson.group.id,
-      patrolId: lesson.id,
-    }),
+    path:
+      readablePath ??
+      patrolPath({
+        missionId: course.id,
+        operationId: operation.id,
+        chapterId: lesson.group.chapter.id,
+        groupId: lesson.group.id,
+        patrolId: lesson.id,
+      }),
   });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireBotApiKey } from "@/lib/auth/bot-auth";
 import { afterCursorWhere, parseFeedQuery } from "@/lib/bot-api/feed-cursor";
 import { db } from "@/lib/db/client";
+import { cleanMissionUrls } from "@/server/services/mission-paths";
 
 /**
  * GET /api/bot/notifications/feed?after=<ISO>&afterId=<id>&limit=<n>
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
   const rows = await db.notification.findMany({
     where: {
       ...afterCursorWhere(query.cursor),
-      user: { isActive: true, isSuspended: false, telegramLink: { isNot: null } },
+      user: { isActive: true, isSuspended: false, deletionRequestedAt: null, telegramLink: { isNot: null } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: query.limit,
@@ -41,9 +42,11 @@ export async function GET(req: Request) {
     },
   });
 
+  // Older notifications carry id-based mission links; send the readable ones.
+  const links = await cleanMissionUrls(rows.map((r) => r.linkUrl));
   return NextResponse.json(
-    rows.flatMap(({ user, ...n }) =>
-      user.telegramLink ? [{ ...n, telegramId: user.telegramLink.telegramId }] : []
+    rows.flatMap(({ user, ...n }, i) =>
+      user.telegramLink ? [{ ...n, linkUrl: links[i] ?? n.linkUrl, telegramId: user.telegramLink.telegramId }] : []
     )
   );
 }

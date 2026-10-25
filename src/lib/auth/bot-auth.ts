@@ -75,5 +75,18 @@ export async function requireLinkedUser(userId: string | null) {
   if (!user || !user.telegramLink || !user.isActive || user.isSuspended) {
     return { user: null, error: NextResponse.json({ error: "Unknown or unlinked user." }, { status: 404 }) };
   }
+  // An account waiting out its 30 days before deletion is signed out everywhere, the bot included.
+  if (user.deletionRequestedAt) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        {
+          error: "This Proggaa account is set to be deleted. Sign in on the website to keep it, then come back here.",
+          code: "DELETION_PENDING",
+        },
+        { status: 403 }
+      ),
+    };
+  }
   return { user, error: null };
 }
