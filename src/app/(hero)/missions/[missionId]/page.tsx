@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { PlayCircle, Award, GraduationCap, ChevronRight, BookOpen, CalendarDays, Maximize2 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { assertCourseEnrollment } from "@/lib/auth/enrollment-guard";
 import { db } from "@/lib/db/client";
+import { getMissionNav, navPath } from "@/server/services/mission-paths";
 import { Button } from "@/components/ui/button";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
@@ -25,8 +26,13 @@ export default async function MissionOverviewPage(
     params: Promise<{ missionId: string }>;
   }
 ) {
-  const params = await props.params;
+  const { missionId: slugOrId } = await props.params;
   const user = await getCurrentUser();
+  const nav = await getMissionNav(slugOrId);
+  if (!nav) notFound();
+  // Old links used the mission's id: show the readable address instead.
+  if (decodeURIComponent(slugOrId) !== nav.slug) permanentRedirect(`/missions/${nav.slug}`);
+  const params = { missionId: nav.courseId };
 
   // Cheap existence + enrollment check first — avoids fetching the full
   // module/chapter/group/lesson tree below only to redirect it away.
@@ -207,7 +213,7 @@ export default async function MissionOverviewPage(
           firstIncomplete && (
             <Button asChild variant="accent" size="lg" className="comic-btn relative mt-5">
               <Link
-                href={`/missions/${course.id}/operations/${firstIncomplete.moduleId}/chapters/${firstIncomplete.chapterId}/groups/${firstIncomplete.groupId}/patrols/${firstIncomplete.lessonId}`}
+                href={navPath(nav, firstIncomplete.lessonId)}
                 prefetch={false}
               >
                 <PlayCircle className="h-4 w-4" />
@@ -219,7 +225,7 @@ export default async function MissionOverviewPage(
 
         {course.examsEnabled && (
           <Link
-            href={`/missions/${course.id}/exams`}
+            href={`${navPath(nav, course.id)}/exams`}
             className="relative mt-4 flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80"
           >
             <GraduationCap className="h-4 w-4" /> Exams →
@@ -239,7 +245,7 @@ export default async function MissionOverviewPage(
           {subjectSummaries.map((subject) => (
             <Link
               key={subject.id}
-              href={`/missions/${course.id}/operations/${subject.id}`}
+              href={navPath(nav, subject.id)}
               className="hover-glow-card comic-panel flex items-center gap-3 bg-surface p-4"
             >
               <span className="sticker flex h-10 w-10 shrink-0 items-center justify-center bg-primary/15 text-primary">

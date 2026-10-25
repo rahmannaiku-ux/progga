@@ -82,7 +82,7 @@ export default async function MyCoursesPage(
   // NOT a deep link straight into whatever lesson getResumeLessonPath
   // would pick — that used to skip the whole subject/chapter picker
   // the student wanted to see.
-  const resumeHrefs = new Map(visibleEnrollments.map((e) => [e.id, `/missions/${e.course.id}`] as const));
+  const resumeHrefs = new Map(visibleEnrollments.map((e) => [e.id, `/missions/${e.course.slug}`] as const));
 
   return (
     <StaggerContainer className="space-y-6">
@@ -203,7 +203,7 @@ export default async function MyCoursesPage(
                 </div>
 
                 <Link
-                  href={resumeHrefs.get(e.id) ?? `/missions/${e.course.id}`}
+                  href={resumeHrefs.get(e.id) ?? `/missions/${e.course.slug}`}
                   aria-label={`${e.status === "COMPLETED" ? "Review" : "Resume"} ${e.course.title}`}
                   className="inline-flex shrink-0 items-center justify-between gap-3 rounded-full border border-border bg-background/40 py-1.5 pl-4 pr-1.5 text-sm font-bold text-foreground transition-colors after:absolute after:inset-0 after:content-[''] group-hover:border-xp sm:justify-start"
                 >

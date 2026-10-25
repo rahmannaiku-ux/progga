@@ -101,7 +101,7 @@ export async function verifyPaymentManually(paymentId: string) {
       data: {
         userId: fresh.userId,
         type: "PAYMENT_VERIFIED",
-        title: "Payment verified! 🎉",
+        title: "Payment verified",
         body: `Your payment for "${paymentCourseTitle(fresh)}" was verified by the Proggaa team. The mission is unlocked!`,
       },
     });
@@ -111,7 +111,7 @@ export async function verifyPaymentManually(paymentId: string) {
         fresh.user.email,
         { courseTitle: paymentCourseTitle(fresh) },
         {
-          subject: "Payment verified — you're in! 🎉",
+          subject: "Payment verified: your mission is open",
           bodyHtml: "<p>Your payment for {{courseTitle}} was verified. It's unlocked on your dashboard now.</p>",
         }
       );

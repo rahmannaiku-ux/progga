@@ -2,6 +2,7 @@ import { db } from "@/lib/db/client";
 import { getLiveClassStatus } from "@/lib/live-classes";
 import { isLiveRoomEnabled } from "@/lib/live/flag";
 import { ensureLiveClassesForLessons } from "@/server/live/ensure-live-class";
+import { withCleanHrefs } from "@/server/services/mission-paths";
 
 export type StudentLiveClass = {
   id: string;
@@ -190,6 +191,7 @@ export async function getStudentLiveClasses(
   // first) but backwards for `ended` (most recently ended should show
   // first) — flip just that one.
   ended.reverse();
+  await Promise.all([withCleanHrefs(live), withCleanHrefs(upcoming), withCleanHrefs(ended)]);
 
   return {
     live,

@@ -190,7 +190,7 @@ export async function createCheckoutPayment(
           data: {
             userId: user.id,
             type: "PAYMENT_VERIFIED",
-            title: "Mission unlocked! 🎉",
+            title: "Mission unlocked",
             body: `Your coupon ${redeemedCoupon!.code} covered the full price of "${course.title}". The mission is unlocked!`,
           },
         });

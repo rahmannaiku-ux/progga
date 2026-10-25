@@ -215,11 +215,14 @@ export function SearchCommand() {
           className={cn(
             "group flex h-10 items-center gap-2.5 rounded-full border border-border/20 bg-surface text-sm text-muted-foreground shadow-card transition-all",
             "hover:border-accent/40 hover:text-foreground hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-            "w-full max-w-sm justify-start px-4"
+            "w-full min-w-0 max-w-sm justify-start overflow-hidden px-4"
           )}
         >
           <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-accent" />
-          <span className="truncate">Search missions, lessons, pages…</span>
+          <span className="min-w-0 truncate">
+            <span className="sm:hidden">Search</span>
+            <span className="hidden sm:inline">Search missions, lessons, pages…</span>
+          </span>
           <kbd className="ml-auto hidden shrink-0 items-center gap-0.5 rounded-md border border-border/20 bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground md:flex">
             {isMac ? "⌘" : "Ctrl"} K
           </kbd>

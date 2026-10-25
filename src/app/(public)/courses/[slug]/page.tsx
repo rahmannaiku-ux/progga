@@ -241,7 +241,7 @@ export default async function CourseBuyingPage(props: { params: Promise<{ slug: 
                 alreadyEnrolled={alreadyEnrolled}
                 pendingPaymentId={pendingPayment?.id ?? null}
                 pendingPaymentAwaiting={pendingPayment?.status === "AWAITING_VERIFICATION"}
-                missionHref={`/missions/${course.id}`}
+                missionHref={`/missions/${course.slug}`}
                 signedIn={Boolean(viewer)}
                 loginHref={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
               />

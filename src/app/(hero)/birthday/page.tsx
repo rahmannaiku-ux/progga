@@ -43,7 +43,7 @@ export default async function BirthdayPage() {
       {overview.isBirthdayToday && (
         <StaggerItem className="comic-panel bday-stage relative overflow-hidden p-5 text-center text-[#FCF9F3]">
           <p className="font-display text-2xl font-extrabold">
-            Happy Birthday, <span className="text-[#FAB719]">{name}</span>! 🎉
+            Happy Birthday, <span className="text-[#FAB719]">{name}</span>!
           </p>
           <p className="mt-1 text-sm text-[#FCF9F3]/80">Celebrate today, then get back to your next Patrol.</p>
         </StaggerItem>

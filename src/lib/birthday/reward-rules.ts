@@ -41,7 +41,7 @@ export function greetingName(name: string | null | undefined): string {
 
 export function birthdayNotification(name: string) {
   return {
-    title: "🎂 Happy Birthday from Proggaa!",
+    title: "Happy birthday from Proggaa",
     body:
       `Happy Birthday, ${greetingName(name)}! Celebrate your special day with ` +
       `${BIRTHDAY_REWARD_COINS.toLocaleString("en-US")} Proggy Coins. Your birthday reward expires in ` +

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db/client";
 import { getLiveClassStatus } from "@/lib/live-classes";
 import { isLiveRoomEnabled } from "@/lib/live/flag";
+import { withCleanHrefs } from "@/server/services/mission-paths";
 
 export type MentorLiveClass = {
   /** The live class's lesson id (what the schedule actions take). */
@@ -115,5 +116,7 @@ export async function getMentorLiveClasses(teacher: { id: string; role: string }
   }
 
   ended.reverse();
-  return { live, upcoming, ended: ended.slice(0, 15) };
+  const recent = ended.slice(0, 15);
+  await Promise.all([withCleanHrefs(live), withCleanHrefs(upcoming), withCleanHrefs(recent)]);
+  return { live, upcoming, ended: recent };
 }

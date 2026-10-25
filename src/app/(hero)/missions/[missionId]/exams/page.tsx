@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { GraduationCap, Clock3, ListChecks, RotateCcw } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
+import { getMissionNav } from "@/server/services/mission-paths";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 
@@ -18,8 +19,12 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
  * the reference course/exam tree groups both under one "Exams" tab.
  */
 export default async function CourseExamsPage(props: { params: Promise<{ missionId: string }> }) {
-  const params = await props.params;
+  const { missionId: slugOrId } = await props.params;
   const user = await getCurrentUser();
+  const nav = await getMissionNav(slugOrId);
+  if (!nav) notFound();
+  if (decodeURIComponent(slugOrId) !== nav.slug) permanentRedirect(`/missions/${nav.slug}/exams`);
+  const params = { missionId: nav.courseId };
 
   const [course, enrollment] = await Promise.all([
     db.course.findUnique({

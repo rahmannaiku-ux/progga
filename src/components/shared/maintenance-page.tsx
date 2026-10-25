@@ -37,7 +37,7 @@ export async function MaintenancePage() {
         </h1>
         <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
           {settings?.maintenanceMessage ||
-            "Proggaa is under maintenance right now. We'll be back shortly — thanks for your patience! 💖"}
+            "Proggaa is under maintenance right now. We'll be back shortly. Thanks for your patience."}
         </p>
         {settings?.maintenanceEstimatedRestore && (
           <p className="mt-2 text-xs font-semibold text-primary">

@@ -69,7 +69,7 @@ export function TxidForm({ paymentId, providerLabel = "bKash" }: { paymentId: st
         {isPending ? "Submitting..." : "Submit payment"}
       </button>
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        After you submit, we'll verify it — usually within a few hours. 🕐
+        After you submit, we'll verify it, usually within a few hours.
       </p>
     </form>
   );

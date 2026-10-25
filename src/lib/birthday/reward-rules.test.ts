@@ -39,7 +39,7 @@ describe("birthday reward terms", () => {
 describe("notification text", () => {
   it("greets by first name and states amount, expiry and link", () => {
     const n = birthdayNotification("Ayesha Rahman Khan");
-    expect(n.title).toBe("🎂 Happy Birthday from Proggaa!");
+    expect(n.title).toBe("Happy birthday from Proggaa");
     expect(n.body).toContain("Happy Birthday, Ayesha!");
     expect(n.body).toContain("1,500 Proggy Coins");
     expect(n.body).toContain("expires in 30 days");

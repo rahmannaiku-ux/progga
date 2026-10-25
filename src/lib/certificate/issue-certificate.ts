@@ -87,7 +87,7 @@ export async function issueCertificate(certificateId: string): Promise<IssueCert
         certificate.user.email,
         { courseTitle: certificate.course.title },
         {
-          subject: "Your medal is ready 🏅",
+          subject: "Your medal is ready",
           bodyHtml:
             "<p>Congratulations on completing {{courseTitle}}! Your certificate is ready in your Medals tab.</p>",
         }

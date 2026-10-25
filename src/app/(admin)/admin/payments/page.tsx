@@ -19,8 +19,8 @@ const STATUS_TABS: { key: string; label: string; status?: PaymentStatus }[] = [
 
 const METHOD_TABS: { key: string; label: string; method?: VerificationMethod }[] = [
   { key: "all", label: "All sources" },
-  { key: "automatic", label: "🤖 Automatic", method: "AUTOMATIC_API" },
-  { key: "manual", label: "🧑‍💼 Manual", method: "MANUAL_ADMIN" },
+  { key: "automatic", label: "Automatic", method: "AUTOMATIC_API" },
+  { key: "manual", label: "Manual", method: "MANUAL_ADMIN" },
 ];
 
 const PAGE_SIZE = 25;
@@ -63,7 +63,7 @@ export default async function AdminPaymentsPage(
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-foreground">💰 Payments</h1>
+          <h1 className="font-display text-2xl font-extrabold text-foreground">Payments</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {awaitingCount > 0
               ? `${awaitingCount} payment${awaitingCount === 1 ? "" : "s"} waiting on you.`
@@ -108,7 +108,7 @@ export default async function AdminPaymentsPage(
 
       {payments.length === 0 ? (
         <div className="comic-panel mt-6 bg-surface p-10 text-center">
-          <p className="font-display text-lg font-bold text-foreground">No pending Admin payments 🎉</p>
+          <p className="font-display text-lg font-bold text-foreground">No payments waiting</p>
           <p className="mt-1 text-sm text-muted-foreground">Nothing matches this filter right now.</p>
         </div>
       ) : (
@@ -143,7 +143,7 @@ export default async function AdminPaymentsPage(
                   </span>
                   {p.verificationMethod && (
                     <span className="sticker-badge bg-muted px-3 py-1 text-xs font-bold">
-                      {p.verificationMethod === "AUTOMATIC_API" ? "🤖 Automatic API" : "🧑‍💼 Manual Admin"}
+                      {p.verificationMethod === "AUTOMATIC_API" ? "Automatic" : "Manual"}
                     </span>
                   )}
                   {p.rejectionReason && (

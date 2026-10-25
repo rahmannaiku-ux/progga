@@ -68,7 +68,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         data: {
           userId: fresh.userId,
           type: "PAYMENT_VERIFIED",
-          title: "Payment verified! 🎉",
+          title: "Payment verified",
           body: `Your payment for "${paymentCourseTitle(fresh)}" was verified by the Proggaa team. The mission is unlocked!`,
         },
       });

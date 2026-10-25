@@ -60,7 +60,7 @@ export async function Topbar({
           {greeting && (
             <span className="hidden text-right leading-tight md:block">
               <span className="block text-sm font-bold text-foreground">
-                Hey, {greeting.name}! 👋
+                {greeting.name}
               </span>
               <span className="block text-xs font-semibold text-muted-foreground">
                 Level {greeting.level}

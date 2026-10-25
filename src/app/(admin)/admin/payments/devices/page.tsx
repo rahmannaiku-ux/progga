@@ -27,7 +27,7 @@ export default async function AdminPaymentDevicesPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-extrabold text-foreground">📱 Payment Devices</h1>
+      <h1 className="font-display text-2xl font-extrabold text-foreground">Payment Devices</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Dedicated Android phones running the Proggaa Payment Inbox app. Each observes payment SMS on its own SIM
         and reports evidence — the server still decides everything (see Suspicious Transactions and Provider Rules).

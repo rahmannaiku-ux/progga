@@ -36,7 +36,7 @@ export function SuspiciousTransactions({ rows }: { rows: Row[] }) {
   const [error, setError] = useState<Record<string, string | null>>({});
 
   if (rows.length === 0) {
-    return <div className="comic-panel bg-surface p-6 text-sm text-muted-foreground">Nothing needs review right now. 🎉</div>;
+    return <div className="comic-panel bg-surface p-6 text-sm text-muted-foreground">Nothing needs review right now.</div>;
   }
 
   function reasons(v: unknown): string[] {

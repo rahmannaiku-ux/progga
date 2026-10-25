@@ -108,7 +108,7 @@ function PendingState({
   return (
     <div className="space-y-4">
       <div className="comic-panel relative !bg-xp/10 p-5">
-        <p className="font-display text-lg font-extrabold text-foreground">⚡ Almost there!</p>
+        <p className="font-display text-lg font-extrabold text-foreground">Almost there</p>
         <p className="mt-1 text-sm text-foreground/80">
           Send the exact amount below to unlock this mission. Then come back and submit your Transaction ID.
         </p>
@@ -133,7 +133,7 @@ function PendingState({
           </div>
 
           <div className="comic-panel bg-surface p-5">
-            <p className="font-display text-sm font-bold text-foreground">📝 How to pay</p>
+            <p className="font-display text-sm font-bold text-foreground">How to pay</p>
             <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-foreground/80">
               <li>
                 Open your {meta.appName} and choose "{meta.sendMoneyLabel}."
@@ -149,7 +149,7 @@ function PendingState({
             </ol>
             {instructions && <p className="mt-3 whitespace-pre-line text-xs text-muted-foreground">{instructions}</p>}
             <p className="mt-3 text-xs font-semibold text-muted-foreground">
-              🔒 We will never ask for your {meta.displayName} PIN, OTP, or password. Proggaa staff will never call or message asking for these.
+              We will never ask for your {meta.displayName} PIN, OTP, or password. Proggaa staff will never call or message asking for these.
             </p>
           </div>
 
@@ -202,7 +202,7 @@ function PaidState({
       <PartyPopper className="absolute left-6 top-6 h-6 w-6 text-primary animate-cartoon-wiggle" />
       <Sparkles className="absolute right-8 top-10 h-5 w-5 text-xp animate-cartoon-wiggle" />
       <ProggyMascot state="celebrating" className="mx-auto h-44 w-44 animate-cartoon-pop" groundShadow />
-      <p className="mt-2 font-display text-xl font-extrabold text-foreground">Payment verified! 🎉</p>
+      <p className="mt-2 font-display text-xl font-extrabold text-foreground">Payment verified</p>
       <p className="mt-1 text-sm text-muted-foreground">Your mission is unlocked.</p>
       {methodLabel && <p className="mt-2 text-xs font-semibold text-muted-foreground">{methodLabel}</p>}
       <div className="mt-5 flex flex-wrap items-center justify-center gap-3">

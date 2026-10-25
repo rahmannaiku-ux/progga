@@ -61,7 +61,7 @@ export default async function AdminSuspiciousTransactionsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-extrabold text-foreground">🚨 Suspicious Transactions</h1>
+      <h1 className="font-display text-2xl font-extrabold text-foreground">Suspicious Transactions</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Evidence the automatic matcher couldn't safely act on — a hard validation failure, a mismatch against the
         order it should match, or no matching order at all. Nothing here has verified a payment or enrolled anyone.

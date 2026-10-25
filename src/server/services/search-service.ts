@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { lessonPaths } from "@/server/services/mission-paths";
 
 export type SearchScope = "all" | "missions" | "lessons";
 
@@ -67,12 +68,13 @@ export async function searchContent(
       )
     : new Set<string>();
 
+  const lessonHrefs = await lessonPaths(lessons.map((l) => l.id));
   return {
     missions: missions.map((m) => ({
       id: m.id,
       title: m.title,
       meta: `${m.level} · ${m.isFree ? "Free" : "Paid"}${enrolled.has(m.id) ? " · Enrolled" : ""}`,
-      href: enrolled.has(m.id) ? `/missions/${m.id}` : `/courses/${m.slug}`,
+      href: enrolled.has(m.id) ? `/missions/${m.slug}` : `/courses/${m.slug}`,
     })),
     lessons: lessons.map((l) => {
       const { chapter } = l.group;
@@ -83,7 +85,7 @@ export async function searchContent(
         meta: course.title,
         href:
           enrolled.has(course.id) || l.isPreview
-            ? `/missions/${course.id}/operations/${chapter.module.id}/chapters/${chapter.id}/groups/${l.group.id}/patrols/${l.id}`
+            ? (lessonHrefs.get(l.id) ?? `/missions/${course.slug}`)
             : `/courses/${course.slug}`,
       };
     }),

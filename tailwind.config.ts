@@ -140,7 +140,7 @@ const config: Config = {
       },
       animation: {
         "streak-pulse": "streak-pulse 2s ease-in-out infinite",
-        "xp-fill": "xp-fill 1.2s ease-out forwards",
+        "xp-fill": "xp-fill 1.2s ease-out backwards",
         "glow-pulse": "glow-pulse 4s ease-in-out infinite",
         float: "float 5s ease-in-out infinite",
         "reaction-pop": "reaction-pop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1)",

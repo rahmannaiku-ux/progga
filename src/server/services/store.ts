@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { lessonPath } from "@/server/services/mission-paths";
 
 export type StoreItemWithOwnership = {
   id: string;
@@ -35,7 +36,7 @@ export async function resolveLessonRoute(lessonId: string): Promise<string | nul
   });
   if (!lesson) return null;
   const { group } = lesson;
-  return `/missions/${group.chapter.module.courseId}/operations/${group.chapter.module.id}/chapters/${group.chapter.id}/groups/${group.id}/patrols/${lesson.id}`;
+  return (await lessonPath(lesson.id)) ?? `/missions/${group.chapter.module.courseId}`;
 }
 
 export async function getStoreItemsForStudent(userId: string): Promise<StoreItemWithOwnership[]> {

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { flattenLessons } from "@/lib/course-tree";
+import { lessonPath } from "@/server/services/mission-paths";
 
 /**
  * Resolves the exact lesson URL a "Resume"/"Continue" button should
@@ -68,5 +69,5 @@ export async function getResumeLessonPath(
 
   const target = flat.find((l) => !completedIds.has(l.lessonId)) ?? flat[0]!;
 
-  return `/missions/${courseId}/operations/${target.moduleId}/chapters/${target.chapterId}/groups/${target.groupId}/patrols/${target.lessonId}`;
+  return (await lessonPath(target.lessonId)) ?? `/missions/${courseId}`;
 }

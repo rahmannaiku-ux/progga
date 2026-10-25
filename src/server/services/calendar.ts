@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { dhakaDateKey } from "@/lib/timezone";
+import { withCleanHrefs } from "@/server/services/mission-paths";
 
 export type CalendarItem = {
   id: string;
@@ -152,7 +153,7 @@ export async function getStudentCalendarItems(userId: string): Promise<CalendarI
   }
 
   items.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
-  return items;
+  return withCleanHrefs(items);
 }
 
 /** One day's worth of gamification activity, keyed by Dhaka calendar

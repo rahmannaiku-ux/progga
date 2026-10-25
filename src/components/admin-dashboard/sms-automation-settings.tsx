@@ -21,7 +21,7 @@ export function SmsAutomationSettings({ currentMode, numbers }: { currentMode: s
 
   return (
     <div className="comic-panel mt-6 bg-surface p-6">
-      <p className="font-display font-bold text-foreground">📡 SMS automatic verification</p>
+      <p className="font-display font-bold text-foreground">SMS automatic verification</p>
       <p className="mt-1 text-xs text-muted-foreground">
         A second, independent evidence source on TOP of manual verification — it never replaces it. See{" "}
         <a href="/admin/payments/devices" className="underline">Payment Devices</a>,{" "}

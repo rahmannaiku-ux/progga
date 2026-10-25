@@ -70,7 +70,7 @@ export function AssignmentSubmissionForm({ assignmentId }: { assignmentId: strin
 
       {done ? (
         <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-sm font-semibold text-accent">
-          🎉 Your challenge has been submitted. A mentor will grade it soon.
+          Your challenge has been submitted. A mentor will grade it soon.
         </div>
       ) : (
         <>

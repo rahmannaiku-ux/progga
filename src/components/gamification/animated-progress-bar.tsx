@@ -19,10 +19,11 @@ export function AnimatedProgressBar({
     >
       <div
         className={cn(
-          "h-full animate-xp-fill rounded-full bg-accent",
+          // Fills in once on load, then follows the value (live progress) smoothly.
+          "h-full animate-xp-fill rounded-full bg-accent transition-[width] duration-700 ease-out",
           barClassName
         )}
-        style={{ "--xp-target": `${clamped}%` } as React.CSSProperties}
+        style={{ width: `${clamped}%`, "--xp-target": `${clamped}%` } as React.CSSProperties}
       />
     </div>
   );

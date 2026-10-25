@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { updateLessonProgress } from "@/server/actions/learning-actions";
 import { VideoPlayer } from "@/components/course/video-player";
 import { playedSecondsBetweenTicks, type PlaybackTick } from "@/lib/lesson-progress";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
+import { lessonShare } from "@/lib/progress-math";
+import { publishLessonShare } from "@/lib/live-lesson-progress";
 
 const AUTOSAVE_INTERVAL_MS = 15_000;
 
@@ -23,11 +26,17 @@ export function LessonPlayer({
   youtubeVideoId,
   resumeAtSeconds,
   isCompleted,
+  initialWatchedSeconds = 0,
+  lessonDurationSec = 0,
 }: {
   lessonId: string;
   youtubeVideoId: string;
   resumeAtSeconds: number;
   isCompleted: boolean;
+  /** Playback already saved for this lesson, so the live progress starts where the bars are. */
+  initialWatchedSeconds?: number;
+  /** The mentor-entered length (0 if unset: the player's measurement is used). */
+  lessonDurationSec?: number;
 }) {
   // Refs, not state: they change up to 4x/second and only save time reads them.
   const positionRef = useRef(resumeAtSeconds);
@@ -36,7 +45,9 @@ export function LessonPlayer({
   const lastTickRef = useRef<PlaybackTick | null>(null);
   const savingRef = useRef(false);
   const completedRef = useRef(isCompleted);
+  const sessionPlayedRef = useRef(0); // everything played since the page opened, for the live bars
 
+  const router = useRouter();
   const [completed, setCompleted] = useState(isCompleted);
   const [saving, setSaving] = useState(false);
   // Only true for the false->true transition within THIS session — a lesson
@@ -64,6 +75,9 @@ export function LessonPlayer({
       );
       if (result?.completed && !completedRef.current) {
         completedRef.current = true;
+        publishLessonShare(lessonId, 1);
+        // XP, level and mission progress elsewhere on the page catch up.
+        router.refresh();
         setCompleted(true);
         setJustCompleted(true);
         setTimeout(() => setJustCompleted(false), 3200);
@@ -82,8 +96,19 @@ export function LessonPlayer({
     const now = Date.now();
     positionRef.current = seconds;
     if (videoDuration && videoDuration > 0) durationRef.current = videoDuration;
-    pendingPlayedRef.current += playedSecondsBetweenTicks(lastTickRef.current, seconds, now);
+    const played = playedSecondsBetweenTicks(lastTickRef.current, seconds, now);
+    pendingPlayedRef.current += played;
+    sessionPlayedRef.current += played;
     lastTickRef.current = { position: seconds, at: now };
+    if (!completedRef.current && played > 0) {
+      publishLessonShare(
+        lessonId,
+        lessonShare(
+          { isCompleted: false, watchedSeconds: initialWatchedSeconds + sessionPlayedRef.current, durationSec: durationRef.current },
+          lessonDurationSec
+        )
+      );
+    }
   }
 
   useEffect(() => {
@@ -122,7 +147,7 @@ export function LessonPlayer({
         <div className="pop-in comic-panel mt-3 flex items-center gap-3 border-accent/60 bg-accent/10 p-3">
           <ProggyMascot state="celebrating" className="h-10 w-10 shrink-0" animated={false} />
           <p className="font-display text-sm font-bold text-foreground">
-            Patrol complete! Nice work, hero. 🎉
+            Patrol complete.
           </p>
         </div>
       )}

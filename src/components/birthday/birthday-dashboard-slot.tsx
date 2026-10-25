@@ -26,7 +26,7 @@ export async function BirthdayDashboardSlot({ userId, firstName }: { userId: str
             </span>
             <div className="min-w-0">
               <p className="font-display text-lg font-extrabold leading-tight">
-                Happy Birthday, {greetingName(overview.name || firstName)}! 🎉
+                Happy Birthday, {greetingName(overview.name || firstName)}!
               </p>
               {reward ? (
                 <p className="text-sm text-[#FCF9F3]/80">

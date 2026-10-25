@@ -130,7 +130,7 @@ describe.skipIf(!isLocal)("Birthday rewards (integration)", () => {
 
       const notes = await db.notification.findMany({ where: { userId: u.id } });
       expect(notes).toHaveLength(1);
-      expect(notes[0]).toMatchObject({ type: "BIRTHDAY_REWARD", title: "🎂 Happy Birthday from Proggaa!", linkUrl: "/birthday" });
+      expect(notes[0]).toMatchObject({ type: "BIRTHDAY_REWARD", title: "Happy birthday from Proggaa", linkUrl: "/birthday" });
       expect(notes[0]!.body).toContain(`Happy Birthday, Nadia!`);
 
       const deliveries = await db.notificationDelivery.findMany({ where: { userId: u.id } });

@@ -4,9 +4,13 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { CheckCircle2, PlayCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
+import { progressPctFromShares } from "@/lib/progress-math";
+import { useLiveLessonShares } from "@/lib/live-lesson-progress";
 
 export type StripLesson = {
   id: string;
+  href: string;
   title: string;
   isCompleted: boolean;
   /** How much of it is done, 0..1 (see lessonShare). */
@@ -18,52 +22,71 @@ export type StripLesson = {
 };
 
 /**
- * `lg:hidden` list of the other patrols in this class, under the player: one
- * row of cards (thumbnail, title, mentor) the student swipes left and right,
- * with the one playing outlined and scrolled into view. Replaces the old
- * "open a bottom sheet" button — the lessons are visible without a tap.
- * Desktop keeps GroupSidebar beside the player.
+ * The patrols of this class, as cards with a thumbnail, title and mentor. The one playing is
+ * outlined and scrolled into view. `row`: under the player on phones, swiped left and right.
+ * `column`: beside the player on wide screens, the same cards stacked, with the class progress.
  */
 export function GroupLessonStrip({
-  basePath,
   groupTitle,
   mentorName,
-  lessons,
+  lessons: savedLessons,
   activeLessonId,
+  layout = "row",
 }: {
-  basePath: string;
   groupTitle: string;
   mentorName: string;
   lessons: StripLesson[];
   activeLessonId: string;
+  layout?: "row" | "column";
 }) {
-  const rowRef = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // The lesson playing on this page reports its progress as it plays.
+  const live = useLiveLessonShares();
+  const lessons = savedLessons.map((l) => {
+    const share = Math.max(l.share ?? (l.isCompleted ? 1 : 0), live.get(l.id) ?? 0);
+    return { ...l, share, isCompleted: l.isCompleted || share >= 1 };
+  });
   const completedCount = lessons.filter((l) => l.isCompleted).length;
+  const column = layout === "column";
+  const percent = progressPctFromShares(
+    lessons.map((l) => l.share ?? (l.isCompleted ? 1 : 0)),
+    lessons.length
+  );
 
-  // Start with the current patrol in the middle of the row. scrollLeft on the
-  // row itself, not scrollIntoView, so the page never jumps vertically.
+  // Bring the current patrol into view inside the list itself (never the page).
   useEffect(() => {
-    const row = rowRef.current;
-    const active = row?.querySelector<HTMLElement>("[data-active='true']");
-    if (row && active) {
-      row.scrollLeft = active.offsetLeft - (row.clientWidth - active.offsetWidth) / 2;
-    }
-  }, [activeLessonId]);
+    const list = listRef.current;
+    const active = list?.querySelector<HTMLElement>("[data-active='true']");
+    if (!list || !active) return;
+    if (column) list.scrollTop = active.offsetTop - (list.clientHeight - active.offsetHeight) / 2;
+    else list.scrollLeft = active.offsetLeft - (list.clientWidth - active.offsetWidth) / 2;
+  }, [activeLessonId, column]);
 
   if (lessons.length === 0) return null;
 
   return (
-    <section className="min-w-0 lg:hidden" aria-label={`${groupTitle} patrols`}>
-      <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2 className="min-w-0 truncate font-display text-base font-bold text-foreground">{groupTitle}</h2>
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-          {completedCount}/{lessons.length} complete
-        </span>
+    <section
+      className={cn("min-w-0", column && "comic-panel flex max-h-[calc(100dvh-7rem)] flex-col overflow-hidden bg-surface")}
+      aria-label={`${groupTitle} patrols`}
+    >
+      <div className={cn(column ? "border-b border-border/15 p-4" : "px-1")}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="min-w-0 truncate font-display text-base font-bold text-foreground">{groupTitle}</h2>
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+            {completedCount}/{lessons.length} complete
+          </span>
+        </div>
+        {column && <AnimatedProgressBar percent={percent} className="mt-2.5 h-2" />}
       </div>
 
       <ul
-        ref={rowRef}
-        className="mt-3 flex w-full min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        ref={listRef}
+        className={cn(
+          "min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          column
+            ? "space-y-2.5 overflow-y-auto overscroll-contain p-3"
+            : "mt-3 flex w-full snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2"
+        )}
       >
         {lessons.map((lesson, i) => {
           const isActive = lesson.id === activeLessonId;
@@ -71,20 +94,25 @@ export function GroupLessonStrip({
             <li
               key={lesson.id}
               data-active={isActive}
-              className={cn("w-[82%] max-w-[320px] shrink-0 snap-center", lessons.length === 1 && "w-full max-w-none")}
+              className={cn(
+                !column && "w-[82%] max-w-[320px] shrink-0 snap-center",
+                !column && lessons.length === 1 && "w-full max-w-none"
+              )}
             >
               <Link
-                href={`${basePath}/patrols/${lesson.id}`}
+                href={lesson.href}
                 prefetch={false}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "comic-panel flex h-full items-center gap-3 bg-surface p-2.5 transition-colors",
-                  isActive ? "border-primary ring-2 ring-primary/40" : "hover:border-primary/50"
+                  "flex h-full items-center gap-3 rounded-2xl border bg-surface p-2.5 transition-colors",
+                  isActive ? "border-primary ring-2 ring-primary/30" : "border-border/40 hover:border-primary/50",
+                  !column && "comic-panel"
                 )}
               >
                 <span
                   className={cn(
                     "relative w-24 shrink-0 overflow-hidden rounded-xl border border-border/40 bg-muted",
+                    column && "w-28",
                     !lesson.uploadedThumb && "aspect-video"
                   )}
                 >
@@ -101,6 +129,11 @@ export function GroupLessonStrip({
                   ) : (
                     <span className="flex h-full w-full items-center justify-center bg-primary/10">
                       <PlayCircle className="h-7 w-7 text-primary" />
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/35" aria-hidden="true">
+                      <PlayCircle className="h-7 w-7 text-white" />
                     </span>
                   )}
                   {!lesson.isCompleted && (lesson.share ?? 0) > 0 && (
