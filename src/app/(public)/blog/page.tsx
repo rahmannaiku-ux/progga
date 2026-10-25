@@ -3,7 +3,10 @@ import { db } from "@/lib/db/client";
 import { isSafeDestinationUrl } from "@/lib/config/destinations";
 import { formatDhakaDate } from "@/lib/timezone";
 
-export const metadata = { title: "Blog" };
+export const metadata = {
+  title: "Blog: HSC and Admission Study Tips",
+  description: "Study tips, exam strategy and admission preparation guides for HSC students from the Proggaa team.",
+};
 
 const POSTS_PER_PAGE = 12;
 

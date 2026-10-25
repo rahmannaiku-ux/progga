@@ -1,6 +1,10 @@
 import { DoodleBlob, DoodleStar } from "@/components/marketing/cartoon-doodles";
 
-export const metadata = { title: "About" };
+export const metadata = {
+  title: "About Proggaa",
+  description:
+    "Proggaa is an online learning platform for Bangladeshi HSC and admission students, with Missions built by Mentors: video lessons, notes, live classes, exams and certificates.",
+};
 
 export default function AboutPage() {
   return (

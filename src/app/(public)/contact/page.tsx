@@ -1,6 +1,9 @@
 import { ContactForm } from "@/components/marketing/contact-form";
 
-export const metadata = { title: "Contact" };
+export const metadata = {
+  title: "Contact Us",
+  description: "Get in touch with the Proggaa team about Missions, payments, refunds or teaching on Proggaa.",
+};
 
 export default function ContactPage() {
   return (

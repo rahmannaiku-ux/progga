@@ -3,7 +3,10 @@ import { BookOpen, Sparkles } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { DoodleSparkle, DoodleStar } from "@/components/marketing/cartoon-doodles";
 
-export const metadata = { title: "Categories" };
+export const metadata = {
+  title: "Subjects and Categories",
+  description: "Browse Proggaa Missions by subject and category, from HSC science subjects to university admission preparation.",
+};
 
 // Rotating "collectible card" color set — each category cycles through
 // these so the grid reads as a set of distinct collectibles rather than

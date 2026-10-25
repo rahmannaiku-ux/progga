@@ -14,6 +14,9 @@ import { BuyOnWebsite } from "@/components/course/buy-on-website";
 import { detectApp } from "@/lib/apps";
 import { CourseHeroMedia } from "@/components/course/course-hero-media";
 import { CourseTeachersShowcase, type CourseTeacherEntry } from "@/components/course/course-teachers-showcase";
+import { JsonLd } from "@/components/shared/json-ld";
+import { breadcrumbJsonLd, courseJsonLd } from "@/lib/seo/structured-data";
+import { CANONICAL_SITE_URL } from "@/lib/site-url";
 
 const levelLabel: Record<string, string> = {
   BEGINNER: "Beginner",
@@ -26,10 +29,27 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const params = await props.params;
   const course = await db.course.findUnique({
     where: { slug: params.slug },
-    select: { title: true, subtitle: true },
+    select: { title: true, subtitle: true, thumbnailUrl: true, status: true, category: { select: { name: true } } },
   });
-  if (!course) return { title: "Mission not found" };
-  return { title: course.title, description: course.subtitle ?? undefined };
+  if (!course || course.status !== "PUBLISHED") return { title: "Mission not found", robots: { index: false } };
+  // Search results and link previews: the subtitle when there is one, otherwise a sentence built
+  // from the title and subject, so no Mission page goes out without a description.
+  const description =
+    course.subtitle?.trim() ||
+    `${course.title}${course.category ? ` (${course.category.name})` : ""}: an online Mission on Proggaa with video lessons, notes, exams and a certificate.`;
+  const image = absoluteMediaUrl(mediaSrc(course.thumbnailUrl, 1200));
+  return {
+    title: course.title,
+    description,
+    openGraph: { title: course.title, description, type: "website", ...(image ? { images: [{ url: image }] } : {}) },
+    twitter: { card: "summary_large_image", title: course.title, description, ...(image ? { images: [image] } : {}) },
+  };
+}
+
+/** Thumbnails can be stored as a site path (/api/files/...); search engines need a full URL. */
+function absoluteMediaUrl(src: string | null): string | null {
+  if (!src) return null;
+  return src.startsWith("/") ? `${CANONICAL_SITE_URL}${src}` : src;
 }
 
 export default async function CourseBuyingPage(props: { params: Promise<{ slug: string }> }) {
@@ -150,8 +170,30 @@ export default async function CourseBuyingPage(props: { params: Promise<{ slug: 
   const buyOnWebsite = Boolean(detectApp((await headers()).get("user-agent"))) && !course.isFree && !alreadyEnrolled;
   const sheetRoom = fullPanel && !course.isFree ? "13.5rem" : fullPanel ? "9.5rem" : "6.5rem";
 
+  const structuredData = [
+    courseJsonLd({
+      slug: course.slug,
+      title: course.title,
+      description: course.subtitle ?? course.description,
+      thumbnailUrl: absoluteMediaUrl(thumbnail),
+      language: course.language,
+      isFree: course.isFree,
+      priceCents: price.finalCents,
+      currency: course.currency,
+      teacherNames: teachers.map((t) => [t.firstName, t.lastName].filter(Boolean).join(" ")).filter(Boolean),
+      category: course.category?.name ?? null,
+      rating: typeof rating === "number" ? { value: rating, count: reviewCount } : undefined,
+    }),
+    breadcrumbJsonLd([
+      { name: "Home", path: "" },
+      { name: "Missions", path: "/courses" },
+      { name: course.title, path: `/courses/${course.slug}` },
+    ]),
+  ];
+
   return (
     <div className="container py-6 sm:py-14">
+      <JsonLd data={structuredData} />
       <StaggerContainer className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           {/* Hero */}

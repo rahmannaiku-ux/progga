@@ -15,7 +15,11 @@ import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 // client-side fetching against a cached API route) — noted as a
 // follow-up rather than adding a `revalidate` export here that would
 // silently do nothing.
-export const metadata = { title: "Browse Missions" };
+export const metadata = {
+  title: "Online HSC & Admission Courses (Missions)",
+  description:
+    "Browse online HSC and university admission courses on Proggaa: free and paid Missions with video lessons, notes, MCQ exams and certificates.",
+};
 
 export default async function CoursesPage(
   props: {

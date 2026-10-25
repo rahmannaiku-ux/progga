@@ -58,9 +58,9 @@ const DEFAULT_PRIMARY_HEX = "#7C3AED";
 // custom site name — kept as the literal default rather than only
 // living inside site-branding.ts so this file's intent stays readable
 // on its own.
-const DEFAULT_TITLE = "Proggaa — Level Up Your Skills";
+const DEFAULT_TITLE = "Proggaa — Online HSC & Admission Courses in Bangladesh";
 const DEFAULT_DESCRIPTION =
-  "A gamified learning platform where every course is a mission, every lesson is a patrol, and every skill you master earns XP.";
+  "Online HSC and university admission preparation for Bangladeshi students: video lessons, notes, live classes, MCQ exams and certificates, in Bangla and English. Every course is a Mission and every lesson earns XP.";
 
 // NOTE: deliberately NOT viewport-fit=cover. With "cover", iPhone Safari in
 // landscape draws the page under the notch and nothing pads for it, which
@@ -82,10 +82,12 @@ export async function generateMetadata(): Promise<Metadata> {
   // description/OG copy stays the static marketing copy above even when
   // siteName changes, so "Acme Academy" doesn't get "every course is a
   // mission" without the admin having written that themselves.
-  const title =
-    branding.siteName === "Proggaa"
-      ? DEFAULT_TITLE
-      : { default: branding.siteName, template: `%s · ${branding.siteName}` };
+  // Every page gets "· <site name>" after its own title (it used to be a plain string for
+  // Proggaa, so pages showed up in search as just "FAQ" or "Blog").
+  const title = {
+    default: branding.siteName === "Proggaa" ? DEFAULT_TITLE : branding.siteName,
+    template: `%s · ${branding.siteName}`,
+  };
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -94,6 +96,20 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: "./" },
     title,
     description: DEFAULT_DESCRIPTION,
+    applicationName: branding.siteName,
+    keywords: [
+      "HSC online course",
+      "HSC preparation",
+      "university admission preparation",
+      "admission coaching online",
+      "HSC Physics",
+      "HSC Chemistry",
+      "HSC Math",
+      "HSC Biology",
+      "MCQ exam practice",
+      "online class Bangladesh",
+      "Proggaa",
+    ],
     icons: branding.faviconUrl ? { icon: branding.faviconUrl } : undefined,
     openGraph: {
       title: branding.siteName === "Proggaa" ? DEFAULT_TITLE : branding.siteName,
@@ -101,7 +117,8 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: branding.siteName,
       url: "./",
       type: "website",
-      locale: "en_US",
+      locale: "en_BD",
+      alternateLocale: ["bn_BD"],
     },
     twitter: {
       card: "summary_large_image",
