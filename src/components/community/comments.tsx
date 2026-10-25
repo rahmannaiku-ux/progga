@@ -543,7 +543,7 @@ export function Comments({
 
       {variant === "page" ? (
         // On its own page the field stays at the bottom of the screen while reading, above the phone's tab bar.
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-3 border-t border-border/15 bg-surface px-3 pb-1 pt-3 sm:-mx-4 sm:px-4 lg:bottom-0 lg:pb-3">
+        <div className="sticky bottom-[var(--bottom-nav-space)] z-10 -mx-3 border-t border-border/15 bg-surface px-3 pb-1 pt-3 sm:-mx-4 sm:px-4 lg:bottom-0 lg:pb-3">
           {composer}
         </div>
       ) : (

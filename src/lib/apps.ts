@@ -25,6 +25,9 @@ export const APP_NOTIFICATIONS_SINCE = "1.0.9";
  */
 export const APP_FRAMELESS_SINCE = "1.1.1";
 export const APP_WINDOW_URL = "proggaa://window/";
+/** Android 1.2.0+: the site tells the app it switched light/dark, so the phone's bars follow at once. */
+export const APP_THEME_URL = "proggaa://theme";
+export const APP_THEME_SINCE = "1.2.0";
 
 /**
  * A link the apps catch to open `url` in the person's normal browser instead
@@ -113,4 +116,22 @@ export type AppPolicy = { minVersion: { android: string; windows: string } };
 /** True when an app at `version` must update before it is used (no minimum set = never). */
 export function mustUpdate(version: string, minimum: string | null | undefined): boolean {
   return Boolean(minimum && isAppVersion(minimum) && compareVersions(version, minimum) < 0);
+}
+
+/** From this Android version the app has its own native tab bar and the site's bottom bar steps aside. */
+export const APP_NATIVE_TABS_SINCE = "1.0.4";
+
+/**
+ * The <html> classes for the Proggaa apps (see globals.css), worked out from the user agent so the
+ * server renders them: set only after the page loaded, the site's own bottom bar and padding
+ * flashed and jumped on every page in the Android app. components/shared/app-mode.tsx adds the
+ * same classes on the client.
+ */
+export function appHtmlClasses(userAgent: string | null | undefined): string {
+  const app = detectApp(userAgent);
+  if (!app) return "";
+  const classes = ["proggaa-app", `proggaa-app-${app.kind}`];
+  if (app.kind === "android" && compareVersions(app.version, APP_NATIVE_TABS_SINCE) >= 0) classes.push("proggaa-app-tabs");
+  if (app.kind === "windows" && compareVersions(app.version, APP_FRAMELESS_SINCE) >= 0) classes.push("proggaa-frameless");
+  return classes.join(" ");
 }

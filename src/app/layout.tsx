@@ -9,6 +9,8 @@ import { CookieConsentBanner } from "@/components/shared/cookie-consent-banner";
 import { AppUpdateGate } from "@/components/shared/app-update-gate";
 import { AppMode } from "@/components/shared/app-mode";
 import { DesktopWindowControls } from "@/components/shared/desktop-window-controls";
+import { headers } from "next/headers";
+import { appHtmlClasses } from "@/lib/apps";
 
 // Display face: bold, bouncy, comic-poster energy — the Proggaa brand
 // voice. Loaded once here and used everywhere via the --font-display
@@ -114,7 +116,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const branding = await getSiteBranding();
+  const [branding, requestHeaders] = await Promise.all([getSiteBranding(), headers()]);
+  // Inside the Proggaa apps the page is drawn app-style from the first paint (no bottom bar flash).
+  const appClasses = appHtmlClasses(requestHeaders.get("user-agent"));
   const primaryHsl =
     branding.primaryColor.toLowerCase() === DEFAULT_PRIMARY_HEX.toLowerCase()
       ? null
@@ -129,7 +133,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${display.variable} ${body.variable} ${bengali.variable}`}
+      className={`${display.variable} ${body.variable} ${bengali.variable} ${appClasses}`.trim()}
       // Brand-colour override is set on <html> too, not only on the
       // wrapper below: dialogs/menus portal to <body>, outside the wrapper.
       style={primaryVars}

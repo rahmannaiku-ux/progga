@@ -128,7 +128,7 @@ export function MissionSwitchPicker({
       </ul>
       {visible.length === 0 && <p className="text-sm text-muted-foreground">No mission matches &ldquo;{query}&rdquo;.</p>}
 
-      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-10 lg:bottom-4">
+      <div className="sticky bottom-[calc(var(--bottom-nav-space)+1rem)] z-10">
         <div className="comic-panel flex flex-wrap items-center justify-between gap-3 bg-surface p-3">
           <p className="min-w-0 text-sm text-muted-foreground">
             {selected ? (

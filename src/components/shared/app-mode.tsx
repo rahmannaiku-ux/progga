@@ -2,10 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { compareVersions, detectApp } from "@/lib/apps";
-
-/** From this Android version the app has its own native tab bar. */
-const NATIVE_TABS_SINCE = "1.0.4";
+import { APP_NATIVE_TABS_SINCE, compareVersions, detectApp } from "@/lib/apps";
 
 /**
  * Inside the Windows or Android app: marks <html> with `proggaa-app` (and
@@ -27,7 +24,7 @@ export function AppMode() {
     };
     document.documentElement.classList.add("proggaa-app", `proggaa-app-${app.kind}`);
     // From 1.0.4 the Android app has its own native tab bar, so the site's bottom bar steps aside.
-    if (app.kind === "android" && compareVersions(app.version, NATIVE_TABS_SINCE) >= 0) {
+    if (app.kind === "android" && compareVersions(app.version, APP_NATIVE_TABS_SINCE) >= 0) {
       document.documentElement.classList.add("proggaa-app-tabs");
     }
     if (app.kind === "android") {

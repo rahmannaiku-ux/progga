@@ -1196,6 +1196,19 @@ html.proggaa-frameless body::before {
 html.proggaa-app-tabs [data-bottom-nav] {
   display: none !important;
 }
+/* Room kept above the phone bottom bar for things stuck to the bottom (comment box, switch bar,
+   reel buttons). Zero on wide screens and in the Android app, whose tab bar sits below the page. */
+:root {
+  --bottom-nav-space: calc(4rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  :root {
+    --bottom-nav-space: 0px;
+  }
+}
+html.proggaa-app-tabs {
+  --bottom-nav-space: 0px;
+}
 html.proggaa-app-tabs #main-content {
   padding-bottom: 1rem !important;
 }

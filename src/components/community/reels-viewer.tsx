@@ -292,7 +292,7 @@ function Reel({
 
       {/* Right-hand actions. */}
       <div
-        className="absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5rem))] right-2.5 flex flex-col items-center gap-4 sm:-right-16 sm:bottom-6"
+        className="absolute bottom-[max(1.5rem,calc(var(--bottom-nav-space)+1rem))] right-2.5 flex flex-col items-center gap-4 sm:-right-16 sm:bottom-6"
         onPointerUp={(e) => e.stopPropagation()}
       >
         <SideButton label={reel.myReaction ? "Remove your reaction" : "Love"} count={compact(reel.reactionCount)} active={Boolean(reel.myReaction)} onClick={() => love()}>
