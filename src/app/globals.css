@@ -873,6 +873,11 @@
   user-drag: none;
   pointer-events: none;
 }
+/* Print Screen pressed (installInputGuards in lib/security/anti-devtools.ts). */
+html.proggaa-shield .protected-content {
+  filter: blur(28px);
+  transition: none;
+}
 
 @media print {
   /* Protected lesson content never renders on a printed page/PDF-of-page.

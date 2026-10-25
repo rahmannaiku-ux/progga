@@ -226,11 +226,29 @@ export function installInputGuards(): () => void {
     e.preventDefault();
   };
 
+  // Print Screen: the lesson video blurs for a moment and the clipboard is overwritten, so the
+  // quick "screenshot and paste" of a paid lesson gets a blurred or empty picture. (A screenshot
+  // tool outside the browser can't be stopped; the moving name tag still marks those.)
+  let shieldTimer: ReturnType<typeof setTimeout> | null = null;
+  const onPrintScreen = (e: KeyboardEvent) => {
+    if (e.key !== "PrintScreen") return;
+    document.documentElement.classList.add("proggaa-shield");
+    if (shieldTimer) clearTimeout(shieldTimer);
+    shieldTimer = setTimeout(() => document.documentElement.classList.remove("proggaa-shield"), 1500);
+    navigator.clipboard?.writeText("").catch(() => {});
+  };
+
   window.addEventListener("keydown", onKeyDown, { capture: true });
+  window.addEventListener("keydown", onPrintScreen, { capture: true });
+  window.addEventListener("keyup", onPrintScreen, { capture: true });
   window.addEventListener("contextmenu", onContextMenu, { capture: true });
   return () => {
     window.removeEventListener("keydown", onKeyDown, { capture: true });
+    window.removeEventListener("keydown", onPrintScreen, { capture: true });
+    window.removeEventListener("keyup", onPrintScreen, { capture: true });
     window.removeEventListener("contextmenu", onContextMenu, { capture: true });
+    if (shieldTimer) clearTimeout(shieldTimer);
+    document.documentElement.classList.remove("proggaa-shield");
   };
 }
 
