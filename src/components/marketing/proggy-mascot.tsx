@@ -134,7 +134,7 @@ const FIDGET_MS = 900;
 const MAX_TILT = 7;
 
 /**
- * Rotates between random idle fidgets every 7–14s while the mascot is
+ * Rotates between random idle fidgets every 12–24s while the mascot is
  * on screen, and exposes `trigger` for tap/hover reactions. Real
  * rigged motion (blinks, limbs) would need Rive/Lottie art; these
  * layered whole-body moves are what flat PNG poses can support.
@@ -167,7 +167,7 @@ function useFidgets(enabled: boolean, rootRef: React.RefObject<HTMLElement | nul
       timer = setTimeout(() => {
         trigger(IDLE_FIDGETS[Math.floor(Math.random() * IDLE_FIDGETS.length)]!);
         schedule();
-      }, 7000 + Math.random() * 7000);
+      }, 12000 + Math.random() * 12000);
     };
     schedule();
     return () => clearTimeout(timer);

@@ -47,13 +47,14 @@ export default async function HeroLayout({
     redirect("/complete-profile");
   }
 
-  // Birthday reward + expiry of birthday coins for this student, before the
-  // coin balance is read below. Idempotent and never throws (the cron job
-  // does the same for everyone; this is the fallback if it isn't scheduled).
-  const birthday =
-    user.role === "STUDENT" ? await runBirthdayChecksForUser(user) : { celebration: null, needsDateOfBirth: false };
-
-  const [stats, notificationFeed, devtoolsGuard] = await Promise.all([
+  // Birthday reward + expiry of birthday coins for this student, alongside the
+  // other lookups (one round trip less on every page). Idempotent and never
+  // throws; the daily job does the same for everyone. On the rare request
+  // that grants or expires coins, the balance catches up on the next page.
+  const [birthday, stats, notificationFeed, devtoolsGuard] = await Promise.all([
+    user.role === "STUDENT"
+      ? runBirthdayChecksForUser(user)
+      : Promise.resolve({ celebration: null, needsDateOfBirth: false }),
     getOrCreateHeroStats(user.id),
     getNotificationFeed(user.id),
     isAntiDevToolsEnabledFor(user),

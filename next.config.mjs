@@ -142,6 +142,13 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // Keep visited pages in the browser's router cache for a short while, so going back to
+    // a page (or between tabs) shows it at once. Server Actions that change data still
+    // refresh what they touch (revalidatePath / router.refresh).
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
   },
 };
 

@@ -359,17 +359,20 @@
   transform-origin: center bottom;
 }
 
-/* Celebrating: anticipation crouch → stretched jump → squash on landing. */
+/* Celebrating: one happy hop (crouch, jump, squash on landing), then a few seconds of just
+   breathing. A person cheering doesn't bounce non-stop, and neither does Proggy. */
 @keyframes proggy-bounce-energetic {
   0%, 100% { transform: translateY(0) scale(1, 1) rotate(0deg); }
-  12% { transform: translateY(0) scale(1.06, 0.92) rotate(0deg); }
-  30% { transform: translateY(-16%) scale(0.95, 1.07) rotate(-2deg); }
-  48% { transform: translateY(-19%) scale(1, 1) rotate(2deg); }
-  66% { transform: translateY(0) scale(1.08, 0.9) rotate(0deg); }
-  78% { transform: translateY(-2%) scale(0.98, 1.02); }
+  5% { transform: translateY(0) scale(1.05, 0.94) rotate(0deg); }
+  13% { transform: translateY(-9%) scale(0.97, 1.04) rotate(-1.5deg); }
+  20% { transform: translateY(-10%) scale(1, 1) rotate(1.5deg); }
+  28% { transform: translateY(0) scale(1.05, 0.95) rotate(0deg); }
+  34% { transform: translateY(-1%) scale(0.99, 1.01); }
+  40% { transform: translateY(0) scale(1, 1); }
+  70% { transform: translateY(-2px) scale(0.99, 1.02); }
 }
 .animate-proggy-energetic {
-  animation: proggy-bounce-energetic 1.6s cubic-bezier(0.33, 0, 0.3, 1) infinite;
+  animation: proggy-bounce-energetic 4.2s cubic-bezier(0.33, 0, 0.3, 1) infinite;
   transform-origin: center bottom;
 }
 
@@ -406,15 +409,16 @@
 }
 @keyframes proggy-shadow-jump {
   0%, 100% { transform: scaleX(1); opacity: 1; }
-  12% { transform: scaleX(1.08); opacity: 1; }
-  30%, 48% { transform: scaleX(0.6); opacity: 0.45; }
-  66% { transform: scaleX(1.1); opacity: 1; }
+  5% { transform: scaleX(1.06); opacity: 1; }
+  13%, 20% { transform: scaleX(0.75); opacity: 0.6; }
+  28% { transform: scaleX(1.06); opacity: 1; }
+  40% { transform: scaleX(1); opacity: 1; }
 }
 .proggy-shadow { transform-origin: center; }
 .proggy-shadow-gentle,
 .proggy-shadow-wave { animation: proggy-shadow-breathe 3.6s ease-in-out infinite; }
 .proggy-shadow-restrained { animation: proggy-shadow-breathe 5.2s ease-in-out infinite; }
-.proggy-shadow-energetic { animation: proggy-shadow-jump 1.6s cubic-bezier(0.33, 0, 0.3, 1) infinite; }
+.proggy-shadow-energetic { animation: proggy-shadow-jump 4.2s cubic-bezier(0.33, 0, 0.3, 1) infinite; }
 
 /* Pointer tilt — the JS only sets the variables; this eases toward them. */
 .proggy-tilt {
@@ -494,7 +498,7 @@
   background-image: linear-gradient(
     105deg,
     transparent 35%,
-    rgb(255 255 255 / 0.28) 47%,
+    rgb(255 255 255 / 0.16) 47%,
     rgb(255 255 255 / 0.05) 55%,
     transparent 62%
   );
@@ -507,7 +511,7 @@
   mask-repeat: no-repeat;
   -webkit-mask-position: center bottom;
   mask-position: center bottom;
-  animation: proggy-sheen 6.5s ease-in-out infinite;
+  animation: proggy-sheen 11s ease-in-out infinite;
 }
 
 /* Off-screen mascots stop animating (set by an IntersectionObserver). */
