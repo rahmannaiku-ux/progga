@@ -155,21 +155,51 @@ function siteFonts() {
  * A downloadable / shareable birthday card. It carries only the first name
  * and a greeting: no date of birth, age, phone, email or coin balance.
  */
+const FILE_NAME = "proggaa-birthday-card.png";
+const SHARE_TEXT = "Celebrating my birthday with Proggaa 🎉 https://prooggaa.com";
+
+/** iPhone/iPad, including iPadOS that reports itself as a Mac. */
+function isIOS() {
+  return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/** Running as the installed app (home-screen PWA), where a plain <a download> often does nothing. */
+function isInstalledApp() {
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
 export function BirthdayShareCard({ name }: { name: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // The finished card as an <img>, so it can also be saved by press-and-hold (works in every
+  // browser and inside the installed app, where file downloads are often blocked).
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [canShare, setCanShare] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const fonts = siteFonts();
-    if (canvasRef.current) draw(canvasRef.current, name, { logo: null, mascot: null, ...fonts });
+    const render = (assets: Assets) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      draw(canvas, name, assets);
+      try {
+        setImageUrl(canvas.toDataURL("image/png"));
+      } catch {
+        setImageUrl(null);
+      }
+    };
+    render({ logo: null, mascot: null, ...fonts });
     void Promise.all([
       loadImage("/branding/proggaa-logo-512.png"),
       loadImage("/character/proggy/excited.png"),
       document.fonts?.ready,
     ]).then(([logo, mascot]) => {
-      if (!cancelled && canvasRef.current) draw(canvasRef.current, name, { logo, mascot, ...fonts });
+      if (!cancelled) render({ logo, mascot, ...fonts });
     });
     setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
     return () => {
@@ -178,31 +208,73 @@ export function BirthdayShareCard({ name }: { name: string }) {
   }, [name]);
 
   function toBlob(): Promise<Blob | null> {
-    return new Promise((resolve) => canvasRef.current?.toBlob((b) => resolve(b), "image/png") ?? resolve(null));
+    return new Promise((resolve) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return resolve(null);
+      try {
+        canvas.toBlob((b) => resolve(b), "image/png");
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  function toFile(blob: Blob) {
+    return new File([blob], FILE_NAME, { type: "image/png" });
+  }
+
+  /** Share sheet with the image file, if this device supports sharing files. */
+  async function shareFile(file: File): Promise<"done" | "cancelled" | "unsupported"> {
+    if (typeof navigator.share !== "function" || !navigator.canShare?.({ files: [file] })) return "unsupported";
+    try {
+      await navigator.share({ files: [file], title: "My Proggaa birthday", text: SHARE_TEXT });
+      return "done";
+    } catch (e) {
+      return e instanceof DOMException && e.name === "AbortError" ? "cancelled" : "unsupported";
+    }
   }
 
   async function download() {
     setError(null);
+    setHint(null);
     const blob = await toBlob();
-    if (!blob) return setError("Couldn't create the image.");
+    if (!blob) return setError("Couldn't create the image. Press and hold the card to save it instead.");
+
+    // On iPhone and inside the installed app a download link is ignored, but the share
+    // sheet has "Save Image" / "Save to Files", so use that there.
+    if (isIOS() || isInstalledApp()) {
+      const result = await shareFile(toFile(blob));
+      if (result !== "unsupported") return;
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "proggaa-birthday-card.png";
+    a.download = FILE_NAME;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a); // Firefox and some webviews only follow links that are in the page
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    setHint("If nothing was saved, press and hold the card and choose “Save image”.");
   }
 
   async function share() {
     setError(null);
+    setHint(null);
     const blob = await toBlob();
-    if (!blob) return setError("Couldn't create the image.");
-    const file = new File([blob], "proggaa-birthday-card.png", { type: "image/png" });
+    if (blob) {
+      const result = await shareFile(toFile(blob));
+      if (result !== "unsupported") return;
+    }
+    // This device can't share image files: share the greeting and link instead.
     try {
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: "My Proggaa birthday" });
-      else await navigator.share({ title: "My Proggaa birthday", text: "Celebrating my birthday with Proggaa" });
-    } catch {
-      // cancelled by the person: nothing to do
+      await navigator.share({ title: "My Proggaa birthday", text: SHARE_TEXT });
+      setHint("To share the picture itself, press and hold the card and choose “Save image” first.");
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setError("Sharing isn't available here. Use Download, or press and hold the card to save it.");
     }
   }
 
@@ -210,14 +282,18 @@ export function BirthdayShareCard({ name }: { name: string }) {
     <div className="comic-panel bg-surface p-4 sm:p-5">
       <h2 className="font-display text-sm font-bold text-foreground">Your birthday card</h2>
       <p className="mt-1 text-xs text-muted-foreground">Save or share it. It shows only your first name, never your birthday or account details.</p>
-      <canvas
-        ref={canvasRef}
-        width={SIZE}
-        height={SIZE}
-        role="img"
-        aria-label={`Birthday card: Happy Birthday, ${name}!`}
-        className="mt-3 aspect-square w-full max-w-sm rounded-xl border border-border/40"
-      />
+      {/* Drawn off-screen; the visible card is the <img> below so press-and-hold "Save image" works. */}
+      <canvas ref={canvasRef} width={SIZE} height={SIZE} aria-hidden="true" className={imageUrl ? "hidden" : "mt-3 aspect-square w-full max-w-sm rounded-xl border border-border/40"} />
+      {imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- data: URL of the drawn card, Next/Image can't take it
+        <img
+          src={imageUrl}
+          alt={`Birthday card: Happy Birthday, ${name}!`}
+          width={SIZE}
+          height={SIZE}
+          className="mt-3 aspect-square w-full max-w-sm rounded-xl border border-border/40"
+        />
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button type="button" variant="primary" onClick={download}>
           <Download className="mr-1.5 h-4 w-4" aria-hidden="true" /> Download
@@ -228,6 +304,7 @@ export function BirthdayShareCard({ name }: { name: string }) {
           </Button>
         )}
       </div>
+      {hint && !error && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
       {error && (
         <p role="alert" className="mt-2 text-sm text-danger">
           {error}
