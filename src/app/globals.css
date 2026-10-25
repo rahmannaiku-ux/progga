@@ -141,6 +141,20 @@
   --muted-foreground: 258 12% 70%;
 }
 
+/* Large gold hero panels (dashboard greeting, the continue-learning card).
+   Light mode: the flat brand gold, unchanged. Dark mode: a slightly deeper,
+   less saturated gold with a gentle top-lit gradient, so a big gold block is
+   a warm surface at night instead of a glaring slab. Small gold bits — XP
+   fills, badges, chips — keep plain `bg-xp` and stay bright.
+   In @layer utilities so it beats the `.comic-panel-bold` surface colour,
+   exactly as the Tailwind `bg-xp` utility it replaces did. */
+@layer utilities {
+  .bg-xp-hero { background-color: hsl(var(--xp)); }
+  .dark .bg-xp-hero {
+    background-image: linear-gradient(158deg, hsl(42 84% 55%) 0%, hsl(34 82% 44%) 100%);
+  }
+}
+
 /* Everyday cards/panels — soft shadow, no thick outline. Reserve the
    heavy comic-panel-with-hard-shadow treatment for elements explicitly
    marked `.comic-panel-bold` (hero banner, community banner). */

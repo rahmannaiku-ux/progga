@@ -171,7 +171,7 @@ export default async function HeroDashboardPage() {
             {currentCourse ? (
               <Link
                 href={resumeHref}
-                className="hover-glow-card comic-panel-bold relative block overflow-hidden bg-xp p-4"
+                className="hover-glow-card comic-panel-bold relative block overflow-hidden bg-xp-hero p-4"
               >
                 <div className="halftone-dots pointer-events-none absolute inset-0 opacity-20" />
                 <div className="relative flex items-center justify-between">
@@ -208,7 +208,7 @@ export default async function HeroDashboardPage() {
                 </div>
               </Link>
             ) : (
-              <div className="comic-panel-bold flex flex-col items-center gap-3 bg-xp p-6 text-center">
+              <div className="comic-panel-bold flex flex-col items-center gap-3 bg-xp-hero p-6 text-center">
                 <ProggyMascot state="thinking" className="h-16 w-16" />
                 <p className="text-sm font-semibold text-xp-foreground">
                   No missions in progress yet.
@@ -347,7 +347,7 @@ export default async function HeroDashboardPage() {
       <div className="hidden lg:block">
     <StaggerContainer className="space-y-8">
       {/* ── Hero banner ─────────────────────────────────────────── */}
-      <StaggerItem className="comic-panel-bold relative overflow-hidden bg-xp p-6 sm:p-8">
+      <StaggerItem className="comic-panel-bold relative overflow-hidden bg-xp-hero p-6 sm:p-8">
         <div className="halftone-dots pointer-events-none absolute inset-0 opacity-25" />
         <DoodleStar className="pointer-events-none absolute left-[38%] top-6 h-8 w-8 animate-cartoon-twinkle opacity-80 sm:left-auto sm:right-64" />
         <DoodleSparkle className="pointer-events-none absolute right-6 top-10 h-9 w-9 animate-cartoon-twinkle opacity-90 [animation-delay:400ms]" />
