@@ -2,10 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, ImagePlus, Loader2, RotateCcw, X } from "lucide-react";
-import { AD_POSES, AD_POSE_LABELS, AD_TEMPLATES, type AdPose } from "@/lib/ad-studio/catalog";
+import { AD_GROUPS, AD_POSES, AD_POSE_LABELS, AD_TEMPLATES, type AdPose, type AdTemplate } from "@/lib/ad-studio/catalog";
 import { cn } from "@/lib/utils";
 
-const GROUPS = Array.from(new Set(AD_TEMPLATES.map((t) => t.group)));
+const SHAPES = [
+  { key: "all", label: "All sizes" },
+  { key: "square", label: "Square" },
+  { key: "portrait", label: "Portrait" },
+  { key: "story", label: "Story" },
+  { key: "wide", label: "Wide" },
+] as const;
+type Shape = (typeof SHAPES)[number]["key"];
+
+function shapeOf(t: AdTemplate): Exclude<Shape, "all"> {
+  const r = t.height / t.width;
+  if (r > 1.6) return "story";
+  if (r > 1.05) return "portrait";
+  if (r < 0.95) return "wide";
+  return "square";
+}
 const PHOTO_MAX_SIDE = 1200;
 const NO_VALUES: Record<string, string> = {};
 
@@ -27,6 +42,14 @@ async function photoToDataUrl(file: File): Promise<string> {
  */
 export function AdStudio() {
   const [templateId, setTemplateId] = useState(AD_TEMPLATES[0]!.id);
+  const [search, setSearch] = useState("");
+  const [shape, setShape] = useState<Shape>("all");
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return AD_TEMPLATES.filter(
+      (t) => (shape === "all" || shapeOf(t) === shape) && (!q || `${t.name} ${t.group}`.toLowerCase().includes(q))
+    );
+  }, [search, shape]);
   const [values, setValues] = useState<Record<string, Record<string, string>>>({});
   const [poses, setPoses] = useState<Record<string, AdPose>>({});
   const [photos, setPhotos] = useState<Record<string, string>>({});
@@ -99,7 +122,32 @@ export function AdStudio() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,1.2fr)]">
-      <nav aria-label="Templates" className="comic-panel h-fit bg-surface p-3">
+      <nav aria-label="Templates" className="comic-panel h-fit bg-surface p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+        <label className="mb-2 block">
+          <span className="sr-only">Search templates</span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${AD_TEMPLATES.length} templates`}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground sm:text-sm"
+          />
+        </label>
+        <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Size">
+          {SHAPES.map((sh) => (
+            <button
+              key={sh.key}
+              type="button"
+              onClick={() => setShape(sh.key)}
+              aria-pressed={shape === sh.key}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-bold",
+                shape === sh.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {sh.label}
+            </button>
+          ))}
+        </div>
         <label className="mb-3 block xl:hidden">
           <span className="sr-only">Template</span>
           <select
@@ -107,19 +155,32 @@ export function AdStudio() {
             onChange={(e) => setTemplateId(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground sm:text-sm"
           >
-            {AD_TEMPLATES.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
+            {AD_GROUPS.map((group) => {
+              const inGroup = visible.filter((t) => t.group === group);
+              return inGroup.length === 0 ? null : (
+                <optgroup key={group} label={group}>
+                  {inGroup.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
         </label>
         <div className="hidden space-y-4 xl:block">
-          {GROUPS.map((group) => (
+          {visible.length === 0 && <p className="px-2 text-sm text-muted-foreground">No template matches.</p>}
+          {AD_GROUPS.map((group) => {
+            const inGroup = visible.filter((t) => t.group === group);
+            if (inGroup.length === 0) return null;
+            return (
             <div key={group}>
-              <p className="mb-1 px-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{group}</p>
+              <p className="mb-1 flex items-center justify-between px-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                {group} <span className="font-mono font-medium normal-case">{inGroup.length}</span>
+              </p>
               <ul className="space-y-0.5">
-                {AD_TEMPLATES.filter((t) => t.group === group).map((t) => (
+                {inGroup.map((t) => (
                   <li key={t.id}>
                     <button
                       type="button"
@@ -139,7 +200,8 @@ export function AdStudio() {
                 ))}
               </ul>
             </div>
-          ))}
+            );
+          })}
         </div>
       </nav>
 

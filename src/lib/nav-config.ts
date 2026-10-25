@@ -91,7 +91,7 @@ export const heroNav: NavSection[] = [
         icon: BookOpen,
         match: (p) => under(p, "/my-courses") || (under(p, "/missions") && p !== "/missions"),
       },
-      { label: "Missions", href: "/missions", icon: Rocket, match: (p) => p === "/missions" },
+      { label: "Daily Missions", href: "/missions", icon: Rocket, match: (p) => p === "/missions" },
       { label: "Exams", href: "/exams", icon: GraduationCap },
       { label: "Results", href: "/results", icon: ClipboardList },
       { label: "Live Classes", href: "/live-classes", icon: Video },

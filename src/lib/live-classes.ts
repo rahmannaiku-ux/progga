@@ -55,3 +55,19 @@ export function formatDuration(ms: number): string {
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
 }
+
+/**
+ * "Add to Google Calendar" link for a class: a prefilled event the student saves in one tap,
+ * with Google's own reminders. Nothing is sent to Google until they open it.
+ */
+export function googleCalendarUrl(input: { title: string; start: Date; end: Date; details: string; url: string }): string {
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: input.title,
+    dates: `${fmt(input.start)}/${fmt(input.end)}`,
+    details: `${input.details}\n\n${input.url}`,
+    ctz: "Asia/Dhaka",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}

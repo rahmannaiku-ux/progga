@@ -59,11 +59,11 @@ export function CookieConsentBanner() {
                 their own cookies if you accept all.
               </span>{" "}
               Read our{" "}
-              <Link href="/cookies" className="inline-block py-2 font-semibold text-accent underline">
+              <Link href="/cookies" className="font-semibold text-accent underline underline-offset-2">
                 Cookie policy
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="inline-block py-2 font-semibold text-accent underline">
+              <Link href="/privacy" className="font-semibold text-accent underline underline-offset-2">
                 Privacy policy
               </Link>
               .
@@ -74,7 +74,7 @@ export function CookieConsentBanner() {
           <button
             type="button"
             onClick={() => choose("essential")}
-            className="comic-btn h-11 flex-1 bg-surface text-sm font-bold text-foreground"
+            className="comic-btn h-11 flex-1 border border-border/30 bg-surface text-sm font-bold text-foreground"
             aria-pressed={current === "essential"}
           >
             Essential only

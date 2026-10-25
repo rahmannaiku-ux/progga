@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { AD_TEMPLATES, cleanAdValues, findAdTemplate, isAdPhoto, isAdPose } from "./catalog";
 
 describe("Ad Studio catalog", () => {
-  it("has 20 templates with unique ids and fields", () => {
-    expect(AD_TEMPLATES).toHaveLength(20);
-    expect(new Set(AD_TEMPLATES.map((t) => t.id)).size).toBe(20);
+  it("has 40 templates with unique ids and fields", () => {
+    expect(AD_TEMPLATES).toHaveLength(40);
+    expect(new Set(AD_TEMPLATES.map((t) => t.id)).size).toBe(40);
     for (const t of AD_TEMPLATES) {
       expect(new Set(t.fields.map((f) => f.key)).size).toBe(t.fields.length);
       for (const f of t.fields) expect(f.default.length).toBeLessThanOrEqual(f.max);

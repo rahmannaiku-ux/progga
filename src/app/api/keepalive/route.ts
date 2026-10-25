@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
+import { runDueJobs } from "@/server/services/scheduled-jobs";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const HEARTBEAT_ID = "keepalive";
 const WRITE_EVERY_MS = 60 * 60 * 1000;
@@ -18,6 +20,10 @@ const WRITE_EVERY_MS = 60 * 60 * 1000;
  *
  * Public and cheap: one indexed read, and the heartbeat row is rewritten at
  * most once an hour however often (or by whom) this is called.
+ *
+ * After answering, it also starts whichever scheduled jobs are due (live-class and exam
+ * reminders, payment expiry...; see server/services/scheduled-jobs.ts). Each runs at most once
+ * per its own interval, however often this is called.
  */
 export async function GET() {
   const started = Date.now();
@@ -32,6 +38,9 @@ export async function GET() {
         update: { pingedAt: now },
       });
     }
+    after(() => runDueJobs().then((ran) => {
+      if (Object.keys(ran).length > 0) console.warn("[keepalive] scheduled jobs", JSON.stringify(ran));
+    }));
     return NextResponse.json(
       { status: "ok", db: "ok", wrote, ms: Date.now() - started },
       { headers: { "Cache-Control": "no-store" } }

@@ -47,7 +47,9 @@ type FieldKey =
   | "percent" | "line" | "code" | "until" | "headline" | "p1" | "p2" | "p3" | "p4" | "one" | "oneMeta" | "two"
   | "twoMeta" | "save" | "topic" | "time" | "name" | "role" | "c1" | "c2" | "c3" | "quote" | "o1" | "m1" | "o2"
   | "m2" | "o3" | "m3" | "o4" | "m4" | "s1" | "t1" | "s2" | "t2" | "s3" | "t3" | "days" | "hours" | "closes"
-  | "exam" | "minutes" | "marks" | "syllabus" | "n1" | "n2" | "n3" | "hero" | "certNo" | "patrol";
+  | "exam" | "minutes" | "marks" | "syllabus" | "n1" | "n2" | "n3" | "hero" | "certNo" | "patrol"
+  | "you" | "friend" | "d1" | "d2" | "d3" | "d4" | "d5" | "d6" | "t4" | "t5" | "t6" | "p5" | "tests" | "stat"
+  | "statLabel" | "college" | "why" | "xp" | "author" | "apply" | "year";
 type V = Record<FieldKey, string>;
 
 let cache: { logo: string; poses: Record<AdPose, string>; fonts: { name: string; data: Buffer; weight: 400 | 600 | 700 | 800 }[] } | null = null;
@@ -775,6 +777,413 @@ const DRAW: Record<string, Draw> = {
       <div style={{ position: "absolute", left: 56, top: 240, width: 700, fontFamily: DISPLAY, fontWeight: 800, fontSize: 124, lineHeight: 0.9, color: INK, textShadow: "6px 6px 0 #FFFFFF" }}>{v.topic}</div>
       <div style={{ position: "absolute", left: 56, bottom: 50, fontSize: 30, fontWeight: 700 }}>{v.mission}</div>
       <Proggy a={a} height={640} flip style={{ right: 120, bottom: -20 }} />
+    </Frame>
+  ),
+  // --- More templates (2026-10) --------------------------------------------------
+
+  scholarship: (v, a) => (
+    <Frame w={1080} h={1080} style={{ ...dots("rgba(255,255,255,0.10)", PURPLE, 30), color: "#FFFFFF" }}>
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <Pill style={{ position: "absolute", right: 72, top: 84, boxShadow: `5px 5px 0 ${INK}` }}>FREE TO SIT</Pill>
+      <div style={{ position: "absolute", left: 72, top: 220, width: 620, display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 108, lineHeight: 0.92, color: GOLD }}>{v.headline}</div>
+        <div style={{ fontSize: 36, lineHeight: 1.3, fontWeight: 700 }}>{v.line}</div>
+      </div>
+      <div style={{ position: "absolute", left: 72, top: 640, display: "flex", gap: 20 }}>
+        {[
+          ["Date", v.date],
+          ["Time", v.time],
+        ].map(([k, val]) => (
+          <div key={k} style={{ width: 260, padding: "22px 26px", background: "#FFFFFF", color: INK, border: `4px solid ${INK}`, borderRadius: 22, boxShadow: `7px 7px 0 ${GOLD}`, display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: MUTED }}>{k}</div>
+            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 40 }}>{val}</div>
+          </div>
+        ))}
+      </div>
+      <Proggy a={a} height={600} style={{ right: 50, bottom: 110 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 60, fontSize: 28, fontWeight: 700, color: LILAC }}>{v.note}</div>
+    </Frame>
+  ),
+
+  referral: (v, a) => (
+    <Frame w={1080} h={1080} style={dots("rgba(31,20,51,0.08)", CREAM)}>
+      <Brand a={a} style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 200, width: 640, fontFamily: DISPLAY, fontWeight: 800, fontSize: 92, lineHeight: 0.95 }}>{v.headline}</div>
+      <div style={{ position: "absolute", left: 72, top: 470, width: 540, display: "flex", flexDirection: "column", gap: 20 }}>
+        {[
+          ["YOU GET", v.you, GOLD],
+          ["YOUR FRIEND GETS", v.friend, LILAC],
+        ].map(([k, val, bg]) => (
+          <div key={k} style={{ padding: "24px 30px", background: bg, border: `4px solid ${INK}`, borderRadius: 24, boxShadow: `8px 8px 0 ${INK}`, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 2, color: INK }}>{k}</div>
+            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 46, lineHeight: 1 }}>{val}</div>
+          </div>
+        ))}
+        <div style={{ fontSize: 26, lineHeight: 1.4, color: BODY }}>{v.note}</div>
+      </div>
+      <Proggy a={a} height={480} style={{ right: 40, bottom: 120 }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 100, background: PURPLE, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 36, color: "#FFFFFF" }}>prooggaa.com</div>
+    </Frame>
+  ),
+
+  "flash-sale": (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: RED, color: "#FFFFFF" }}>
+      <div style={{ position: "absolute", left: -200, top: 380, width: 1500, height: 170, background: GOLD, transform: "rotate(-8deg)", borderTop: `6px solid ${INK}`, borderBottom: `6px solid ${INK}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 64, color: INK, letterSpacing: 3 }}>{`FLASH SALE · ${v.hours} HOURS ONLY`}</div>
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 190, width: 900, fontFamily: DISPLAY, fontWeight: 800, fontSize: 70, lineHeight: 1 }}>{v.mission}</div>
+      <div style={{ position: "absolute", left: 72, top: 630, width: 620, display: "flex", flexDirection: "column" }}>
+        <div style={{ fontSize: 40, fontWeight: 700, textDecoration: "line-through", opacity: 0.75 }}>{taka(v.oldPrice)}</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 120, lineHeight: 0.95 }}>{taka(v.price)}</div>
+      </div>
+      <Proggy a={a} height={430} style={{ right: 50, bottom: 50 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 64, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ fontSize: 30, fontWeight: 700 }}>{v.closes}</div>
+        <Pill style={{ fontSize: 32, boxShadow: `5px 5px 0 ${INK}` }}>prooggaa.com</Pill>
+      </div>
+    </Frame>
+  ),
+
+  "free-class": (v, a) => (
+    <Frame w={1080} h={1080} style={dots("rgba(31,20,51,0.08)", CREAM)}>
+      <Brand a={a} style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", right: 72, top: 70, width: 220, height: 220, borderRadius: 999, background: GOLD, border: `6px solid ${INK}`, boxShadow: `8px 8px 0 ${INK}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transform: "rotate(-8deg)" }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 70, lineHeight: 0.9 }}>FREE</div>
+        <div style={{ fontWeight: 700, fontSize: 24 }}>demo class</div>
+      </div>
+      <div style={{ position: "absolute", left: 72, top: 230, width: 620, display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: PURPLE }}>{v.mission}</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 92, lineHeight: 0.95 }}>{v.topic}</div>
+        <div style={{ fontSize: 30, color: BODY }}>{`with ${v.mentor}`}</div>
+      </div>
+      <div style={{ position: "absolute", left: 72, top: 650, display: "flex", gap: 20 }}>
+        {[v.date, v.time].map((t, i) => (
+          <div key={i} style={{ padding: "18px 30px", background: PURPLE, color: "#FFFFFF", borderRadius: 18, border: `4px solid ${INK}`, fontFamily: DISPLAY, fontWeight: 800, fontSize: 40 }}>{t}</div>
+        ))}
+      </div>
+      <Proggy a={a} height={560} style={{ right: 60, bottom: 40 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 72, display: "flex" }}>
+        <div style={{ padding: "16px 32px", background: VIOLET, color: "#FFFFFF", border: `4px solid ${INK}`, borderRadius: 999, boxShadow: `6px 6px 0 ${INK}`, fontFamily: DISPLAY, fontWeight: 800, fontSize: 32 }}>Join free at prooggaa.com</div>
+      </div>
+    </Frame>
+  ),
+
+  routine: (v, a) => (
+    <Frame w={1080} h={1350} style={{ background: "#FFFFFF", padding: "64px 72px", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 84 }}>
+        <Brand a={a} style={{ position: "relative" }} />
+        <Pill>CLASS ROUTINE</Pill>
+      </div>
+      <div style={{ marginTop: 34, fontFamily: DISPLAY, fontWeight: 800, fontSize: 70, lineHeight: 1, color: PURPLE }}>{v.mission}</div>
+      <div style={{ marginTop: 36, width: 700, display: "flex", flexDirection: "column", border: `4px solid ${INK}`, borderRadius: 26, overflow: "hidden" }}>
+        {[
+          [v.d1, v.t1],
+          [v.d2, v.t2],
+          [v.d3, v.t3],
+          [v.d4, v.t4],
+          [v.d5, v.t5],
+          [v.d6, v.t6],
+        ].map(([d, t], i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", height: 112, background: i % 2 ? CREAM : "#FFFFFF", borderTop: i ? `2px solid ${LILAC}` : "none" }}>
+            <div style={{ width: 220, height: "100%", display: "flex", alignItems: "center", paddingLeft: 30, background: i % 2 ? LILAC : "#F1EAFB", fontFamily: DISPLAY, fontWeight: 800, fontSize: 32 }}>{d}</div>
+            <div style={{ paddingLeft: 30, fontSize: 30, fontWeight: 700, color: BODY }}>{t}</div>
+          </div>
+        ))}
+      </div>
+      <Proggy a={a} height={520} style={{ right: 40, bottom: 120 }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 96, background: GOLD, borderTop: `4px solid ${INK}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 34 }}>Live classes on prooggaa.com</div>
+    </Frame>
+  ),
+
+  "new-patrol": (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: DEEP, color: "#FFFFFF" }}>
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <Pill style={{ position: "absolute", right: 72, top: 84 }}>NEW PATROL</Pill>
+      <div style={{ position: "absolute", left: 72, top: 220, width: 936, height: 520, background: CREAM, color: INK, border: `5px solid ${GOLD}`, borderRadius: 30, display: "flex", flexDirection: "column", padding: "48px 52px", gap: 18 }}>
+        <div style={{ display: "flex" }}>
+          <div style={{ padding: "8px 22px", background: INK, color: GOLD, borderRadius: 14, fontFamily: DISPLAY, fontWeight: 800, fontSize: 34 }}>{`PATROL ${v.patrol}`}</div>
+        </div>
+        <div style={{ width: 560, fontFamily: DISPLAY, fontWeight: 800, fontSize: 78, lineHeight: 0.98 }}>{v.topic}</div>
+        <div style={{ fontSize: 28, color: BODY }}>{`${v.mission} · ${v.minutes} min`}</div>
+        <Proggy a={a} height={420} style={{ right: 40, bottom: 0 }} />
+      </div>
+      <div style={{ position: "absolute", left: 72, bottom: 90, display: "flex", alignItems: "center", gap: 18 }}>
+        <div style={{ width: 84, height: 84, borderRadius: 999, background: GOLD, border: `4px solid #FFFFFF`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="38" height="38" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill={INK} /></svg>
+        </div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 40 }}>Watch it now on prooggaa.com</div>
+      </div>
+    </Frame>
+  ),
+
+  qna: (v, a) => (
+    <Frame w={1080} h={1080} style={{ ...dots("rgba(31,20,51,0.08)", LILAC) }}>
+      <Brand a={a} style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 200, width: 640, padding: "40px 44px", background: "#FFFFFF", border: `5px solid ${INK}`, borderRadius: 40, boxShadow: `10px 10px 0 ${INK}`, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ fontSize: 26, fontWeight: 700, color: PURPLE }}>LIVE Q&amp;A</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 84, lineHeight: 0.95 }}>{v.headline}</div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: BODY }}>{v.topic}</div>
+      </div>
+      <div style={{ position: "absolute", left: 140, top: 560, width: 0, height: 0, borderLeft: "40px solid transparent", borderRight: "40px solid transparent", borderTop: `60px solid ${INK}` }} />
+      <div style={{ position: "absolute", left: 72, top: 690, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ fontSize: 32, fontWeight: 700 }}>{`with ${v.mentor}`}</div>
+        <div style={{ display: "flex", gap: 16 }}>
+          {[v.date, v.time].map((t, i) => (
+            <div key={i} style={{ padding: "14px 26px", background: PURPLE, color: "#FFFFFF", borderRadius: 16, fontFamily: DISPLAY, fontWeight: 800, fontSize: 36 }}>{t}</div>
+          ))}
+        </div>
+      </div>
+      <Proggy a={a} height={600} style={{ right: 60, bottom: 60 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 60, fontSize: 28, fontWeight: 700, color: PURPLE }}>Join from Live Classes on prooggaa.com</div>
+    </Frame>
+  ),
+
+  "exam-tips": (v, a) => (
+    <Frame w={1080} h={1350} style={{ background: CREAM, padding: "64px 72px", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", height: 84 }}>
+        <Brand a={a} style={{ position: "relative" }} />
+      </div>
+      <div style={{ marginTop: 40, width: 820, fontFamily: DISPLAY, fontWeight: 800, fontSize: 84, lineHeight: 0.95 }}>{v.headline}</div>
+      <div style={{ marginTop: 44, width: 700, display: "flex", flexDirection: "column", gap: 22 }}>
+        {[v.p1, v.p2, v.p3, v.p4, v.p5].map((t, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 22, padding: "20px 26px", background: "#FFFFFF", border: `4px solid ${INK}`, borderRadius: 22, boxShadow: `6px 6px 0 ${i % 2 ? VIOLET : GOLD}` }}>
+            <div style={{ width: 62, height: 62, flexShrink: 0, borderRadius: 999, background: i % 2 ? VIOLET : GOLD, color: i % 2 ? "#FFFFFF" : INK, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 34 }}>{String(i + 1)}</div>
+            <div style={{ fontSize: 31, fontWeight: 700, lineHeight: 1.25 }}>{t}</div>
+          </div>
+        ))}
+      </div>
+      <Proggy a={a} height={330} style={{ right: 40, bottom: 24 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 64, fontFamily: DISPLAY, fontWeight: 800, fontSize: 36, color: PURPLE }}>Good luck from Prooggaa</div>
+    </Frame>
+  ),
+
+  "model-test": (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: VIOLET, color: "#FFFFFF", padding: "64px 72px", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 84 }}>
+        <Brand a={a} light style={{ position: "relative" }} />
+        <Pill>{`${v.tests} TESTS`}</Pill>
+      </div>
+      <div style={{ marginTop: 40, width: 760, fontFamily: DISPLAY, fontWeight: 800, fontSize: 88, lineHeight: 0.95 }}>{v.headline}</div>
+      <div style={{ marginTop: 20, fontSize: 32, fontWeight: 700, color: GOLD }}>{`Starts ${v.starts}`}</div>
+      <div style={{ marginTop: 40, width: 600, display: "flex", flexDirection: "column", gap: 18 }}>
+        {[v.p1, v.p2, v.p3].map((p, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 30, fontWeight: 700 }}>
+            <Check />
+            <div>{p}</div>
+          </div>
+        ))}
+      </div>
+      <Proggy a={a} height={520} style={{ right: 50, bottom: 150 }} />
+      <div style={{ position: "absolute", left: 72, right: 72, bottom: 64, height: 110, background: GOLD, color: INK, border: `4px solid ${INK}`, borderRadius: 24, boxShadow: `8px 8px 0 ${INK}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px" }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 38 }}>Register at prooggaa.com</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 52 }}>{taka(v.price)}</div>
+      </div>
+    </Frame>
+  ),
+
+  "exam-routine": (v, a) => (
+    <Frame w={1080} h={1350} style={{ background: DEEP, color: "#FFFFFF", padding: "64px 72px", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 84 }}>
+        <Brand a={a} light style={{ position: "relative" }} />
+        <Pill>EXAM ROUTINE</Pill>
+      </div>
+      <div style={{ marginTop: 40, fontFamily: DISPLAY, fontWeight: 800, fontSize: 72, lineHeight: 1, color: GOLD }}>{v.headline}</div>
+      <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 16 }}>
+        {[
+          [v.d1, v.t1],
+          [v.d2, v.t2],
+          [v.d3, v.t3],
+          [v.d4, v.t4],
+          [v.d5, v.t5],
+        ].map(([d, t], i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 24, height: 118, padding: "0 30px", background: "rgba(255,255,255,0.08)", border: "3px solid #5B4A80", borderRadius: 22 }}>
+            <div style={{ width: 200, display: "flex", flexDirection: "column" }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#C9BCE6" }}>{`EXAM ${i + 1}`}</div>
+              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 36, color: GOLD }}>{d}</div>
+            </div>
+            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 42 }}>{t}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ position: "absolute", left: 72, right: 72, bottom: 64, fontSize: 30, fontWeight: 700, color: LILAC }}>{v.note}</div>
+    </Frame>
+  ),
+
+  "results-congrats": (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: GOLD }}>
+      <div style={{ position: "absolute", left: -120, top: -120, width: 700, height: 700, borderRadius: 999, background: "rgba(255,255,255,0.3)" }} />
+      <Brand a={a} style={{ left: 72, top: 64 }} />
+      <Pill style={{ position: "absolute", right: 72, top: 84, background: PURPLE, color: "#FFFFFF" }}>{v.exam}</Pill>
+      <div style={{ position: "absolute", left: 72, top: 210, width: 640, fontFamily: DISPLAY, fontWeight: 800, fontSize: 96, lineHeight: 0.95, color: DEEP }}>{v.headline}</div>
+      <div style={{ position: "absolute", left: 72, top: 470, width: 540, display: "flex", flexDirection: "column", padding: "30px 40px", background: "#FFFFFF", border: `5px solid ${INK}`, borderRadius: 28, boxShadow: `10px 10px 0 ${INK}` }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 112, lineHeight: 0.95, color: PURPLE }}>{v.stat}</div>
+        <div style={{ fontSize: 32, fontWeight: 700 }}>{v.statLabel}</div>
+      </div>
+      <Proggy a={a} height={560} style={{ right: 30, bottom: 60 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 72, width: 560, fontSize: 30, fontWeight: 700, lineHeight: 1.35, color: DEEP }}>{v.note}</div>
+    </Frame>
+  ),
+
+  "hero-of-week": (v, a) => (
+    <Frame w={1080} h={1080} style={{ ...dots("rgba(255,255,255,0.10)", PURPLE, 30), color: "#FFFFFF" }}>
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <Pill style={{ position: "absolute", right: 72, top: 84 }}>HERO OF THE WEEK</Pill>
+      <div style={{ position: "absolute", left: 72, top: 210, display: "flex", border: `6px solid ${GOLD}`, borderRadius: 999, overflow: "hidden" }}>
+        <PhotoBox a={a} w={380} h={380} radius={999} label="Add the Hero's photo" />
+      </div>
+      <div style={{ position: "absolute", left: 500, top: 240, width: 520, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 76, lineHeight: 0.95, color: GOLD }}>{v.hero}</div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: LILAC }}>{v.college}</div>
+        <div style={{ marginTop: 10, display: "flex", alignItems: "flex-end", gap: 10 }}>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 64 }}>{v.xp}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, paddingBottom: 12 }}>XP this week</div>
+        </div>
+      </div>
+      <div style={{ position: "absolute", left: 72, right: 72, bottom: 72, height: 230, padding: "34px 300px 34px 40px", background: "#FFFFFF", color: INK, border: `4px solid ${INK}`, borderRadius: 28, display: "flex", alignItems: "center", fontSize: 32, fontWeight: 700, lineHeight: 1.3 }}>{v.why}</div>
+      <Proggy a={a} height={360} style={{ right: 90, bottom: 72 }} />
+    </Frame>
+  ),
+
+  quote: (v, a) => (
+    <Frame w={1080} h={1080} style={dots("rgba(31,20,51,0.08)", CREAM)}>
+      <Brand a={a} style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 170, fontFamily: DISPLAY, fontWeight: 800, fontSize: 260, lineHeight: 1, color: GOLD }}>“</div>
+      <div style={{ position: "absolute", left: 72, top: 330, width: 900, fontFamily: DISPLAY, fontWeight: 800, fontSize: 70, lineHeight: 1.08 }}>{v.quote}</div>
+      <div style={{ position: "absolute", left: 72, top: 720, display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ width: 60, height: 6, background: VIOLET, borderRadius: 3 }} />
+        <div style={{ fontSize: 34, fontWeight: 700, color: PURPLE }}>{v.author}</div>
+      </div>
+      <Proggy a={a} height={420} style={{ right: 60, bottom: 40 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 64, fontSize: 28, fontWeight: 700, color: MUTED }}>prooggaa.com</div>
+    </Frame>
+  ),
+
+  stats: (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: DEEP, color: "#FFFFFF", padding: "64px 72px", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", height: 84 }}>
+        <Brand a={a} light style={{ position: "relative" }} />
+      </div>
+      <div style={{ marginTop: 40, fontFamily: DISPLAY, fontWeight: 800, fontSize: 92, lineHeight: 0.95, color: GOLD }}>{v.headline}</div>
+      <div style={{ marginTop: 50, width: 600, display: "flex", flexDirection: "column", gap: 24 }}>
+        {[
+          [v.s1, v.t1],
+          [v.s2, v.t2],
+          [v.s3, v.t3],
+        ].map(([n, t], i) => (
+          <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 22, paddingBottom: 18, borderBottom: "3px solid #5B4A80" }}>
+            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 96, lineHeight: 1 }}>{n}</div>
+            <div style={{ fontSize: 32, fontWeight: 700, color: LILAC }}>{t}</div>
+          </div>
+        ))}
+      </div>
+      <Proggy a={a} height={600} style={{ right: 40, bottom: 60 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 64, display: "flex" }}>
+        <Pill style={{ fontSize: 32 }}>prooggaa.com</Pill>
+      </div>
+    </Frame>
+  ),
+
+  hiring: (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: "#FFFFFF" }}>
+      <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 420, background: VIOLET }} />
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 190, display: "flex", flexDirection: "column", color: "#FFFFFF" }}>
+        <div style={{ fontSize: 34, fontWeight: 700, color: GOLD }}>WE&apos;RE HIRING</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 96, lineHeight: 0.95 }}>{v.role}</div>
+      </div>
+      <div style={{ position: "absolute", left: 72, top: 480, width: 580, display: "flex", flexDirection: "column", gap: 22 }}>
+        {[v.p1, v.p2, v.p3].map((p, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 32, fontWeight: 700 }}>
+            <Check />
+            <div>{p}</div>
+          </div>
+        ))}
+      </div>
+      <Proggy a={a} height={560} style={{ right: 60, bottom: 130 }} />
+      <div style={{ position: "absolute", left: 72, right: 72, bottom: 64, height: 110, background: GOLD, border: `4px solid ${INK}`, borderRadius: 24, boxShadow: `8px 8px 0 ${INK}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 38 }}>{v.apply}</div>
+    </Frame>
+  ),
+
+  eid: (v, a) => (
+    <Frame w={1080} h={1080} style={{ ...dots("rgba(250,183,25,0.18)", DEEP, 34), color: "#FFFFFF" }}>
+      <div style={{ position: "absolute", right: 120, top: 120, width: 260, height: 260, borderRadius: 999, background: GOLD }} />
+      <div style={{ position: "absolute", right: 70, top: 90, width: 250, height: 250, borderRadius: 999, background: DEEP }} />
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 300, width: 700, display: "flex", flexDirection: "column", gap: 26 }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 130, lineHeight: 0.9, color: GOLD }}>{v.headline}</div>
+        <div style={{ fontSize: 36, lineHeight: 1.35 }}>{v.body}</div>
+      </div>
+      <Proggy a={a} height={500} style={{ right: 60, bottom: 40 }} />
+      <div style={{ position: "absolute", left: 72, bottom: 72, fontSize: 30, fontWeight: 700, color: LILAC }}>{v.note}</div>
+    </Frame>
+  ),
+
+  boishakh: (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: "#FFFFFF" }}>
+      <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 40, background: RED }} />
+      <div style={{ position: "absolute", left: 0, bottom: 0, width: 1080, height: 40, background: RED }} />
+      <div style={{ position: "absolute", right: -140, top: 150, width: 640, height: 640, borderRadius: 999, background: "#FCE8C4" }} />
+      <Brand a={a} style={{ left: 72, top: 90 }} />
+      <div style={{ position: "absolute", left: 72, top: 270, width: 640, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 104, lineHeight: 1.02, color: RED }}>{v.headline}</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 90, lineHeight: 1, color: INK }}>{v.year}</div>
+        <div style={{ fontSize: 34, lineHeight: 1.35, color: BODY }}>{v.body}</div>
+      </div>
+      <Proggy a={a} height={560} style={{ right: 60, bottom: 70 }} />
+    </Frame>
+  ),
+
+  "national-day": (v, a) => (
+    <Frame w={1080} h={1080} style={{ background: "#006A4E", color: "#FFFFFF" }}>
+      <div style={{ position: "absolute", left: 470, top: 300, width: 420, height: 420, borderRadius: 999, background: "#F42A41" }} />
+      <Brand a={a} light style={{ left: 72, top: 64 }} />
+      <div style={{ position: "absolute", left: 72, top: 240, width: 560, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ fontSize: 36, fontWeight: 700 }}>{v.date}</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 112, lineHeight: 0.95 }}>{v.headline}</div>
+      </div>
+      <div style={{ position: "absolute", left: 72, right: 72, bottom: 90, fontSize: 36, lineHeight: 1.35, fontWeight: 700 }}>{v.body}</div>
+    </Frame>
+  ),
+
+  "story-offer": (v, a) => (
+    <Frame w={1080} h={1920} style={{ background: GOLD }}>
+      <div style={{ position: "absolute", right: -200, top: 300, width: 900, height: 900, borderRadius: 999, background: "rgba(255,255,255,0.3)" }} />
+      <Brand a={a} size={100} style={{ left: 80, top: 120 }} />
+      <div style={{ position: "absolute", left: 80, top: 330, display: "flex", flexDirection: "column" }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 300, lineHeight: 0.85, color: DEEP }}>{`${v.percent}%`}</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 140, lineHeight: 0.9, color: DEEP }}>OFF</div>
+        <div style={{ marginTop: 30, width: 860, fontFamily: DISPLAY, fontWeight: 800, fontSize: 72, lineHeight: 1 }}>{v.mission}</div>
+      </div>
+      <Proggy a={a} height={720} style={{ right: 60, bottom: 520 }} />
+      <div style={{ position: "absolute", left: 80, right: 80, bottom: 200, height: 240, display: "flex", background: "#FFFFFF", border: `5px solid ${INK}`, borderRadius: 32, boxShadow: `12px 12px 0 ${INK}` }}>
+        <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 44px", gap: 6 }}>
+          <div style={{ fontSize: 30, fontWeight: 700, color: MUTED, letterSpacing: 2 }}>COUPON CODE</div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 84, letterSpacing: 6, color: PURPLE }}>{v.code}</div>
+        </div>
+        <div style={{ width: 300, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", borderLeft: `5px dashed ${INK}` }}>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>Valid until</div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 44 }}>{v.until}</div>
+        </div>
+      </div>
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 90, display: "flex", justifyContent: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 44 }}>prooggaa.com</div>
+    </Frame>
+  ),
+
+  "story-exam": (v, a) => (
+    <Frame w={1080} h={1920} style={{ ...dots("rgba(255,255,255,0.08)", DEEP, 34), color: "#FFFFFF" }}>
+      <Brand a={a} light size={100} style={{ left: 80, top: 120 }} />
+      <div style={{ position: "absolute", left: 80, top: 330, width: 920, fontFamily: DISPLAY, fontWeight: 800, fontSize: 96, lineHeight: 0.95 }}>{v.exam}</div>
+      <div style={{ position: "absolute", left: 80, top: 560, width: 520, height: 520, borderRadius: 999, background: GOLD, color: INK, border: `8px solid #FFFFFF`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 260, lineHeight: 0.85 }}>{v.days}</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 56 }}>days left</div>
+      </div>
+      <Proggy a={a} height={680} style={{ right: 50, top: 760 }} />
+      <div style={{ position: "absolute", left: 80, top: 1200, width: 640, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ fontSize: 44, fontWeight: 700, color: GOLD }}>{v.date}</div>
+        <div style={{ fontSize: 40, lineHeight: 1.35 }}>{v.body}</div>
+      </div>
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 120, display: "flex", justifyContent: "center" }}>
+        <Pill style={{ fontSize: 44, padding: "18px 44px" }}>prooggaa.com</Pill>
+      </div>
     </Frame>
   ),
 };
