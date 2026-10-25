@@ -17,6 +17,7 @@ import { CourseTeachersShowcase, type CourseTeacherEntry } from "@/components/co
 import { JsonLd } from "@/components/shared/json-ld";
 import { breadcrumbJsonLd, courseJsonLd } from "@/lib/seo/structured-data";
 import { CANONICAL_SITE_URL } from "@/lib/site-url";
+import { getSiteBranding } from "@/lib/site-branding";
 
 const levelLabel: Record<string, string> = {
   BEGINNER: "Beginner",
@@ -170,6 +171,7 @@ export default async function CourseBuyingPage(props: { params: Promise<{ slug: 
   const buyOnWebsite = Boolean(detectApp((await headers()).get("user-agent"))) && !course.isFree && !alreadyEnrolled;
   const sheetRoom = fullPanel && !course.isFree ? "13.5rem" : fullPanel ? "9.5rem" : "6.5rem";
 
+  const { siteName } = await getSiteBranding();
   const structuredData = [
     courseJsonLd({
       slug: course.slug,
@@ -183,6 +185,7 @@ export default async function CourseBuyingPage(props: { params: Promise<{ slug: 
       teacherNames: teachers.map((t) => [t.firstName, t.lastName].filter(Boolean).join(" ")).filter(Boolean),
       category: course.category?.name ?? null,
       rating: typeof rating === "number" ? { value: rating, count: reviewCount } : undefined,
+      providerName: siteName,
     }),
     breadcrumbJsonLd([
       { name: "Home", path: "" },

@@ -82,6 +82,8 @@ export type CourseJsonLdInput = {
   teacherNames: string[];
   category: string | null;
   rating?: { value: number; count: number };
+  /** The site name from branding settings. */
+  providerName: string;
 };
 
 export function courseJsonLd(c: CourseJsonLdInput): JsonLdObject {
@@ -92,7 +94,7 @@ export function courseJsonLd(c: CourseJsonLdInput): JsonLdObject {
     name: c.title,
     description: c.description || c.title,
     url,
-    provider: { "@id": ORGANIZATION_ID, "@type": "EducationalOrganization", name: "Proggaa", sameAs: CANONICAL_SITE_URL },
+    provider: { "@type": "EducationalOrganization", "@id": ORGANIZATION_ID, name: c.providerName, sameAs: CANONICAL_SITE_URL },
     offers: {
       "@type": "Offer",
       category: c.isFree ? "Free" : "Paid",

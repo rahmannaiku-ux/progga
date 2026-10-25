@@ -44,6 +44,7 @@ describe("courseJsonLd", () => {
     currency: "bdt",
     teacherNames: ["Rahim Uddin"],
     category: "Physics",
+    providerName: "Prooggaa",
   };
 
   it("converts paisa to taka and upper-cases the currency", () => {
@@ -63,6 +64,10 @@ describe("courseJsonLd", () => {
     expect(courseJsonLd(base).aggregateRating).toBeUndefined();
     const rated = courseJsonLd({ ...base, rating: { value: 4.666, count: 3 } });
     expect(rated.aggregateRating).toMatchObject({ ratingValue: 4.7, ratingCount: 3 });
+  });
+
+  it("names the provider from the site branding", () => {
+    expect(courseJsonLd(base).provider).toMatchObject({ name: "Prooggaa" });
   });
 
   it("falls back to the title when there is no description", () => {

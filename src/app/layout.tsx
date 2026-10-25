@@ -58,7 +58,7 @@ const DEFAULT_PRIMARY_HEX = "#7C3AED";
 // custom site name — kept as the literal default rather than only
 // living inside site-branding.ts so this file's intent stays readable
 // on its own.
-const DEFAULT_TITLE = "Proggaa — Online HSC & Admission Courses in Bangladesh";
+const TAGLINE = "Online HSC & Admission Courses in Bangladesh";
 const DEFAULT_DESCRIPTION =
   "Online HSC and university admission preparation for Bangladeshi students: video lessons, notes, live classes, MCQ exams and certificates, in Bangla and English. Every course is a Mission and every lesson earns XP.";
 
@@ -78,16 +78,12 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getSiteBranding();
-  // Only the site name is admin-configurable copy right now — the
-  // description/OG copy stays the static marketing copy above even when
-  // siteName changes, so "Acme Academy" doesn't get "every course is a
-  // mission" without the admin having written that themselves.
-  // Every page gets "· <site name>" after its own title (it used to be a plain string for
-  // Proggaa, so pages showed up in search as just "FAQ" or "Blog").
-  const title = {
-    default: branding.siteName === "Proggaa" ? DEFAULT_TITLE : branding.siteName,
-    template: `%s · ${branding.siteName}`,
-  };
+  // Only the site name is admin-configurable copy; the tagline and description stay the
+  // static copy above. The home page is "<site name> — <tagline>", and every other page gets
+  // "· <site name>" after its own title (without the template, pages showed up in search
+  // as just "FAQ" or "Blog").
+  const homeTitle = `${branding.siteName} — ${TAGLINE}`;
+  const title = { default: homeTitle, template: `%s · ${branding.siteName}` };
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -112,7 +108,7 @@ export async function generateMetadata(): Promise<Metadata> {
     ],
     icons: branding.faviconUrl ? { icon: branding.faviconUrl } : undefined,
     openGraph: {
-      title: branding.siteName === "Proggaa" ? DEFAULT_TITLE : branding.siteName,
+      title: homeTitle,
       description: DEFAULT_DESCRIPTION,
       siteName: branding.siteName,
       url: "./",
@@ -122,7 +118,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: branding.siteName === "Proggaa" ? DEFAULT_TITLE : branding.siteName,
+      title: homeTitle,
       description: DEFAULT_DESCRIPTION,
     },
   };
