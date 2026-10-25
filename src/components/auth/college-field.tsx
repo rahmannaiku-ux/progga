@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { searchInstitutionsAction } from "@/server/actions/student-profile-actions";
 import type { InstitutionHit } from "@/server/services/institutions";
 
+const plainName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
 const inputClass = (error?: string) =>
   cn(
     "h-11 w-full rounded-xl border bg-surface px-4 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50",
@@ -41,12 +43,20 @@ export function CollegeField({
   required?: boolean;
 }) {
   const listId = useId();
-  const [query, setQuery] = useState<{ text: string; from: "name" | "eiin" } | null>(null);
+  // The college name already saved (e.g. from before the list existed) is looked up once,
+  // silently, so an exact match fills in its EIIN without the student doing anything.
+  const [query, setQuery] = useState<{ text: string; from: "name" | "eiin"; silent?: boolean } | null>(
+    name.trim().length >= 2 && !eiin ? { text: name, from: "name", silent: true } : null
+  );
   const [hits, setHits] = useState<InstitutionHit[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const boxRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
+  const latest = useRef({ onChange, onNotListedChange });
+  useEffect(() => {
+    latest.current = { onChange, onNotListedChange };
+  });
 
   // Debounced search; only the newest answer is shown.
   useEffect(() => {
@@ -58,11 +68,25 @@ export function CollegeField({
     const t = setTimeout(async () => {
       try {
         const result = await searchInstitutionsAction(query.text);
-        if (id === requestId.current) {
-          setHits(result);
-          setActive(-1);
-          setOpen(true);
+        if (id !== requestId.current) return;
+        // EIIN fills itself: an exact EIIN picks that college, and a name that matches exactly
+        // one college gets its EIIN.
+        const exact =
+          query.from === "eiin"
+            ? result.filter((h) => h.eiin === query.text)
+            : result.filter((h) => plainName(h.name) === plainName(query.text));
+        if (exact.length === 1) {
+          latest.current.onChange({ name: exact[0]!.name, eiin: exact[0]!.eiin });
+          latest.current.onNotListedChange(false);
+          if (query.from === "eiin" || query.silent) {
+            setHits([]);
+            setOpen(false);
+            return;
+          }
         }
+        setHits(result);
+        setActive(-1);
+        setOpen(!query.silent);
       } catch {
         if (id === requestId.current) setHits([]);
       }
