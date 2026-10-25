@@ -13,6 +13,7 @@ import { createSession, revokeAllActiveSessionsForUser, revokeSessionByToken, li
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isMultiSessionRole } from "@/lib/auth/require-auth";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
+import { cancelAccountDeletion, purgeAccount } from "@/server/services/account-deletion";
 import type { Session, User } from "@prisma/client";
 
 /**
@@ -160,7 +161,8 @@ export async function completeRegistration(
 export type LoginResult =
   | { ok: true; rawToken: string; session: Session; user: User }
   | { ok: false; reason: "invalid_credentials" | "account_inactive" | "rate_limited" }
-  | { ok: false; reason: "takeover_required" };
+  | { ok: false; reason: "takeover_required" }
+  | { ok: false; reason: "deletion_pending"; deletionScheduledFor: Date };
 
 // A precomputed dummy hash, lazily created once per process and reused,
 // so a login attempt for a phone with no account spends roughly the
@@ -206,7 +208,7 @@ export function sessionsOnOtherDevices(
 export async function login(
   rawPhone: string,
   password: string,
-  opts: { confirmTakeover?: boolean; deviceId?: string; currentSessionId?: string } = {}
+  opts: { confirmTakeover?: boolean; confirmRestore?: boolean; deviceId?: string; currentSessionId?: string } = {}
 ): Promise<LoginResult> {
   const phone = normalizeBangladeshPhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid_credentials" };
@@ -223,6 +225,17 @@ export async function login(
 
   const passwordOk = await verifyPassword(password, user.passwordHash);
   if (!passwordOk) return { ok: false, reason: "invalid_credentials" };
+
+  // Scheduled for deletion (account-deletion.ts): offer to restore it, or finish the deletion
+  // if the grace period has already run out and the daily sweep hasn't got to it yet.
+  if (user.deletionScheduledFor) {
+    if (user.deletionScheduledFor.getTime() <= Date.now()) {
+      await purgeAccount(user.id).catch((err) => console.error("[login] purge failed", err));
+      return { ok: false, reason: "invalid_credentials" };
+    }
+    if (!opts.confirmRestore) return { ok: false, reason: "deletion_pending", deletionScheduledFor: user.deletionScheduledFor };
+    await cancelAccountDeletion(user.id, user.id);
+  }
 
   if (!user.isActive || user.isSuspended) return { ok: false, reason: "account_inactive" };
 

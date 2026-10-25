@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowRightLeft,
   LayoutDashboard,
   Bug,
   Rocket,
@@ -164,6 +165,7 @@ export const adminNav: NavSection[] = [
     items: [
       { label: "Users", href: "/admin/users", icon: Users },
       { label: "Grant Access", href: "/admin/enrollments", icon: UserPlus },
+      { label: "Mission Switches", href: "/admin/mission-switches", icon: ArrowRightLeft, prefetch: false },
       { label: "Mentors", href: "/admin/mentors", icon: Shield },
       { label: "Co-mentor Requests", href: "/admin/co-mentor-requests", icon: Share2, prefetch: false },
       { label: "Payments", href: "/admin/payments", icon: CreditCard },

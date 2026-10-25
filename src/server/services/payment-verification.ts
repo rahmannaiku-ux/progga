@@ -8,6 +8,7 @@ import { enqueueWebhook } from "@/lib/payments/webhooks";
 import { getSmsProvider } from "@/lib/sms/onecodesoft";
 import { invoiceUrlFor, purchaseSuccessMessage } from "@/lib/sms/messages";
 import { paymentCourseTitle } from "@/lib/payments/course-title";
+import { completeSwitchForPaymentTx } from "@/server/services/course-migration";
 
 /**
  * Evidence from an approved Android device that this verification rests on.
@@ -93,6 +94,9 @@ export async function markPaidAndEnroll(
     });
 
     const updated = await tx.payment.update({ where: { id: paymentId }, data: { enrollmentId: enrollment.id } });
+
+    // A mission switch paid by this order finishes now (moves the student off the old mission).
+    await completeSwitchForPaymentTx(tx, paymentId);
 
     if (!evidence) {
       // A human (or the legacy bridge) verified this order. If SMS evidence had already been matched to it,

@@ -11,6 +11,7 @@ import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { loginAction } from "@/server/actions/auth-actions";
 import { loginErrorMessage } from "@/lib/auth/error-messages";
 import { safeReturnTo } from "@/lib/auth/safe-redirect";
+import { formatDhakaDate } from "@/lib/timezone";
 
 export function LoginForm() {
   const router = useRouter();
@@ -21,20 +22,26 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [takeoverOpen, setTakeoverOpen] = useState(false);
+  const [restoreUntil, setRestoreUntil] = useState<Date | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function submit(confirmTakeover: boolean) {
+  function submit(confirmTakeover: boolean, confirmRestore = false) {
     setError(null);
     startTransition(async () => {
-      const result = await loginAction({ phone, password, confirmTakeover });
+      const result = await loginAction({ phone, password, confirmTakeover, confirmRestore });
       if (result.ok) {
         setTakeoverOpen(false);
+        setRestoreUntil(null);
         router.push(result.user.profileCompleted ? returnTo : "/complete-profile");
         router.refresh();
         return;
       }
       if (result.reason === "takeover_required") {
         setTakeoverOpen(true);
+        return;
+      }
+      if (result.reason === "deletion_pending" && "deletionScheduledFor" in result) {
+        setRestoreUntil(new Date(result.deletionScheduledFor));
         return;
       }
       setTakeoverOpen(false);
@@ -114,6 +121,29 @@ export function LoginForm() {
                 disabled={isPending}
                 onClick={() => setTakeoverOpen(false)}
               >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={restoreUntil !== null} onOpenChange={(open) => !isPending && !open && setRestoreUntil(null)}>
+        <DialogContent
+          title="Your account is set to be deleted"
+          description="You can still keep it."
+        >
+          <div className="space-y-4 p-5">
+            <p className="text-sm text-foreground">
+              You asked to delete your Proggaa account. It will be erased on{" "}
+              <span className="font-semibold">{restoreUntil ? formatDhakaDate(restoreUntil) : ""}</span>. Signing in now
+              cancels the deletion and keeps everything as it was.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row-reverse">
+              <Button type="button" variant="primary" className="flex-1" disabled={isPending} onClick={() => submit(true, true)}>
+                {isPending ? "Restoring..." : "Keep my account"}
+              </Button>
+              <Button type="button" variant="outline" className="flex-1" disabled={isPending} onClick={() => setRestoreUntil(null)}>
                 Cancel
               </Button>
             </div>

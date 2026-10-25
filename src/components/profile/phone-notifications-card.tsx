@@ -120,8 +120,9 @@ export function PhoneNotificationsCard({ vapidPublicKey, deviceCount }: { vapidP
         <Smartphone className="h-4 w-4 text-accent" aria-hidden="true" /> Phone notifications
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Get important Proggaa messages, like your birthday surprise, on this phone or computer even when Proggaa is closed.
-        Messages show only a short title and text, never your account details.
+        Know when a live class is about to start, when your exam result or challenge grade is out, when a deadline is
+        close and when a payment is confirmed, on this phone or computer, even with Proggaa closed. Each alert shows a
+        short title only; your marks and details stay inside Proggaa.
       </p>
 
       <div className="mt-4 space-y-3" aria-live="polite">

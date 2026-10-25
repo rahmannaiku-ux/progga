@@ -39,20 +39,21 @@ export default async function PaymentPage(
   const configured = new Set<MfsProvider>(configuredProviders.map((c) => c.provider as MfsProvider));
   if (settings?.bkashNumber) configured.add("BKASH"); // legacy fallback still counts as "available"
   const receivingNumber = payment.receivingNumber ?? (provider === "BKASH" ? settings?.bkashNumber ?? null : null);
+  const isSwitch = payment.source === "mission-switch";
 
   return (
     <div className="mx-auto max-w-2xl">
       <Link
-        href={`/missions/${payment.courseId}`}
+        href={isSwitch ? "/my-courses" : `/missions/${payment.courseId}`}
         className="mb-4 flex w-fit items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to mission
+        <ArrowLeft className="h-4 w-4" /> {isSwitch ? "My Courses" : "Back to mission"}
       </Link>
 
       {/* Mission summary header — always visible regardless of state */}
       <div className="comic-panel halftone-dots relative overflow-hidden bg-surface p-6">
         <Sparkles className="absolute right-5 top-5 h-6 w-6 text-xp animate-cartoon-wiggle" />
-        <p className="text-xs font-bold text-accent">Unlocking mission</p>
+        <p className="text-xs font-bold text-accent">{isSwitch ? "Mission switch · price difference" : "Unlocking mission"}</p>
         <h1 className="mt-1 font-display text-2xl font-extrabold text-foreground">{paymentCourseTitle(payment)}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <span className="sticker bg-primary px-4 py-1.5 font-display text-xl font-extrabold text-primary-foreground">

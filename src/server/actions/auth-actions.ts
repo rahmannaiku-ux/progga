@@ -52,7 +52,7 @@ export async function completeRegistrationAction(input: { phone: string; otp: st
   return result;
 }
 
-export async function loginAction(input: { phone: string; password: string; confirmTakeover?: boolean }) {
+export async function loginAction(input: { phone: string; password: string; confirmTakeover?: boolean; confirmRestore?: boolean }) {
   const deviceId = await getOrSetDeviceId();
   // A still-valid session cookie from this browser is this device's own
   // session, never "another device" — pass it so login() can tell.
@@ -60,6 +60,7 @@ export async function loginAction(input: { phone: string; password: string; conf
   const current = token ? await validateSessionToken(token, { skipCache: true }) : null;
   const result = await login(input.phone, input.password, {
     confirmTakeover: input.confirmTakeover ?? false,
+    confirmRestore: input.confirmRestore ?? false,
     deviceId,
     currentSessionId: current?.session.id,
   });

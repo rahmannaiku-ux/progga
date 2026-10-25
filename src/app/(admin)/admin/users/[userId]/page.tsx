@@ -9,6 +9,8 @@ import { formatDhakaDate, formatDhakaDateTime } from "@/lib/timezone";
 import { formatMoney, PAYMENT_STATUS_META } from "@/lib/payments/format";
 import { paymentCourseTitle } from "@/lib/payments/course-title";
 import { AdminStudentEditor } from "@/components/admin-dashboard/admin-student-editor";
+import { CancelDeletionButton } from "@/components/admin-dashboard/account-deletion-admin";
+import type { DeletedAccountSummary } from "@/lib/account-deletion";
 
 /**
  * Admin-only view of one user's full record — most importantly the
@@ -37,6 +39,11 @@ export default async function AdminUserDetailPage(props: { params: Promise<{ use
       isActive: true,
       headline: true,
       bio: true,
+      deletionRequestedAt: true,
+      deletionScheduledFor: true,
+      deletionReason: true,
+      deletedAt: true,
+      deletedSummary: true,
       avatarUrl: true,
       heroStats: { select: { xp: true, currentStreak: true, longestStreak: true, coinBalance: true } },
       createdAt: true,
@@ -87,6 +94,7 @@ export default async function AdminUserDetailPage(props: { params: Promise<{ use
   if (!user) notFound();
 
   const profile = user.studentProfile;
+  const deleted = user.deletedAt ? (user.deletedSummary as DeletedAccountSummary | null) : null;
   const displayName =
     `${user.firstName} ${user.lastName}`.trim() || profile?.name?.trim() || user.phone || "Unnamed user";
 
@@ -126,9 +134,48 @@ export default async function AdminUserDetailPage(props: { params: Promise<{ use
         <h1 className="break-words font-display text-2xl font-extrabold text-foreground">{displayName}</h1>
         <Badge variant="outline">{user.role}</Badge>
         {user.isSuspended && <Badge variant="outline">Suspended</Badge>}
+        {user.deletedAt && <Badge variant="outline">Deleted</Badge>}
+        {!user.deletedAt && user.deletionScheduledFor && <Badge variant="outline">Deletion scheduled</Badge>}
       </div>
 
-      {user.role === "STUDENT" && (
+      {!user.deletedAt && user.deletionScheduledFor && (
+        <section className="comic-panel mt-6 border-danger/50 bg-surface p-5">
+          <h2 className="font-display text-lg font-bold text-foreground">Account deletion scheduled</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Asked {user.deletionRequestedAt ? formatDhakaDateTime(user.deletionRequestedAt) : "earlier"}. Personal data is
+            erased on {formatDhakaDate(user.deletionScheduledFor)} unless the student signs in and keeps the account.
+          </p>
+          {user.deletionReason && <p className="mt-2 break-words text-sm text-foreground">Reason: “{user.deletionReason}”</p>}
+          <CancelDeletionButton userId={user.id} />
+        </section>
+      )}
+
+      {user.deletedAt && (
+        <section className="comic-panel mt-6 bg-surface p-5">
+          <h2 className="font-display text-lg font-bold text-foreground">Deleted account</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Erased {formatDhakaDateTime(user.deletedAt)}. This is the record kept for payment questions.
+          </p>
+          {deleted && (
+            <FieldGrid
+              fields={[
+                ["Name", deleted.name],
+                ["Phone", deleted.phone],
+                ["District", deleted.district],
+                ["College", deleted.college],
+                ["HSC batch", deleted.hscBatch],
+                ["Joined", formatDhakaDate(new Date(deleted.joinedAt))],
+                ["Deletion asked", deleted.deletionRequestedAt ? formatDhakaDate(new Date(deleted.deletionRequestedAt)) : null],
+                ["Reason", deleted.reason],
+                ["Missions", deleted.missions.map((m) => m.title).join(", ") || null],
+                ["Paid orders", `${deleted.paidOrders} · ${formatMoney(deleted.paidTotalCents)}`],
+              ]}
+            />
+          )}
+        </section>
+      )}
+
+      {user.role === "STUDENT" && !user.deletedAt && (
         <section className="comic-panel mt-6 bg-surface p-5">
           <h2 className="font-display text-lg font-bold text-foreground">Edit student</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -197,7 +244,17 @@ export default async function AdminUserDetailPage(props: { params: Promise<{ use
       </section>
 
       <section className="glass-panel mt-4 p-5">
-        <h2 className="font-display text-lg font-bold text-foreground">Enrollments ({user.enrollments.length})</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-lg font-bold text-foreground">Enrollments ({user.enrollments.length})</h2>
+          {user.enrollments.length > 0 && user.phone && (
+            <Link
+              href={`/admin/mission-switches?student=${encodeURIComponent(user.phone)}`}
+              className="inline-flex min-h-9 items-center text-sm font-semibold text-accent hover:underline"
+            >
+              Switch mission
+            </Link>
+          )}
+        </div>
         {user.enrollments.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No enrollments.</p>
         ) : (

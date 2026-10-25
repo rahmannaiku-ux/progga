@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
-import { PlayCircle, Award, Heart, LayoutGrid, Flame, BookOpen, ArrowRight } from "lucide-react";
+import { PlayCircle, Award, Heart, LayoutGrid, Flame, BookOpen, ArrowRight, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db/client";
@@ -11,6 +11,8 @@ import { ProggyMascot } from "@/components/marketing/proggy-mascot";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { getOrCreateHeroStats } from "@/lib/gamification/hero-stats";
 import { mediaSrc } from "@/lib/media-url";
+import { findOpenSwitch } from "@/server/services/course-migration";
+import { OpenSwitchCard } from "@/components/missions/open-switch-card";
 
 const TABS = [
   { key: "all", label: "All Courses" },
@@ -32,7 +34,7 @@ export default async function MyCoursesPage(
     ? (searchParams.filter as TabKey)
     : "all";
 
-  const [enrollments, wishlist, stats] = await Promise.all([
+  const [enrollments, wishlist, stats, openSwitch] = await Promise.all([
     db.enrollment.findMany({
       where: { userId: user.id, status: { in: ["ACTIVE", "COMPLETED"] } },
       orderBy: { enrolledAt: "desc" },
@@ -43,6 +45,8 @@ export default async function MyCoursesPage(
             slug: true,
             title: true,
             thumbnailUrl: true,
+            isFree: true,
+            priceCents: true,
             category: { select: { name: true } },
             modules: {
               where: { isLiveContainer: false },
@@ -64,6 +68,7 @@ export default async function MyCoursesPage(
       },
     }),
     getOrCreateHeroStats(user.id),
+    findOpenSwitch(user.id),
   ]);
 
   const active = enrollments.filter((e) => e.status === "ACTIVE");
@@ -94,6 +99,22 @@ export default async function MyCoursesPage(
           </Link>
         </Button>
       </StaggerItem>
+
+      {openSwitch && (
+        <StaggerItem>
+          <OpenSwitchCard
+            migration={{
+              id: openSwitch.id,
+              status: openSwitch.status,
+              fromCourseTitle: openSwitch.fromCourseTitle,
+              toCourseTitle: openSwitch.toCourseTitle,
+              differenceCents: openSwitch.differenceCents,
+              paymentId: openSwitch.payment?.id ?? null,
+              paymentStatus: openSwitch.payment?.status ?? null,
+            }}
+          />
+        </StaggerItem>
+      )}
 
       <StaggerItem className="flex flex-wrap gap-2">
         {TABS.map((tab) => (
@@ -170,6 +191,15 @@ export default async function MyCoursesPage(
                       {Math.round(e.progressPct)}%
                     </span>
                   </div>
+                  {!e.course.isFree && e.course.priceCents > 0 && (
+                    // Above the card-wide resume link (z-10), so it stays clickable.
+                    <Link
+                      href={`/my-courses/switch/${e.course.slug}`}
+                      className="relative z-10 mt-2 inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-accent"
+                    >
+                      <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden="true" /> Switch mission
+                    </Link>
+                  )}
                 </div>
 
                 <Link

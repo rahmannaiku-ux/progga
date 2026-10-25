@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { SHARED_STORE_KEY } from "@/lib/rate-limit";
+import { pushAfterNotificationWrite } from "@/lib/push/notification-push";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -12,6 +13,24 @@ export const db =
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+// Important notifications also go to the person's phone (lib/push/notification-push.ts). Only
+// writes outside a transaction: one inside could still be rolled back.
+const withPush = globalThis as unknown as { __proggaaPushMiddleware?: boolean };
+if (!withPush.__proggaaPushMiddleware) {
+  withPush.__proggaaPushMiddleware = true;
+  db.$use(async (params, next) => {
+    const result = await next(params);
+    if (params.model === "Notification" && (params.action === "create" || params.action === "createMany") && !params.runInTransaction) {
+      try {
+        pushAfterNotificationWrite(params.action, params.args, result);
+      } catch {
+        // a phone copy must never break the write
+      }
+    }
+    return result;
+  });
+}
 
 // The shared rate-limit store (see checkRateLimit): one atomic upsert per
 // check, a fixed window per key. Old windows are cleared now and then.

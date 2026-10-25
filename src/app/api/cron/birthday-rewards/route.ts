@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { constantTimeEquals } from "@/lib/auth/bot-auth";
 import { runBirthdayJob } from "@/server/services/birthday";
+import { purgeDueAccountDeletions } from "@/server/services/account-deletion";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,6 +14,9 @@ export const maxDuration = 60;
  * failed run is safe. Schedule it hourly (at minimum once shortly after
  * 00:00 Dhaka = 18:00 UTC). Same CRON_SECRET fail-closed pattern as the
  * other cron routes.
+ *
+ * The same daily run also erases accounts whose 30-day deletion period has ended
+ * (account-deletion.ts), since the plan allows only a couple of Vercel crons.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -25,6 +29,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const result = await runBirthdayJob(new Date());
-  return NextResponse.json(result);
+  const now = new Date();
+  const result = await runBirthdayJob(now);
+  const accountsErased = await purgeDueAccountDeletions(now).catch((err) => {
+    console.error("[cron] account deletion sweep failed", err);
+    return -1;
+  });
+  return NextResponse.json({ ...result, accountsErased });
 }
