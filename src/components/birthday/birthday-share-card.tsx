@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BIRTHDAY_COLORS, makeConfetti } from "@/lib/birthday/celebration";
@@ -171,12 +171,17 @@ function isInstalledApp() {
   );
 }
 
+/** Web Share support never changes while the page is open, so there is nothing to subscribe to. */
+const noSubscribe = () => () => {};
+const canShareNow = () => typeof navigator.share === "function";
+const canShareOnServer = () => false;
+
 export function BirthdayShareCard({ name }: { name: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The finished card as an <img>, so it can also be saved by press-and-hold (works in every
   // browser and inside the installed app, where file downloads are often blocked).
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [canShare, setCanShare] = useState(false);
+  const canShare = useSyncExternalStore(noSubscribe, canShareNow, canShareOnServer);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -201,7 +206,6 @@ export function BirthdayShareCard({ name }: { name: string }) {
     ]).then(([logo, mascot]) => {
       if (!cancelled) render({ logo, mascot, ...fonts });
     });
-    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
     return () => {
       cancelled = true;
     };
