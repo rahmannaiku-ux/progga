@@ -7,61 +7,148 @@ import { BIRTHDAY_COLORS, makeConfetti } from "@/lib/birthday/celebration";
 
 const SIZE = 1080;
 
-function draw(canvas: HTMLCanvasElement, name: string, logo: HTMLImageElement | null) {
+type Assets = { logo: HTMLImageElement | null; mascot: HTMLImageElement | null; display: string; body: string };
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/**
+ * The card, in the app's own colours: the sidebar's deep purple, gold for the name, cream text,
+ * comic halftone dots, confetti kept to the edges so it never runs over the words, and Proggy
+ * cheering in the corner.
+ */
+function draw(canvas: HTMLCanvasElement, name: string, a: Assets) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   canvas.width = SIZE;
   canvas.height = SIZE;
+  const { ink, purple, gold, cream } = BIRTHDAY_COLORS;
 
-  ctx.fillStyle = BIRTHDAY_COLORS.ink;
+  const bg = ctx.createLinearGradient(0, 0, 0, SIZE);
+  bg.addColorStop(0, "#2B1656");
+  bg.addColorStop(1, ink);
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, SIZE, SIZE);
-  const glow = ctx.createRadialGradient(SIZE / 2, SIZE * 0.42, 40, SIZE / 2, SIZE * 0.42, SIZE * 0.6);
-  glow.addColorStop(0, "rgba(107,31,193,0.75)");
+
+  const glow = ctx.createRadialGradient(SIZE / 2, 300, 20, SIZE / 2, 300, 620);
+  glow.addColorStop(0, "rgba(107,31,193,0.55)");
   glow.addColorStop(1, "rgba(25,18,43,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  for (const c of makeConfetti(90, 7)) {
+  // Halftone dots, stronger towards the corners.
+  ctx.fillStyle = "rgba(252,249,243,0.07)";
+  for (let row = 0, y = 40; y < SIZE; y += 26, row++) {
+    for (let x = 40 + (row % 2) * 13; x < SIZE; x += 26) {
+      const d = Math.hypot(x - SIZE / 2, y - SIZE / 2) / (SIZE / 2);
+      if (d < 0.8) continue;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.min(4, 6 * (d - 0.75)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Confetti only around the edges, never over the words.
+  for (const c of makeConfetti(160, 11)) {
+    const x = (c.left / 100) * SIZE;
+    const y = (((c.duration * 997 + c.drift * 13) % SIZE) + SIZE) % SIZE;
+    if (x > 110 && x < SIZE - 110 && y > 120 && y < SIZE - 100) continue;
     ctx.save();
-    ctx.translate((c.left / 100) * SIZE, ((c.duration * 997 + c.drift * 13) % SIZE + SIZE) % SIZE);
+    ctx.translate(x, y);
     ctx.rotate((c.spin * Math.PI) / 180);
     ctx.fillStyle = c.color;
-    ctx.globalAlpha = 0.85;
-    ctx.fillRect(-c.width, -c.height, c.width * 2, c.height * 2);
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(-c.width, -c.height * 0.6, c.width * 2, c.height * 1.2);
     ctx.restore();
   }
 
-  ctx.strokeStyle = BIRTHDAY_COLORS.gold;
-  ctx.lineWidth = 12;
-  ctx.strokeRect(40, 40, SIZE - 80, SIZE - 80);
+  // Comic frame: an ink shadow, then a rounded gold border.
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
+  roundRect(ctx, 60, 64, SIZE - 112, SIZE - 112, 56);
+  ctx.stroke();
+  ctx.strokeStyle = gold;
+  roundRect(ctx, 52, 52, SIZE - 104, SIZE - 104, 56);
+  ctx.stroke();
 
   ctx.textAlign = "center";
-  ctx.fillStyle = BIRTHDAY_COLORS.gold;
-  ctx.font = "bold 44px system-ui, sans-serif";
-  ctx.fillText("MISSION: ANOTHER YEAR COMPLETE", SIZE / 2, 300);
+  ctx.textBaseline = "alphabetic";
 
-  ctx.fillStyle = BIRTHDAY_COLORS.cream;
-  ctx.font = "800 110px system-ui, sans-serif";
-  ctx.fillText("Happy Birthday,", SIZE / 2, 470);
-  ctx.fillStyle = BIRTHDAY_COLORS.gold;
-  let size = 130;
-  ctx.font = `800 ${size}px system-ui, sans-serif`;
-  while (ctx.measureText(`${name}!`).width > SIZE - 200 && size > 50) {
+  const label = "PROGGAA  ·  BIRTHDAY";
+  ctx.font = `800 28px ${a.body}`;
+  const lw = ctx.measureText(label).width + 60;
+  ctx.fillStyle = purple;
+  roundRect(ctx, SIZE / 2 - lw / 2, 150, lw, 58, 29);
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = gold;
+  ctx.stroke();
+  ctx.fillStyle = gold;
+  ctx.fillText(label, SIZE / 2, 189);
+
+  ctx.fillStyle = cream;
+  ctx.font = `800 100px ${a.display}`;
+  ctx.fillText("Happy Birthday,", SIZE / 2, 350);
+
+  let size = 140;
+  ctx.font = `800 ${size}px ${a.display}`;
+  while (ctx.measureText(`${name}!`).width > SIZE - 220 && size > 56) {
     size -= 6;
-    ctx.font = `800 ${size}px system-ui, sans-serif`;
+    ctx.font = `800 ${size}px ${a.display}`;
   }
-  ctx.fillText(`${name}!`, SIZE / 2, 620);
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillText(`${name}!`, SIZE / 2 + 6, 506);
+  ctx.fillStyle = gold;
+  ctx.fillText(`${name}!`, SIZE / 2, 500);
 
-  ctx.fillStyle = BIRTHDAY_COLORS.cream;
-  ctx.font = "500 46px system-ui, sans-serif";
-  ctx.fillText("Here's to a new year of learning", SIZE / 2, 760);
-  ctx.fillText("and exciting Missions 🎂", SIZE / 2, 822);
+  ctx.fillStyle = "rgba(252,249,243,0.88)";
+  ctx.font = `500 40px ${a.body}`;
+  ctx.fillText("Here's to a new year of learning,", SIZE / 2, 610);
+  ctx.fillText("growing and finishing Missions.", SIZE / 2, 664);
 
-  if (logo) ctx.drawImage(logo, SIZE / 2 - 60, 880, 120, 120);
-  else {
-    ctx.font = "bold 48px system-ui, sans-serif";
-    ctx.fillText("Proggaa", SIZE / 2, 960);
+  // Proggy cheering bottom right; the logo and address bottom left.
+  if (a.mascot) {
+    const h = 300;
+    const w = (a.mascot.naturalWidth / a.mascot.naturalHeight) * h;
+    ctx.drawImage(a.mascot, SIZE - 100 - w, SIZE - 70 - h, w, h);
   }
+  const baseY = SIZE - 150;
+  const textX = a.logo ? 214 : 116;
+  if (a.logo) ctx.drawImage(a.logo, 112, baseY - 52, 90, 90);
+  ctx.textAlign = "left";
+  ctx.fillStyle = cream;
+  ctx.font = `800 40px ${a.display}`;
+  ctx.fillText("Proggaa", textX, baseY);
+  ctx.fillStyle = "rgba(252,249,243,0.7)";
+  ctx.font = `500 26px ${a.body}`;
+  ctx.fillText("prooggaa.com", textX, baseY + 36);
+}
+
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** The app's display and body fonts (next/font), so the card matches the site. */
+function siteFonts() {
+  const style = getComputedStyle(document.documentElement);
+  const display = style.getPropertyValue("--font-display").trim();
+  const body = style.getPropertyValue("--font-body").trim();
+  return {
+    display: display ? `${display}, system-ui, sans-serif` : "system-ui, sans-serif",
+    body: body ? `${body}, system-ui, sans-serif` : "system-ui, sans-serif",
+  };
 }
 
 /**
@@ -74,12 +161,20 @@ export function BirthdayShareCard({ name }: { name: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const logo = new Image();
-    logo.onload = () => canvasRef.current && draw(canvasRef.current, name, logo);
-    logo.onerror = () => canvasRef.current && draw(canvasRef.current, name, null);
-    logo.src = "/branding/proggaa-logo-512.png";
-    if (canvasRef.current) draw(canvasRef.current, name, null);
+    let cancelled = false;
+    const fonts = siteFonts();
+    if (canvasRef.current) draw(canvasRef.current, name, { logo: null, mascot: null, ...fonts });
+    void Promise.all([
+      loadImage("/branding/proggaa-logo-512.png"),
+      loadImage("/character/proggy/excited.png"),
+      document.fonts?.ready,
+    ]).then(([logo, mascot]) => {
+      if (!cancelled && canvasRef.current) draw(canvasRef.current, name, { logo, mascot, ...fonts });
+    });
     setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+    return () => {
+      cancelled = true;
+    };
   }, [name]);
 
   function toBlob(): Promise<Blob | null> {
@@ -105,7 +200,7 @@ export function BirthdayShareCard({ name }: { name: string }) {
     const file = new File([blob], "proggaa-birthday-card.png", { type: "image/png" });
     try {
       if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: "My Proggaa birthday" });
-      else await navigator.share({ title: "My Proggaa birthday", text: "Celebrating my birthday with Proggaa! 🎂" });
+      else await navigator.share({ title: "My Proggaa birthday", text: "Celebrating my birthday with Proggaa" });
     } catch {
       // cancelled by the person: nothing to do
     }

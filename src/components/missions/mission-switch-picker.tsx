@@ -186,7 +186,7 @@ export function MissionSwitchPicker({
                 </p>
               )}
               <div className="flex flex-col gap-2 sm:flex-row-reverse">
-                <Button type="button" className="flex-1" disabled={isPending} onClick={confirm}>
+                <Button type="button" className="w-full sm:w-auto sm:flex-1" disabled={isPending} onClick={confirm}>
                   {isPending
                     ? "Working..."
                     : mode === "request"
@@ -195,7 +195,7 @@ export function MissionSwitchPicker({
                         ? "Continue to payment"
                         : "Switch now"}
                 </Button>
-                <Button type="button" variant="outline" className="flex-1" disabled={isPending} onClick={() => setConfirmOpen(false)}>
+                <Button type="button" variant="outline" className="w-full sm:w-auto sm:flex-1" disabled={isPending} onClick={() => setConfirmOpen(false)}>
                   Cancel
                 </Button>
               </div>

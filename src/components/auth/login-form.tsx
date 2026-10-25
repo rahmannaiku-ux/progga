@@ -108,7 +108,7 @@ export function LoginForm() {
               <Button
                 type="button"
                 variant="primary"
-                className="flex-1"
+                className="w-full sm:w-auto sm:flex-1"
                 disabled={isPending}
                 onClick={() => submit(true)}
               >
@@ -117,7 +117,7 @@ export function LoginForm() {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="w-full sm:w-auto sm:flex-1"
                 disabled={isPending}
                 onClick={() => setTakeoverOpen(false)}
               >
@@ -140,10 +140,10 @@ export function LoginForm() {
               cancels the deletion and keeps everything as it was.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row-reverse">
-              <Button type="button" variant="primary" className="flex-1" disabled={isPending} onClick={() => submit(true, true)}>
+              <Button type="button" variant="primary" className="w-full sm:w-auto sm:flex-1" disabled={isPending} onClick={() => submit(true, true)}>
                 {isPending ? "Restoring..." : "Keep my account"}
               </Button>
-              <Button type="button" variant="outline" className="flex-1" disabled={isPending} onClick={() => setRestoreUntil(null)}>
+              <Button type="button" variant="outline" className="w-full sm:w-auto sm:flex-1" disabled={isPending} onClick={() => setRestoreUntil(null)}>
                 Cancel
               </Button>
             </div>

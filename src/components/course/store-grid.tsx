@@ -39,9 +39,9 @@ export function StoreGrid({
       <StoreFilters active={filter} onChange={setFilter} />
 
       {filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">Nothing matches that filter yet.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Nothing here yet.</p>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => (
             <StoreItemCard
               key={item.id}

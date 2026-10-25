@@ -114,6 +114,7 @@ export default async function HeroLayout({
           mobileHud={
             <MobileHeroHud
               avatarUrl={user.avatarUrl}
+              name={user.firstName}
               level={level}
               xpIntoLevel={xpIntoLevel}
               xpForNextLevel={xpForNextLevel}

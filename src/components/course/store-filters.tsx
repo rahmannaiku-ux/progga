@@ -28,8 +28,8 @@ export function StoreFilters({
             onClick={() => onChange(filter.value)}
             className={
               isActive
-                ? "sticker comic-btn flex items-center gap-1.5 bg-primary px-3 py-1.5 text-[10px] font-bold text-primary-foreground"
-                : "sticker comic-btn flex items-center gap-1.5 bg-primary/15 px-3 py-1.5 text-[10px] font-bold text-primary"
+                ? "flex min-h-9 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-bold text-primary-foreground"
+                : "flex min-h-9 items-center gap-1.5 rounded-full border border-border/20 bg-surface px-3.5 text-xs font-bold text-muted-foreground hover:text-foreground"
             }
           >
             {filter.label}

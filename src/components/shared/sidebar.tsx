@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { heroNav, mentorNav, adminNav, adminNavForAdmin, isNavItemActive } from "@/lib/nav-config";
 import { ProggyMascot } from "@/components/marketing/proggy-mascot";
@@ -118,12 +119,12 @@ export function Sidebar({
             </div>
             {typeof heroStats?.coinBalance === "number" && (
               <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-sidebar-foreground">
-                🪙 {heroStats.coinBalance} Proggy Coins
+                <Coins className="h-3.5 w-3.5 text-xp" aria-hidden="true" /> {heroStats.coinBalance.toLocaleString("en-US")} Proggy Coins
               </div>
             )}
           </div>
 
-          <div className="relative mt-3 flex justify-center">
+          <div className="relative mt-3 flex justify-center [@media(max-height:860px)]:hidden">
             <ProggyMascot
               state={heroStats && heroStats.currentStreak >= 3 ? "proud" : "happy"}
               className="h-28 w-28"

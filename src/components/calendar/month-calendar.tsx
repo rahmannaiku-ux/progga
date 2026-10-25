@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Flame, Video, ClipboardList, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Coins, Flame, Video, ClipboardList, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -18,20 +18,22 @@ import {
 import type { CalendarItem } from "@/server/services/calendar";
 import type { DayGamificationSummary } from "@/server/services/calendar";
 
+// Three kinds, three clearly different hues (blue, red, amber), each with its own icon in the
+// day list so colour is never the only cue. Streak days use the streak flame's red-orange.
 const KIND_DOT = {
   event: "bg-primary",
   live_class: "bg-danger",
-  assignment_due: "bg-accent",
+  assignment_due: "bg-xp",
 } as const;
 
 const KIND_CHIP = {
-  event: "bg-primary/15 text-primary",
-  live_class: "bg-danger/15 text-danger",
-  assignment_due: "bg-accent/15 text-accent",
+  event: "bg-primary/12 text-primary dark:bg-primary/25 dark:text-foreground",
+  live_class: "bg-danger/12 text-danger dark:bg-danger/25 dark:text-foreground",
+  assignment_due: "bg-xp/25 text-xp-ink dark:bg-xp/20 dark:text-xp",
 } as const;
 
 const KIND_ICON = { event: CalendarIcon, live_class: Video, assignment_due: ClipboardList } as const;
-const KIND_LABEL = { event: "Mission Event", live_class: "Live Class", assignment_due: "Assignment Due" } as const;
+const KIND_LABEL = { event: "Mission event", live_class: "Live class", assignment_due: "Challenge due" } as const;
 
 type ViewMode = "month" | "week";
 
@@ -128,8 +130,8 @@ export function MonthCalendar({
         <div>
           <h2 className="font-display text-lg font-extrabold text-foreground">{headerLabel}</h2>
           {streak.current > 0 && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-xp">
-              <Flame className="h-3.5 w-3.5" /> {streak.current}-day streak
+            <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-danger">
+              <Flame className="h-3.5 w-3.5 fill-danger" /> {streak.current}-day streak
               {streak.current === streak.longest && streak.longest > 1 ? " — your best yet!" : ""}
             </p>
           )}
@@ -185,32 +187,50 @@ export function MonthCalendar({
           const outsideMonth = view === "month" && key.slice(0, 7) !== cursorMonthKey;
           const selected = selectedKey === key;
           const isTodayCell = key === todayKey;
+          // Friday and Saturday: the weekend in Bangladesh.
+          const weekday = new Date(`${key}T12:00:00Z`).getUTCDay();
+          const isWeekend = weekday === 5 || weekday === 6;
 
           return (
             <button
               key={key}
               onClick={() => setSelectedKey(key)}
               className={cn(
-                "relative flex flex-col items-stretch gap-0.5 rounded-lg border p-1 text-left transition-colors",
-                outsideMonth ? "border-transparent opacity-40" : "border-border/40 hover:border-primary/40",
-                isTodayCell && "border-accent bg-accent/5",
-                selected && "ring-2 ring-primary",
-                inStreak && !outsideMonth && "shadow-[inset_0_0_0_1.5px_hsl(var(--xp))]"
+                "relative flex flex-col items-stretch gap-0.5 rounded-xl border p-1 text-left transition-colors",
+                outsideMonth
+                  ? "border-transparent opacity-35"
+                  : cn("border-border/10 hover:border-primary/40", isWeekend ? "bg-muted/70 dark:bg-muted/10" : "bg-background/60"),
+                inStreak && !outsideMonth && "bg-danger/[0.06] dark:bg-danger/10",
+                isTodayCell && "border-primary/60",
+                selected && "ring-2 ring-primary/60"
               )}
             >
               <div className="flex items-center justify-between">
-                <span className={cn("text-xs font-bold", isTodayCell ? "text-accent" : "text-foreground")}>
+                <span
+                  className={cn(
+                    "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold",
+                    isTodayCell ? "bg-primary text-primary-foreground" : isWeekend ? "text-muted-foreground" : "text-foreground"
+                  )}
+                >
                   {Number(key.slice(8, 10))}
                 </span>
                 <div className="flex items-center gap-0.5">
-                  {inStreak && !outsideMonth && <Flame className="h-3 w-3 text-xp" />}
+                  {inStreak && !outsideMonth && <Flame className="h-3 w-3 fill-danger/70 text-danger" aria-label="Streak day" />}
                   {dayGamification && dayGamification.xp > 0 && (
-                    <span className="text-[9px] font-bold text-xp">+{dayGamification.xp}</span>
+                    <span className="hidden text-[9px] font-bold text-xp-ink dark:text-xp sm:inline">+{dayGamification.xp}</span>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-0.5">
+              {/* Phones: a dot per item (titles don't fit); tap the day for the list. */}
+              {dayItems.length > 0 && (
+                <div className="mt-auto flex flex-wrap gap-0.5 sm:hidden" aria-hidden="true">
+                  {dayItems.slice(0, 4).map((item) => (
+                    <span key={item.id} className={cn("h-1.5 w-1.5 rounded-full", KIND_DOT[item.kind])} />
+                  ))}
+                </div>
+              )}
+              <div className="hidden flex-col gap-0.5 sm:flex">
                 {visibleItems.map((item) => (
                   <span
                     key={item.id}
@@ -241,10 +261,10 @@ export function MonthCalendar({
           </span>
         ))}
         <span className="flex items-center gap-1.5">
-          <Flame className="h-3 w-3 text-xp" /> Streak day
+          <Flame className="h-3 w-3 fill-danger/70 text-danger" /> Streak day
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-xp" /> XP earned
+          <span className="font-mono text-[10px] font-bold text-xp-ink dark:text-xp">+XP</span> XP earned
         </span>
       </div>
 
@@ -278,7 +298,7 @@ export function MonthCalendar({
             <div className="mt-2 space-y-1.5">
               {selectedGamification.entries.map((entry, i) => (
                 <div key={i} className="flex items-center gap-2 rounded-lg bg-xp/10 px-2.5 py-1.5">
-                  <Flame className="h-3.5 w-3.5 shrink-0 text-xp" />
+                  <Flame className="h-3.5 w-3.5 shrink-0 text-danger" />
                   <span className="flex-1 truncate text-xs font-semibold text-foreground">{entry.label}</span>
                   {entry.xp > 0 && (
                     <Badge variant="xp" className="shrink-0">
@@ -286,7 +306,7 @@ export function MonthCalendar({
                     </Badge>
                   )}
                   {entry.coins > 0 && (
-                    <span className="shrink-0 text-[10px] font-bold text-muted-foreground">🪙 +{entry.coins}</span>
+                    <span className="shrink-0 text-[10px] font-bold text-muted-foreground"><Coins className="mr-0.5 inline h-3 w-3" aria-hidden="true" />+{entry.coins}</span>
                   )}
                 </div>
               ))}

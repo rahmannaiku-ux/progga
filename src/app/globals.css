@@ -193,6 +193,19 @@
   box-shadow: 0 1px 0 hsl(var(--border) / 0.75);
 }
 
+/* Dark mode: the ink edge turns light so outlines stay visible, but a light "thickness"
+   under buttons and cards read as a grey slab. Their depth stays a dark shadow. */
+.dark .theme-cartoon :where(.comic-btn),
+.dark :where(.comic-btn) {
+  box-shadow: 0 3px 0 hsl(258 60% 3% / 0.85);
+}
+.dark .theme-cartoon .comic-btn:active {
+  box-shadow: 0 1px 0 hsl(258 60% 3% / 0.85);
+}
+.dark .theme-cartoon :where(.glass-panel, .comic-panel) {
+  box-shadow: 0 2px 0 hsl(258 60% 3% / 0.55);
+}
+
 .theme-cartoon :where(.sticker) {
   @apply rounded-full bg-surface;
   box-shadow: 0 1px 0 hsl(var(--border) / 0.3);

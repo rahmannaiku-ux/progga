@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { Flame } from "lucide-react";
+import { Coins, Flame } from "lucide-react";
 import { AnimatedProgressBar } from "@/components/gamification/animated-progress-bar";
 import { isProxiedUpload } from "@/components/shared/avatar";
 
@@ -24,6 +24,7 @@ export function MobileHeroHud({
   streak,
   notificationBell,
   coinBalance,
+  name,
 }: {
   avatarUrl?: string | null;
   level: number;
@@ -34,6 +35,8 @@ export function MobileHeroHud({
   /** <NotificationBell variant="compact" />, rendered by the (server) layout with its data. */
   notificationBell?: React.ReactNode;
   coinBalance?: number;
+  /** For the initial shown when there's no photo. */
+  name?: string | null;
 }) {
   // Guards against avatarUrl pointing at a host next/image won't fetch
   // (e.g. an OAuth avatar host not yet in next.config.mjs remotePatterns)
@@ -56,8 +59,8 @@ export function MobileHeroHud({
             onError={() => setAvatarFailed(true)}
           />
         ) : (
-          <span className="sticker flex h-9 w-9 shrink-0 items-center justify-center bg-primary text-xs font-extrabold text-primary-foreground">
-            Lv
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-xp bg-primary font-display text-sm font-extrabold text-primary-foreground">
+            {(name?.trim()[0] ?? "P").toUpperCase()}
           </span>
         )}
 
@@ -82,7 +85,8 @@ export function MobileHeroHud({
         <div className="flex shrink-0 items-center gap-2">
           {typeof coinBalance === "number" && (
             <span className="flex items-center gap-1 text-xs font-bold text-foreground">
-              🪙 {coinBalance}
+              <Coins className="h-4 w-4 text-xp-ink dark:text-xp" aria-hidden="true" />
+              <span className="sr-only">Proggy Coins:</span> {coinBalance.toLocaleString("en-US")}
             </span>
           )}
           {streak > 0 && (

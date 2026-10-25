@@ -94,10 +94,10 @@ export function DeleteAccountCard() {
               </p>
             )}
             <div className="flex flex-col gap-2 sm:flex-row-reverse">
-              <Button type="submit" className="flex-1 bg-danger text-danger-foreground" disabled={isPending}>
+              <Button type="submit" className="w-full bg-danger text-danger-foreground sm:w-auto sm:flex-1" disabled={isPending}>
                 {isPending ? "Deleting..." : "Delete my account"}
               </Button>
-              <Button type="button" variant="outline" className="flex-1" disabled={isPending} onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" className="w-full sm:w-auto sm:flex-1" disabled={isPending} onClick={() => setOpen(false)}>
                 Keep my account
               </Button>
             </div>

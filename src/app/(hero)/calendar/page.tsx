@@ -8,7 +8,7 @@ import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { formatDhakaTime, formatDhakaDate, dhakaDateKey, addDhakaMonths } from "@/lib/timezone";
 
 const KIND_ICON = { event: Calendar, live_class: Video, assignment_due: ClipboardList } as const;
-const KIND_LABEL = { event: "Event", live_class: "Live Class", assignment_due: "Due" } as const;
+const KIND_LABEL = { event: "Event", live_class: "Live class", assignment_due: "Challenge due" } as const;
 
 // Buckets by the Dhaka calendar day the event falls on, not the
 // server's (UTC on Vercel) or browser's local day — see dhakaDateKey's
@@ -59,8 +59,8 @@ export default async function CalendarPage() {
           <CalendarDays className="h-6 w-6 text-accent" /> Calendar
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Live classes, assignment due dates, and mission events for the missions you're enrolled
-          in — plus your XP and streak history, right on the days you earned them.
+          Live classes, challenge deadlines and events for your missions, with the days you kept
+          your streak and the XP you earned.
         </p>
       </StaggerItem>
 
@@ -88,8 +88,8 @@ export default async function CalendarPage() {
       {grouped.size === 0 && (
         <StaggerItem className="comic-panel bg-surface p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Nothing scheduled yet. Live classes and assignment due dates will show up here
-            automatically.
+            Nothing scheduled yet. Live classes and challenge deadlines appear here as mentors add
+            them.
           </p>
         </StaggerItem>
       )}

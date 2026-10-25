@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Flame, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/shared/avatar";
 import { SiteLogo } from "@/components/marketing/site-logo";
@@ -169,7 +169,7 @@ export function MobileNavDrawer({
                       </div>
                       {heroProfile.streak > 0 && (
                         <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-sidebar-foreground">
-                          🔥 {heroProfile.streak}
+                          <Flame className="h-3.5 w-3.5 fill-danger text-danger" aria-hidden="true" /> {heroProfile.streak}
                         </span>
                       )}
                     </div>

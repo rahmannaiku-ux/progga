@@ -48,7 +48,7 @@ export function MobileBottomNav() {
   return (
     <nav
       data-bottom-nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden print:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/15 bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur-md lg:hidden print:hidden"
       aria-label="Primary"
     >
       <ul className="grid grid-cols-5">
