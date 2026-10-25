@@ -131,50 +131,13 @@ function errorMessageForCode(code: number): string {
   }
 }
 
-/** Corners and edges the viewer tag moves between, so it can't be cropped out of a recording. */
-const WATERMARK_SPOTS = [
-  "left-[6%] top-[8%]",
-  "right-[6%] top-[14%]",
-  "left-[30%] top-[45%]",
-  "right-[8%] bottom-[22%]",
-  "left-[8%] bottom-[26%]",
-  "right-[30%] top-[30%]",
-];
-
-/**
- * A faint name tag over the video that moves every so often. It keeps screen recordings
- * traceable to the account they came from; it never blocks clicks.
- */
-function ViewerWatermark({ text }: { text: string }) {
-  const [spot, setSpot] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setSpot((s) => (s + 1) % WATERMARK_SPOTS.length), 23_000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "pointer-events-none absolute z-20 select-none whitespace-nowrap font-mono text-[11px] font-semibold text-white/25 transition-all duration-1000 sm:text-xs",
-        WATERMARK_SPOTS[spot]
-      )}
-      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
-    >
-      {text}
-    </span>
-  );
-}
-
 export function VideoPlayer({
   youtubeVideoId,
   resumeAtSeconds,
   onProgressTick,
   onEnded,
   onPlayingChange,
-  watermark,
 }: {
-  /** Shown faintly over the video (the viewer's name and part of their phone number). */
-  watermark?: string;
   youtubeVideoId: string;
   resumeAtSeconds: number;
   /**
@@ -627,7 +590,6 @@ export function VideoPlayer({
         isFullscreen && !controlsVisible && "cursor-none"
       )}
     >
-      {watermark && <ViewerWatermark text={watermark} />}
       <div
         className={cn(
           "relative overflow-hidden bg-black",

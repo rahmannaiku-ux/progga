@@ -30,7 +30,6 @@ export function LiveLessonSection({
   serverNow,
   resumeAtSeconds,
   isCompleted,
-  watermark,
 }: {
   lessonId: string;
   title: string;
@@ -40,7 +39,6 @@ export function LiveLessonSection({
   serverNow: Date;
   resumeAtSeconds: number;
   isCompleted: boolean;
-  watermark?: string;
 }) {
   const [now, setNow] = useState(serverNow);
 
@@ -92,7 +90,6 @@ export function LiveLessonSection({
           youtubeVideoId={youtubeVideoId}
           resumeAtSeconds={resumeAtSeconds}
           isCompleted={isCompleted}
-          watermark={watermark}
         />
       </div>
     );

@@ -28,10 +28,7 @@ export function LessonPlayer({
   isCompleted,
   initialWatchedSeconds = 0,
   lessonDurationSec = 0,
-  watermark,
 }: {
-  /** Faint viewer tag over the video (see VideoPlayer). */
-  watermark?: string;
   lessonId: string;
   youtubeVideoId: string;
   resumeAtSeconds: number;
@@ -134,7 +131,6 @@ export function LessonPlayer({
       <VideoPlayer
         youtubeVideoId={youtubeVideoId}
         resumeAtSeconds={resumeAtSeconds}
-        watermark={watermark}
         onProgressTick={handleTick}
         // Play/pause and every seek re-enter PLAYING: forget the previous tick
         // so the next one starts a fresh measurement instead of counting the jump.

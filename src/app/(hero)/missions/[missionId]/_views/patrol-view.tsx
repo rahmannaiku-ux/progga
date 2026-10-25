@@ -30,7 +30,6 @@ import { Badge } from "@/components/ui/badge";
 import { flattenLessons, getAdjacentLessons } from "@/lib/course-tree";
 import { StaggerContainer, StaggerItem } from "@/components/shared/stagger";
 import { formatDhakaDate } from "@/lib/timezone";
-import { maskPhone } from "@/lib/account-deletion";
 
 export async function PatrolView(
   props: {
@@ -254,8 +253,6 @@ export async function PatrolView(
   const mentorName = `${course.teacher.firstName} ${course.teacher.lastName}`.trim() || "Mentor";
 
   const isModerator = user.role === "TEACHER" || user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  // Traces a screen recording back to the account it came from.
-  const viewerTag = [`${user.firstName} ${user.lastName}`.trim(), maskPhone(user.phone)].filter(Boolean).join(" · ");
 
   const courseId = lesson.group.chapter.module.courseId;
   const moduleId = lesson.group.chapter.module.id;
@@ -324,7 +321,6 @@ export async function PatrolView(
             serverNow={new Date()}
             resumeAtSeconds={progress?.lastPositionSec ?? 0}
             isCompleted={progress?.isCompleted ?? false}
-            watermark={viewerTag}
           />
         ) : lesson.youtubeVideoId ? (
           <LessonPlayer
@@ -333,7 +329,6 @@ export async function PatrolView(
             resumeAtSeconds={progress?.lastPositionSec ?? 0}
             isCompleted={progress?.isCompleted ?? false}
             initialWatchedSeconds={progress?.watchedSeconds ?? 0}
-            watermark={viewerTag}
             lessonDurationSec={lesson.durationSeconds}
           />
         ) : (

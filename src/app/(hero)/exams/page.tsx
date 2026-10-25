@@ -22,8 +22,9 @@ export default async function ExamsPage() {
   // result here, not a "Continue" button into an exam that is over.
   await closeExpiredAttempts({ userId: user.id });
 
+  // Only missions with exams switched on (a mentor can switch them off after publishing).
   const enrollments = await db.enrollment.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, course: { examsEnabled: true } },
     select: { courseId: true },
   });
   const courseIds = enrollments.map((e) => e.courseId);

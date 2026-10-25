@@ -72,7 +72,7 @@ export default async function EncounterPage(
   // turns out missing we redirect and simply don't use `attempts`; no
   // authorization semantics change, just one fewer sequential round trip
   // on every encounter view.
-  const [enrollment, loadedAttempts] = await Promise.all([
+  const [enrollment, loadedAttempts, courseExams] = await Promise.all([
     db.enrollment.findUnique({
       where: { userId_courseId: { userId: user.id, courseId } },
     }),
@@ -80,7 +80,10 @@ export default async function EncounterPage(
       where: { assessmentId: assessment.id, userId: user.id },
       orderBy: { attemptNumber: "desc" },
     }),
+    // A mentor can switch a mission's exams off after publishing one; starting is refused then.
+    db.course.findUnique({ where: { id: courseId }, select: { examsEnabled: true } }),
   ]);
+  const examsOn = courseExams?.examsEnabled ?? false;
   if (!enrollment) redirect(courseSlug ? `/courses/${courseSlug}` : `/missions/${courseId}`);
 
   // The timer ran out while the student was away: close the attempt now,
@@ -343,7 +346,7 @@ export default async function EncounterPage(
       )}
 
       {securityEnabled && (
-        <StaggerItem className="rounded-2xl border border-warning/40 bg-warning/5 p-4 text-sm text-muted-foreground">
+        <StaggerItem className="rounded-2xl border border-xp/50 bg-xp/10 p-4 text-sm text-muted-foreground">
           <p className="flex items-center gap-1.5 font-bold text-foreground">
             <ShieldAlert className="h-4 w-4" aria-hidden="true" /> Exam security is enabled
           </p>
@@ -360,7 +363,9 @@ export default async function EncounterPage(
       )}
 
       <StaggerItem className="comic-panel bg-surface p-5 text-foreground">
-        {attemptsRemaining > 0 ? (
+        {!examsOn ? (
+          <p className="text-sm font-semibold">Exams for this mission are switched off by the mentor right now.</p>
+        ) : attemptsRemaining > 0 ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-semibold">
               {attemptsUsed === 0
