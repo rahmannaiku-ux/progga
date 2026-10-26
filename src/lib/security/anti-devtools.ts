@@ -295,6 +295,35 @@ function probeConsoleTimingMs(): number {
 }
 
 let evalProbeSupported = true;
+/** null = not tried yet. Inline <script> works in production (script-src has 'unsafe-inline'). */
+let inlineProbeSupported: boolean | null = null;
+type WindowWithInlineFlag = Window & { __proggaaInlineProbe?: number };
+
+/**
+ * One `debugger;` in a fresh inline script with a random sourceURL each time, so
+ * "Never pause here" (which DevTools remembers per script location) can never stick,
+ * as it did on the single static probe file. The word is split so the minifier
+ * doesn't strip it. Returns the time it took, or null when inline scripts don't run.
+ */
+function probeInlineDebuggerMs(): number | null {
+  if (inlineProbeSupported === false) return null;
+  try {
+    const w = window as WindowWithInlineFlag;
+    const mark = Math.random();
+    const script = document.createElement("script");
+    script.textContent = `window.__proggaaInlineProbe=${mark};${"debu" + "gger"};
+//# sourceURL=p-${Math.random().toString(36).slice(2)}.js`;
+    const t0 = performance.now();
+    document.head.appendChild(script);
+    const ms = performance.now() - t0;
+    script.remove();
+    if (inlineProbeSupported === null) inlineProbeSupported = w.__proggaaInlineProbe === mark;
+    return inlineProbeSupported ? ms : null;
+  } catch {
+    inlineProbeSupported = false;
+    return null;
+  }
+}
 const STATIC_PROBE_SRC = "/anti-devtools-probe.js";
 type WindowWithProbe = Window & { __proggaaDebuggerProbe?: () => void };
 
@@ -321,6 +350,8 @@ function loadStaticDebuggerProbe() {
  *      unminified file allowed by script-src 'self'.
  */
 function probeDebuggerMs(): number {
+  const inline = probeInlineDebuggerMs();
+  if (inline !== null) return inline;
   try {
     const t0 = performance.now();
     if (evalProbeSupported) {
@@ -577,7 +608,7 @@ function runController(options: StartOptions): { stop: () => void } {
       }
     }
 
-    if (tickCount % debuggerEveryTicks === 0) {
+    if (tickCount % debuggerEveryTicks === 0 && !redirecting) {
       const ms = probeDebuggerMs();
       if (ms > DEBUGGER_PAUSE_MS) report("debugger-pause");
     }
@@ -592,7 +623,7 @@ function runController(options: StartOptions): { stop: () => void } {
   const probeNow = () => {
     if (observeOnly || stopped || shouldSkipWork()) return;
     if (probeConsoleGetter()) report("console-getter");
-    if (probeDebuggerMs() > DEBUGGER_PAUSE_MS) report("debugger-pause");
+    if (!redirecting && probeDebuggerMs() > DEBUGGER_PAUSE_MS) report("debugger-pause");
   };
 
   const publishStatus = () => {
