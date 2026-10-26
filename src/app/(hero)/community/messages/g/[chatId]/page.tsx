@@ -23,6 +23,7 @@ export default async function GroupChatPage(props: { params: Promise<{ chatId: s
       members={chat.members}
       initial={chat.messages}
       initialHasMore={chat.hasMore}
+      initialMutedUntil={chat.mutedUntil}
     />
   );
 }

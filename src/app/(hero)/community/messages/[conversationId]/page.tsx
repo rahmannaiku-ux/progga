@@ -21,6 +21,7 @@ export default async function ConversationPage(props: { params: Promise<{ conver
       initial={conversation.messages}
       initialHasMore={conversation.hasMore}
       initialOtherReadAt={conversation.otherReadAt}
+      initialMutedUntil={conversation.mutedUntil}
     />
   );
 }

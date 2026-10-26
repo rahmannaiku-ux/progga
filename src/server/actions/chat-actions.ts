@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { displayName, isCommunityStaff, messageInputSchema } from "@/lib/community/rules";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
+import { isMuteChoice, muteUntil, notMutedWhere } from "@/lib/community/chat-mute";
 import {
   GROUP_CHAT_MAX_MEMBERS,
   GROUP_CHAT_NAME_MAX,
@@ -291,6 +292,27 @@ export async function leaveGroupChat(chatId: unknown): Promise<Result> {
   return { ok: true };
 }
 
+/**
+ * Mutes (8 hours, a week, until turned back on) or unmutes a group chat for
+ * the caller only. Muting also clears its waiting "new message" notification.
+ */
+export async function setGroupChatMute(chatId: unknown, choice: unknown): Promise<Result<{ mutedUntil: string | null }>> {
+  const user = await requireActiveUser();
+  if (typeof chatId !== "string" || !isMuteChoice(choice)) return fail(NOT_AVAILABLE);
+  const me = await groupChatMembership(user.id, chatId);
+  if (!me) return fail(NOT_AVAILABLE);
+  const until = muteUntil(choice);
+  await db.groupChatMember.update({ where: { chatId_userId: { chatId, userId: user.id } }, data: { mutedUntil: until } });
+  if (until) {
+    await db.notification.updateMany({
+      where: { userId: user.id, type: "COMMUNITY_MESSAGE", linkUrl: `/community/messages/g/${chatId}`, isRead: false },
+      data: { isRead: true },
+    });
+  }
+  revalidatePath("/community/messages");
+  return { ok: true, mutedUntil: until ? until.toISOString() : null };
+}
+
 export async function renameGroupChat(chatId: unknown, name: unknown): Promise<Result> {
   const user = await requireActiveUser();
   if (typeof chatId !== "string") return fail(NOT_AVAILABLE);
@@ -356,7 +378,8 @@ async function notifyGroup(input: { chatId: string; chatName: string; senderId: 
   const data = { title: `New message in ${input.chatName}`, body: text.length > 140 ? `${text.slice(0, 140)}…` : text };
   try {
     const members = await db.groupChatMember.findMany({
-      where: { chatId: input.chatId, userId: { not: input.senderId } },
+      // Members who muted the chat get the message but no notification.
+      where: { chatId: input.chatId, userId: { not: input.senderId }, ...notMutedWhere() },
       select: { userId: true },
     });
     if (members.length === 0) return;

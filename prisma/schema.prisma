@@ -2909,6 +2909,10 @@ model Conversation {
   // other person is unread.
   userALastReadAt DateTime @default(now())
   userBLastReadAt DateTime @default(now())
+  // Each side can mute the chat until a moment (no notifications, not in the
+  // Chats badge); null = not muted. See src/lib/community/chat-mute.ts.
+  userAMutedUntil DateTime?
+  userBMutedUntil DateTime?
   lastMessageAt   DateTime @default(now())
   createdAt       DateTime @default(now())
 
@@ -2960,6 +2964,8 @@ model GroupChatMember {
   joinedAt   DateTime      @default(now())
   // Anything newer from someone else is unread for this member.
   lastReadAt DateTime      @default(now())
+  // Muted until this moment (no notifications, not in the Chats badge); null = not muted.
+  mutedUntil DateTime?
 
   @@unique([chatId, userId])
   @@index([userId])

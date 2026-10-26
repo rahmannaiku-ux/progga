@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db/client";
+import { mutedUntilIso } from "@/lib/community/chat-mute";
 import { xpProgressWithinLevel } from "@/lib/gamification/xp-curve";
 import {
   COMMENTS_PAGE_SIZE,
@@ -910,7 +911,15 @@ export async function getConversation(
   viewerId: string,
   conversationId: string,
   before?: string | null
-): Promise<{ id: string; other: PersonDTO; otherReadAt: string; messages: MessageDTO[]; hasMore: boolean } | null> {
+): Promise<{
+  id: string;
+  other: PersonDTO;
+  otherReadAt: string;
+  messages: MessageDTO[];
+  hasMore: boolean;
+  /** When the viewer's mute of this chat ends (ISO), or null. */
+  mutedUntil: string | null;
+} | null> {
   const conversation = await db.conversation.findUnique({
     where: { id: conversationId },
     select: {
@@ -919,6 +928,8 @@ export async function getConversation(
       userBId: true,
       userALastReadAt: true,
       userBLastReadAt: true,
+      userAMutedUntil: true,
+      userBMutedUntil: true,
       userA: { select: AUTHOR_SELECT },
       userB: { select: AUTHOR_SELECT },
     },
@@ -943,6 +954,7 @@ export async function getConversation(
     other: toPerson(conversation.userAId === viewerId ? conversation.userB : conversation.userA),
     // How far the other person has read, for "Seen" under your last message.
     otherReadAt: (conversation.userAId === viewerId ? conversation.userBLastReadAt : conversation.userALastReadAt).toISOString(),
+    mutedUntil: mutedUntilIso(conversation.userAId === viewerId ? conversation.userAMutedUntil : conversation.userBMutedUntil),
     messages: page.map((m) => ({
       id: m.id,
       body: m.body,

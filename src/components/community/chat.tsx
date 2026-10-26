@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowDown,
+  Bell,
+  BellOff,
   Check,
   Crown,
   Info,
@@ -25,7 +27,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { MESSAGE_MAX_LENGTH, communityTimeAgo } from "@/lib/community/rules";
 import { formatDhakaDate, formatDhakaTime } from "@/lib/timezone";
-import { loadOlderMessages, pollConversation, sendMessage } from "@/server/actions/message-actions";
+import { loadOlderMessages, pollConversation, sendMessage, setConversationMute } from "@/server/actions/message-actions";
+import { MUTE_CHOICES, mutedLabel, type MuteChoice } from "@/lib/community/chat-mute";
 import {
   addGroupChatMembers,
   createGroupChat,
@@ -38,6 +41,7 @@ import {
   searchChatPeople,
   sendGroupMessage,
   setGroupChatAdmin,
+  setGroupChatMute,
 } from "@/server/actions/chat-actions";
 import type { ChatSummaryDTO, GroupChatMemberDTO } from "@/server/services/chats";
 import type { PersonDTO } from "@/server/services/community";
@@ -177,8 +181,11 @@ export function ChatList({ initial, className }: { initial: ChatSummaryDTO[]; cl
               >
                 <ChatFaces kind={c.kind} faces={c.faces} size={52} />
                 <div className="min-w-0 flex-1">
-                  <p className={cn("truncate text-[15px] text-foreground", c.unread ? "font-extrabold" : "font-semibold")}>{c.title}</p>
-                  <p className={cn("flex min-w-0 gap-1 text-[13px]", c.unread ? "font-bold text-foreground" : "text-muted-foreground")}>
+                  <p className={cn("flex items-center gap-1 text-[15px] text-foreground", c.unread && !c.muted ? "font-extrabold" : "font-semibold")}>
+                    <span className="truncate">{c.title}</span>
+                    {c.muted && <BellOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Muted" />}
+                  </p>
+                  <p className={cn("flex min-w-0 gap-1 text-[13px]", c.unread && !c.muted ? "font-bold text-foreground" : "text-muted-foreground")}>
                     <span className="truncate">
                       {c.lastMessage
                         ? `${c.lastMessage.fromMe ? "You: " : c.lastMessage.senderName ? `${c.lastMessage.senderName}: ` : ""}${c.lastMessage.body}`
@@ -188,7 +195,13 @@ export function ChatList({ initial, className }: { initial: ChatSummaryDTO[]; cl
                   </p>
                 </div>
                 {c.unread > 0 && (
-                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                  <span
+                    className={cn(
+                      "flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+                      // A muted chat still shows how much is new, but quietly.
+                      c.muted ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"
+                    )}
+                  >
                     {c.unread > 9 ? "9+" : c.unread}
                     <span className="sr-only"> unread</span>
                   </span>
@@ -418,6 +431,7 @@ type ThreadProps =
       initial: ThreadMessage[];
       initialHasMore: boolean;
       initialOtherReadAt: string;
+      initialMutedUntil: string | null;
     }
   | {
       kind: "group";
@@ -428,6 +442,7 @@ type ThreadProps =
       members: GroupChatMemberDTO[];
       initial: ThreadMessage[];
       initialHasMore: boolean;
+      initialMutedUntil: string | null;
     };
 
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|️|‍|\s){1,12}$/u;
@@ -459,6 +474,7 @@ export function ChatThread(props: ThreadProps) {
   const [atBottom, setAtBottom] = useState(true);
   const [unseen, setUnseen] = useState(0);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [mutedUntil, setMutedUntil] = useState(props.initialMutedUntil);
   const scroller = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const seq = useRef(0);
@@ -658,6 +674,14 @@ export function ChatThread(props: ThreadProps) {
               : `${group?.members.length ?? 0} members`}
           </p>
         </div>
+        <MuteMenu
+          until={mutedUntil}
+          onChoose={async (choice) => {
+            const res = kind === "direct" ? await setConversationMute(id, choice) : await setGroupChatMute(id, choice);
+            if (!res.ok) return setError(res.error);
+            setMutedUntil(res.mutedUntil);
+          }}
+        />
         {props.kind === "group" ? (
           <button
             type="button"
@@ -883,6 +907,80 @@ export function ChatThread(props: ThreadProps) {
             router.refresh();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/** The bell in a chat's header: mute for a while, or turn notifications back on. */
+function MuteMenu({ until, onChoose }: { until: string | null; onChoose: (choice: MuteChoice) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const label = mutedLabel(
+    until,
+    (d) => formatDhakaTime(d.toISOString()),
+    (d) => formatDhakaDate(d.toISOString(), { day: "numeric", month: "short" })
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  async function choose(choice: MuteChoice) {
+    setBusy(true);
+    try {
+      await onChoose(choice);
+    } finally {
+      setBusy(false);
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div ref={box} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label ? `${label}. Change` : "Mute notifications"}
+        title={label ?? "Mute notifications"}
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted",
+          label ? "text-muted-foreground" : "text-primary"
+        )}
+      >
+        {busy ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : label ? <BellOff className="h-5 w-5" aria-hidden="true" /> : <Bell className="h-5 w-5" aria-hidden="true" />}
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-60 rounded-xl border border-border/30 bg-surface p-1.5 shadow-xl">
+          <p className="px-2.5 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            {label ?? "Mute notifications"}
+          </p>
+          {label ? (
+            <button type="button" role="menuitem" disabled={busy} onClick={() => choose("off")} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-semibold text-foreground hover:bg-muted">
+              <Bell className="h-4 w-4" aria-hidden="true" /> Unmute
+            </button>
+          ) : (
+            MUTE_CHOICES.map((c) => (
+              <button key={c.value} type="button" role="menuitem" disabled={busy} onClick={() => choose(c.value)} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-semibold text-foreground hover:bg-muted">
+                <BellOff className="h-4 w-4" aria-hidden="true" /> {c.label}
+              </button>
+            ))
+          )}
+          <p className="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground">You still get the messages, without notifications.</p>
+        </div>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { conversationPair, conversationSide, displayName, messageInputSchema } from "@/lib/community/rules";
 import { getConversation, type MessageDTO } from "@/server/services/community";
 import { isFeatureEnabled } from "@/lib/config/feature-flags";
+import { isMuteChoice, isMuted, muteUntil } from "@/lib/community/chat-mute";
 import { requireActiveUser } from "./require-user";
 
 // ---------------------------------------------------------------------
@@ -83,6 +84,8 @@ export async function sendMessage(conversationId: string, body: string): Promise
       id: true,
       userAId: true,
       userBId: true,
+      userAMutedUntil: true,
+      userBMutedUntil: true,
       userA: { select: { isActive: true, isSuspended: true } },
       userB: { select: { isActive: true, isSuspended: true } },
     },
@@ -105,7 +108,9 @@ export async function sendMessage(conversationId: string, body: string): Promise
       data: { lastMessageAt: now, ...(side === "A" ? { userALastReadAt: now } : { userBLastReadAt: now }) },
     }),
   ]);
-  await notifyNewMessage({
+  // Someone who muted this chat gets the message but no notification.
+  const recipientMuted = isMuted(side === "A" ? conversation.userBMutedUntil : conversation.userAMutedUntil);
+  if (!recipientMuted) await notifyNewMessage({
     recipientId: side === "A" ? conversation.userBId : conversation.userAId,
     senderName: displayName(user),
     conversationId: conversation.id,
@@ -116,6 +121,34 @@ export async function sendMessage(conversationId: string, body: string): Promise
     ok: true,
     message: { id: message.id, body: message.body, fromMe: true, createdAt: message.createdAt.toISOString() },
   };
+}
+
+/**
+ * Mutes (8 hours, a week, until turned back on) or unmutes a direct chat for
+ * the caller only. Muting also clears its waiting "new message" notification.
+ */
+export async function setConversationMute(conversationId: unknown, choice: unknown): Promise<Result<{ mutedUntil: string | null }>> {
+  const user = await requireActiveUser();
+  if (typeof conversationId !== "string" || !isMuteChoice(choice)) return fail("That conversation isn't available.");
+  const conversation = await db.conversation.findUnique({
+    where: { id: conversationId },
+    select: { id: true, userAId: true, userBId: true },
+  });
+  const side = conversation ? conversationSide(conversation, user.id) : null;
+  if (!conversation || !side) return fail("That conversation isn't available.");
+  const until = muteUntil(choice);
+  await db.conversation.update({
+    where: { id: conversation.id },
+    data: side === "A" ? { userAMutedUntil: until } : { userBMutedUntil: until },
+  });
+  if (until) {
+    await db.notification.updateMany({
+      where: { userId: user.id, type: "COMMUNITY_MESSAGE", linkUrl: `/community/messages/${conversation.id}`, isRead: false },
+      data: { isRead: true },
+    });
+  }
+  revalidatePath("/community/messages");
+  return { ok: true, mutedUntil: until ? until.toISOString() : null };
 }
 
 /**

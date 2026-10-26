@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { MESSAGES_PAGE_SIZE, decodeCursor } from "@/lib/community/rules";
+import { isMuted, mutedUntilIso, notMutedWhere } from "@/lib/community/chat-mute";
 import { toPerson, type PersonDTO } from "@/server/services/community";
 
 // ---------------------------------------------------------------------
@@ -35,6 +36,8 @@ export type ChatSummaryDTO = {
   lastMessage: { body: string; fromMe: boolean; senderName: string | null; createdAt: string } | null;
   lastActivityAt: string;
   unread: number;
+  /** The viewer muted this chat (no notifications, not in the Chats badge). */
+  muted: boolean;
 };
 
 const excerpt = (body: string) => (body.length > 80 ? `${body.slice(0, 80)}…` : body);
@@ -52,6 +55,8 @@ export async function listChats(viewerId: string): Promise<ChatSummaryDTO[]> {
         userAId: true,
         userALastReadAt: true,
         userBLastReadAt: true,
+        userAMutedUntil: true,
+        userBMutedUntil: true,
         lastMessageAt: true,
         userA: { select: PERSON_SELECT },
         userB: { select: PERSON_SELECT },
@@ -64,6 +69,7 @@ export async function listChats(viewerId: string): Promise<ChatSummaryDTO[]> {
       take: 40,
       select: {
         lastReadAt: true,
+        mutedUntil: true,
         chat: {
           select: {
             id: true,
@@ -123,6 +129,7 @@ export async function listChats(viewerId: string): Promise<ChatSummaryDTO[]> {
       lastMessage: { body: excerpt(last.body), fromMe: last.senderId === viewerId, senderName: null, createdAt: last.createdAt.toISOString() },
       lastActivityAt: last.createdAt.toISOString(),
       unread: directUnread[i] ?? 0,
+      muted: isMuted(c.userAId === viewerId ? c.userAMutedUntil : c.userBMutedUntil),
     });
   });
   memberships.forEach((m, i) => {
@@ -148,22 +155,31 @@ export async function listChats(viewerId: string): Promise<ChatSummaryDTO[]> {
         : null,
       lastActivityAt: (last?.createdAt ?? c.lastMessageAt).toISOString(),
       unread: groupUnread[i] ?? 0,
+      muted: isMuted(m.mutedUntil),
     });
   });
   return rows.sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt)).slice(0, 60);
 }
 
-/** How many chats (direct or group) have something new for the viewer. */
+/** How many chats (direct or group) have something new for the viewer. Muted chats don't count. */
 export async function countUnreadChats(viewerId: string): Promise<number> {
   const [direct, groups] = await Promise.all([
     db.conversation.findMany({
       where: { OR: [{ userAId: viewerId }, { userBId: viewerId }] },
       orderBy: { lastMessageAt: "desc" },
       take: 40,
-      select: { id: true, userAId: true, userALastReadAt: true, userBLastReadAt: true, lastMessageAt: true },
+      select: {
+        id: true,
+        userAId: true,
+        userALastReadAt: true,
+        userBLastReadAt: true,
+        userAMutedUntil: true,
+        userBMutedUntil: true,
+        lastMessageAt: true,
+      },
     }),
     db.groupChatMember.findMany({
-      where: { userId: viewerId },
+      where: { userId: viewerId, ...notMutedWhere() },
       orderBy: { chat: { lastMessageAt: "desc" } },
       take: 40,
       select: { chatId: true, lastReadAt: true, chat: { select: { lastMessageAt: true } } },
@@ -172,6 +188,7 @@ export async function countUnreadChats(viewerId: string): Promise<number> {
   const counts = await Promise.all([
     ...direct.map((c) => {
       const readAt = c.userAId === viewerId ? c.userALastReadAt : c.userBLastReadAt;
+      if (isMuted(c.userAId === viewerId ? c.userAMutedUntil : c.userBMutedUntil)) return 0;
       return c.lastMessageAt > readAt
         ? db.message.count({ where: { conversationId: c.id, senderId: { not: viewerId }, createdAt: { gt: readAt } }, take: 1 })
         : 0;
@@ -211,13 +228,15 @@ export type GroupChatDTO = {
   members: GroupChatMemberDTO[];
   messages: ChatMessageDTO[];
   hasMore: boolean;
+  /** When the viewer's mute ends (ISO), or null. */
+  mutedUntil: string | null;
 };
 
 /** The viewer's membership of a group chat, or null when they are not in it. */
 export async function groupChatMembership(viewerId: string, chatId: string) {
   return db.groupChatMember.findUnique({
     where: { chatId_userId: { chatId, userId: viewerId } },
-    select: { role: true, lastReadAt: true },
+    select: { role: true, lastReadAt: true, mutedUntil: true },
   });
 }
 
@@ -275,7 +294,7 @@ export async function getGroupChat(viewerId: string, chatId: string): Promise<Gr
   ]);
   if (!chat || !me) return null;
   const [members, page] = await Promise.all([groupChatMembers(chatId), groupChatMessages(viewerId, chatId)]);
-  return { id: chat.id, name: chat.name, myRole: me.role, members, ...page };
+  return { id: chat.id, name: chat.name, myRole: me.role, members, ...page, mutedUntil: mutedUntilIso(me.mutedUntil) };
 }
 
 /** People the viewer may add to a group chat: those who follow them, people they follow, and mentors. */
