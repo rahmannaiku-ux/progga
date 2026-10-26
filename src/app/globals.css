@@ -763,9 +763,12 @@
   button[class*="w-10"] {
     min-width: 2.75rem;
   }
+  /* The :not() parts are there for weight: this stylesheet has no layers, so a
+     bare `textarea`/`select` lost to `.text-sm` and iPhone zoomed in on every
+     notes, support and comment box. */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  select,
-  textarea {
+  select:not([data-zoom-ok]),
+  textarea:not([data-zoom-ok]) {
     font-size: max(16px, 1em);
   }
 }

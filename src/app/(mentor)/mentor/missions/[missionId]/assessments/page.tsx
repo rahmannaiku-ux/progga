@@ -134,8 +134,9 @@ export default async function AssessmentsListPage(
               className="h-10 w-full rounded-lg border border-border/60 bg-surface px-3 text-base text-foreground"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          {/* One column on phones: long patrol names made the select wider than its half and scrolled the page sideways. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-medium text-foreground">
                 Type
               </label>
@@ -148,7 +149,7 @@ export default async function AssessmentsListPage(
                 <option value="EXAM">Exam</option>
               </select>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-medium text-foreground">
                 Attach to a patrol (optional)
               </label>
