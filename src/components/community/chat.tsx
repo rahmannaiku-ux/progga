@@ -202,7 +202,7 @@ export function ChatList({ initial, className }: { initial: ChatSummaryDTO[]; cl
             {chats.length === 0 ? (
               <>
                 No chats yet. Open someone&apos;s profile and press Message, or start a group.
-                <Link href="/community/discover" className="mt-2 block font-bold text-primary hover:underline">
+                <Link href="/community/discover" className="tap-area mt-2 block font-bold text-primary hover:underline">
                   Find heroes
                 </Link>
               </>
@@ -999,7 +999,7 @@ function GroupChatInfo({
                     <Avatar fallbackClassName="bg-primary/15 text-primary" src={m.avatarUrl} name={m.name} size={40} />
                   </Link>
                   <div className="min-w-0 flex-1">
-                    <Link href={`/community/u/${m.id}`} className="block truncate text-sm font-bold text-foreground hover:underline">
+                    <Link href={`/community/u/${m.id}`} className="tap-pad block truncate text-sm font-bold text-foreground hover:underline">
                       {m.name}
                       {m.id === meId && <span className="font-normal text-muted-foreground"> (you)</span>}
                     </Link>

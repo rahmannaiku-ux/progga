@@ -17,7 +17,7 @@ function People({ people }: { people: PersonCardDTO[] }) {
         <li key={p.id} className="comic-panel flex min-w-0 items-center gap-3 bg-surface p-3">
           <Avatar fallbackClassName="bg-primary/15 text-primary" src={p.avatarUrl} name={p.name} size={44} />
           <div className="min-w-0 flex-1">
-            <Link href={`/community/u/${p.id}`} prefetch={false} className="block truncate text-sm font-bold text-foreground hover:underline">
+            <Link href={`/community/u/${p.id}`} prefetch={false} className="tap-pad block truncate text-sm font-bold text-foreground hover:underline">
               {p.name}
             </Link>
             {p.username && <p className="truncate text-xs font-semibold text-muted-foreground">@{p.username}</p>}
@@ -60,8 +60,8 @@ export default async function DiscoverPage(props: { searchParams: Promise<{ q?: 
             type="search"
             defaultValue={q}
             maxLength={80}
-            placeholder="Search Proggaa Community"
-            className="h-11 min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+            placeholder="Search the community"
+            className="field-bare h-11 min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
         </div>
         <button type="submit" className="comic-btn h-11 shrink-0 bg-primary px-4 text-sm font-bold text-primary-foreground">

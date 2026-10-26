@@ -257,9 +257,12 @@
   border-color: hsl(var(--primary) / 0.4);
 }
 /* A field that sits inside its own styled box (Community comment, post and
-   chat fields): no border, background or focus glow of its own. */
+   chat fields, the Discover search pill): no border, background or focus
+   glow of its own. */
 .theme-cartoon textarea.field-bare,
-.theme-cartoon textarea.field-bare:focus {
+.theme-cartoon textarea.field-bare:focus,
+.theme-cartoon input.field-bare,
+.theme-cartoon input.field-bare:focus {
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -770,6 +773,43 @@
   select:not([data-zoom-ok]),
   textarea:not([data-zoom-ok]) {
     font-size: max(16px, 1em);
+  }
+  /* Text-only links and buttons ("← Back to builder", "View all", "Delete",
+     "Add option") are 15–20px tall, too small for a thumb. An invisible layer
+     extends their tap area to about 36px without moving anything. Elements
+     that already size themselves (h-*, padding) or are positioned are left
+     alone; the class tests start at a word so "gap-1" doesn't count as "p-1". */
+  :is(a, button):is([class*="text-xs"], [class*="text-sm"]):not(
+      [class^="h-"], [class*=" h-"], [class*="min-h-"], [class^="p-"], [class*=" p-"],
+      [class^="py-"], [class*=" py-"], [class*="absolute"], [class*="fixed"], [class*="sticky"],
+      [class*="after:"]
+    ) {
+    position: relative;
+  }
+  :is(a, button):is([class*="text-xs"], [class*="text-sm"]):not(
+      [class^="h-"], [class*=" h-"], [class*="min-h-"], [class^="p-"], [class*=" p-"],
+      [class^="py-"], [class*=" py-"], [class*="absolute"], [class*="fixed"], [class*="sticky"],
+      [class*="after:"]
+    )::after {
+    content: "";
+    position: absolute;
+    inset: -10px -6px;
+  }
+  /* The same, opted in by class where the rule above can't tell: links that
+     take their text size from the parent (timestamps, breadcrumbs). */
+  .tap-area {
+    position: relative;
+  }
+  .tap-area::after {
+    content: "";
+    position: absolute;
+    inset: -10px -6px;
+  }
+  /* Truncated names clip an ::after layer, so they grow their padding instead;
+     the negative margin keeps the layout where it was. */
+  .tap-pad {
+    padding-block: 8px;
+    margin-block: -8px;
   }
 }
 

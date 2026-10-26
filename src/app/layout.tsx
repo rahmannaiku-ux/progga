@@ -93,6 +93,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description: DEFAULT_DESCRIPTION,
     applicationName: branding.siteName,
+    // "Add to Home Screen" on iPhone: open full-screen like the installed app,
+    // named after the site rather than the page title.
+    appleWebApp: { capable: true, title: branding.siteName, statusBarStyle: "default" },
     keywords: [
       "HSC online course",
       "HSC preparation",

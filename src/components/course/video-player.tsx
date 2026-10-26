@@ -105,6 +105,14 @@ const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 const SEEK_STEP_SECONDS = 10;
 const PROGRESS_POLL_MS = 250;
 
+// iPhone/iPad (iPadOS reports itself as a Mac with touch). Pages cannot change the
+// volume there (setVolume is ignored; only the hardware buttons work), so the
+// volume slider is left out on those devices and only Mute is offered.
+function isAppleTouchDevice(): boolean {
+  return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+const noSubscribe = () => () => {};
+
 function formatTime(totalSeconds: number): string {
   if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "00:00";
   const h = Math.floor(totalSeconds / 3600);
@@ -188,6 +196,7 @@ export function VideoPlayer({
   const [currentQuality, setCurrentQuality] = useState("auto");
   /** The student's choice, remembered per device and applied to every lesson. */
   const quality = useSyncExternalStore<QualityChoice>(subscribeQuality, readSavedQuality, () => "auto");
+  const hardwareVolumeOnly = useSyncExternalStore(noSubscribe, isAppleTouchDevice, () => false);
   const qualityReloadRef = useRef(false);
   const playbackRateRef = useRef(1);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -897,6 +906,7 @@ export function VideoPlayer({
                     <Volume2 className="h-4.5 w-4.5" />
                   )}
                 </button>
+                {!hardwareVolumeOnly && (
                 <input
                   type="range"
                   aria-label="Volume"
@@ -908,6 +918,7 @@ export function VideoPlayer({
                   className="player-range w-20"
                   style={{ "--fill": `${isMuted ? 0 : volume}%` } as React.CSSProperties}
                 />
+                )}
               </div>
             </div>
 

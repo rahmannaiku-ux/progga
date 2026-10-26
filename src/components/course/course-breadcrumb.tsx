@@ -21,7 +21,8 @@ export function CourseBreadcrumb({ steps }: { steps: BreadcrumbStep[] }) {
       {back && (
         <Link
           href={back.href!}
-          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          // z-[1]: on a phone its enlarged tap area wins over the breadcrumb links just below
+          className="relative z-[1] flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-3.5 w-3.5" /> Back
         </Link>
@@ -31,7 +32,7 @@ export function CourseBreadcrumb({ steps }: { steps: BreadcrumbStep[] }) {
           <span key={i} className="flex items-center gap-1">
             {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />}
             {step.href ? (
-              <Link href={step.href} className="hover:text-foreground">
+              <Link href={step.href} className="tap-area hover:text-foreground">
                 {step.label}
               </Link>
             ) : (

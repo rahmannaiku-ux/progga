@@ -247,7 +247,7 @@ export function PostCard({
                   <span aria-hidden="true">·</span>
                 </>
               )}
-              <Link href={postHref} prefetch={false} className="hover:underline">
+              <Link href={postHref} prefetch={false} className="tap-area hover:underline">
                 <time dateTime={post.createdAt}>{communityTimeAgo(new Date(post.createdAt))}</time>
               </Link>
               <span aria-hidden="true">·</span>
@@ -488,7 +488,7 @@ export function PostCard({
           )}
           <span className="flex shrink-0 gap-3">
             {post.commentCount > 0 && (
-              <button type="button" onClick={() => (showComments ? setShowComments(false) : openComments())} className="hover:underline">
+              <button type="button" onClick={() => (showComments ? setShowComments(false) : openComments())} className="tap-area hover:underline">
                 {post.commentCount} {noun}
                 {post.commentCount === 1 ? "" : "s"}
               </button>

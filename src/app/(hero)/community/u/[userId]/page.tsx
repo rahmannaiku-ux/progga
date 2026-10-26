@@ -72,11 +72,11 @@ export default async function CommunityProfilePage(
               </h1>
               {profile.username && <p className="text-sm font-semibold text-muted-foreground">@{profile.username}</p>}
               <p className="mt-0.5 text-sm text-muted-foreground">
-                <Link href={`${base}?show=followers`} className="hover:underline">
+                <Link href={`${base}?show=followers`} className="tap-area hover:underline">
                   <span className="font-bold text-foreground">{profile.followerCount}</span> follower{profile.followerCount === 1 ? "" : "s"}
                 </Link>
                 {" · "}
-                <Link href={`${base}?show=following`} className="hover:underline">
+                <Link href={`${base}?show=following`} className="tap-area hover:underline">
                   <span className="font-bold text-foreground">{profile.followingCount}</span> following
                 </Link>
                 {profile.followsViewer && !profile.isSelf && <span className="font-bold text-accent"> · Follows you</span>}
@@ -244,7 +244,7 @@ export default async function CommunityProfilePage(
                       <Avatar fallbackClassName="bg-primary/15 text-primary" src={p.avatarUrl} name={p.name} size={52} />
                     </Link>
                     <div className="min-w-0 flex-1">
-                      <Link href={`/community/u/${p.id}`} prefetch={false} className="block truncate text-sm font-bold text-foreground hover:underline">
+                      <Link href={`/community/u/${p.id}`} prefetch={false} className="tap-pad block truncate text-sm font-bold text-foreground hover:underline">
                         {p.name}
                       </Link>
                       <p className="truncate text-xs text-muted-foreground">

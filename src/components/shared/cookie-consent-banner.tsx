@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { detectApp } from "@/lib/apps";
 import { Cookie } from "lucide-react";
 import {
@@ -14,6 +14,7 @@ import {
 export function CookieConsentBanner() {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<CookieConsent | null>(null);
+  const bannerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const existing = readConsent();
@@ -28,6 +29,23 @@ export function CookieConsentBanner() {
     return () => window.removeEventListener(CONSENT_OPEN_EVENT, reopen);
   }, []);
 
+  // While the banner is up, pad the page by its height so whatever it covers
+  // (the Sign In button on a phone) can still be scrolled into view above it.
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!open || !el) return;
+    const body = document.body;
+    const prev = body.style.paddingBottom;
+    const ro = new ResizeObserver(() => {
+      body.style.paddingBottom = `${el.offsetHeight}px`;
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      body.style.paddingBottom = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   function choose(value: CookieConsent) {
@@ -38,6 +56,7 @@ export function CookieConsentBanner() {
 
   return (
     <div
+      ref={bannerRef}
       role="dialog"
       aria-label="Cookie preferences"
       className="fixed inset-x-0 bottom-0 z-[60] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:bottom-4 sm:right-4 sm:max-w-md sm:p-0"

@@ -51,7 +51,7 @@ export function PersonLink({ person, size = 40, subtitle }: { person: PersonDTO;
         <Link
           href={`/community/u/${person.id}`}
           prefetch={false}
-          className="flex items-center gap-1 truncate text-sm font-bold text-foreground hover:underline"
+          className="tap-pad flex items-center gap-1 truncate text-sm font-bold text-foreground hover:underline"
         >
           <span className="truncate">{person.name}</span>
           {person.isMentor && (
