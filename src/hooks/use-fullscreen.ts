@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type RefObject } from "react";
+import { APP_FULLSCREEN_SINCE, APP_WINDOW_URL, compareVersions, detectApp } from "@/lib/apps";
 
 /**
  * Fullscreen for a custom player container that also works on iPhone.
@@ -44,6 +45,22 @@ async function exitNativeFullscreen(): Promise<void> {
   else if (d.webkitExitFullscreen) await d.webkitExitFullscreen();
 }
 
+/**
+ * In the Windows app, page full screen only fills the app's web view (the
+ * window keeps its size, so the taskbar and the window's edges stayed around
+ * the video). From 1.2.1 the app makes the whole window full screen on request.
+ * Older apps ignore the link.
+ */
+let desktopFullscreen = false;
+function tellDesktopApp(active: boolean) {
+  if (active === desktopFullscreen) return;
+  const app = detectApp(navigator.userAgent);
+  if (app?.kind !== "windows" || compareVersions(app.version, APP_FULLSCREEN_SINCE) < 0) return;
+  desktopFullscreen = active;
+  // Same channel as the window buttons: the app catches the link and cancels the navigation.
+  setTimeout(() => window.location.assign(APP_WINDOW_URL + (active ? "fullscreen" : "exit-fullscreen")), 0);
+}
+
 export function useFullscreen(ref: RefObject<HTMLElement | null>) {
   const [isNative, setIsNative] = useState(false);
   const [isPseudo, setIsPseudo] = useState(false);
@@ -51,7 +68,11 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
   // Native state can change without going through our button (Esc, iOS
   // swipe-down, OS UI), so it has to be listener-driven.
   useEffect(() => {
-    const sync = () => setIsNative(nativeFullscreenElement() === ref.current);
+    const sync = () => {
+      const active = nativeFullscreenElement() === ref.current;
+      setIsNative(active);
+      tellDesktopApp(active);
+    };
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("webkitfullscreenchange", sync);
     return () => {
@@ -99,6 +120,8 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
       if (el && nativeFullscreenElement() === el) {
         exitNativeFullscreen().catch(() => {});
       }
+      // The listener above is already gone, so put the app window back here.
+      tellDesktopApp(false);
     };
   }, [ref]);
 

@@ -25,6 +25,12 @@ export const APP_NOTIFICATIONS_SINCE = "1.0.9";
  */
 export const APP_FRAMELESS_SINCE = "1.1.1";
 export const APP_WINDOW_URL = "proggaa://window/";
+/**
+ * Windows 1.2.1+: a video in full screen only fills the app's web view, so the
+ * site asks the app to make its window full screen too (`fullscreen`), and to
+ * put it back afterwards (`exit-fullscreen`).
+ */
+export const APP_FULLSCREEN_SINCE = "1.2.1";
 /** Android 1.2.0+: the site tells the app it switched light/dark, so the phone's bars follow at once. */
 export const APP_THEME_URL = "proggaa://theme";
 export const APP_THEME_SINCE = "1.2.0";
