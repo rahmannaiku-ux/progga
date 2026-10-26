@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import YouTube, { type YouTubeEvent, type YouTubePlayer } from "react-youtube";
 import {
   Play,
@@ -21,16 +21,22 @@ import { cn } from "@/lib/utils";
 import { youtubeEmbedHost } from "@/lib/cookie-consent";
 import { YOUTUBE_CLEAN_PLAYER_VARS, turnYoutubeCaptionsOff } from "@/lib/youtube";
 import { useFullscreen } from "@/hooks/use-fullscreen";
+import {
+  type QualityChoice,
+  isBelowChoice,
+  offeredChoices,
+  readSavedQuality,
+  saveQuality,
+  scaledPlayerStyle,
+  subscribeQuality,
+} from "@/lib/youtube-quality";
 import { useDevToolsShield } from "@/hooks/use-devtools-shield";
 
 /**
- * Maps YouTube's internal quality identifiers to the human labels the
- * spec asks for. Only ever shown to the student when
- * player.getAvailableQualityLevels() actually reports that level as
- * available for THIS video/connection — YouTube does not guarantee any
- * particular quality is available, and modern YouTube frequently
- * ignores manual quality requests in favor of its own adaptive
- * bitrate logic. We never fabricate options the player didn't report.
+ * Human labels for YouTube's quality identifiers. The quality menu offers
+ * Auto plus the levels in src/lib/youtube-quality.ts that this video
+ * actually has (YouTube's own quality setters are no-ops, so the choice is
+ * applied by sizing the player; see that file).
  */
 const QUALITY_LABELS: Record<string, string> = {
   auto: "Auto",
@@ -178,7 +184,49 @@ export function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
 
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
+  /** What YouTube reports it is playing right now. */
   const [currentQuality, setCurrentQuality] = useState("auto");
+  /** The student's choice, remembered per device and applied to every lesson. */
+  const quality = useSyncExternalStore<QualityChoice>(subscribeQuality, readSavedQuality, () => "auto");
+  const qualityReloadRef = useRef(false);
+  const playbackRateRef = useRef(1);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
+
+  // The visible video box changes with the layout, rotation and fullscreen; the
+  // scaled player has to follow it exactly.
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setFrameSize((prev) =>
+        prev && Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1 ? prev : { width, height }
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // After a quality change has been laid out at its new size, reload the video
+  // at the same second: YouTube only steps DOWN in quality on a fresh load.
+  useEffect(() => {
+    if (!qualityReloadRef.current) return;
+    qualityReloadRef.current = false;
+    const player = playerRef.current;
+    if (!player) return;
+    void (async () => {
+      try {
+        const [t, state] = await Promise.all([player.getCurrentTime(), player.getPlayerState()]);
+        const args = { videoId: youtubeVideoId, startSeconds: Math.max(0, t) };
+        if (state === YT_STATE.PLAYING || state === YT_STATE.BUFFERING) await player.loadVideoById(args);
+        else if (t > 0) await player.cueVideoById(args);
+      } catch {
+        // Player mid-transition: the new size still applies from the next load.
+      }
+    })();
+  }, [quality, youtubeVideoId]);
 
   const { isFullscreen, isPseudoFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } =
     useFullscreen(containerRef);
@@ -358,6 +406,8 @@ export function VideoPlayer({
       if (levels.length > 0) setAvailableQualities(levels);
       const q = await player.getPlaybackQuality();
       if (q) setCurrentQuality(q);
+      // A quality reload starts the video at normal speed again.
+      if (playbackRateRef.current !== 1) void player.setPlaybackRate(playbackRateRef.current);
     } else if (state === YT_STATE.PAUSED) {
       setIsPlaying(false);
       // Save the moment the student pauses, not just on the interval —
@@ -410,14 +460,16 @@ export function VideoPlayer({
 
   function handleSpeedChange(rate: number) {
     playerRef.current?.setPlaybackRate(rate);
+    playbackRateRef.current = rate;
     setPlaybackRate(rate);
     setShowSpeedMenu(false);
   }
 
-  function handleQualityChange(quality: string) {
-    playerRef.current?.setPlaybackQuality(quality);
-    setCurrentQuality(quality);
+  function handleQualityChange(next: QualityChoice) {
     setShowQualityMenu(false);
+    if (next === quality) return;
+    qualityReloadRef.current = true;
+    saveQuality(next);
   }
 
   function handleVolumeChange(value: number) {
@@ -603,7 +655,16 @@ export function VideoPlayer({
             cannot be interacted with. controls:0/disablekb:1/fs:0
             strip YouTube's own UI (native controls, keyboard shortcuts,
             its own fullscreen button) at the player-parameter level. */}
-        <div className={cn("pointer-events-none absolute inset-0 h-full w-full", shielded && "invisible")}>
+        <div
+          ref={frameRef}
+          className={cn("pointer-events-none absolute inset-0 h-full w-full overflow-hidden", shielded && "invisible")}
+        >
+          {/* Laid out at the size that makes YouTube stream the chosen quality,
+              scaled to this box (src/lib/youtube-quality.ts). Auto = the box itself. */}
+          <div
+            className={quality === "auto" ? "absolute inset-0" : "absolute left-0 top-0"}
+            style={scaledPlayerStyle(quality, frameSize) ?? undefined}
+          >
           <YouTube
             videoId={youtubeVideoId}
             className="h-full w-full"
@@ -626,8 +687,12 @@ export function VideoPlayer({
             }}
             onReady={handleReady}
             onStateChange={handleStateChange}
+            onPlaybackQualityChange={(e: YouTubeEvent<string>) => {
+              if (e.data) setCurrentQuality(e.data);
+            }}
             onError={handleError}
           />
+          </div>
         </div>
 
         {shielded && (
@@ -733,7 +798,11 @@ export function VideoPlayer({
               skin === "classic" &&
               "pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
             isFullscreen && skin !== "classic" && "mb-[env(safe-area-inset-bottom)]",
-            controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            // Only the control rows take taps. The fade above them lets taps
+            // through to the play overlay: on narrow phones (iPhone 15, SE) it
+            // covered the big Play icon, so tapping the icon did nothing.
+            "pointer-events-none",
+            controlsVisible ? "opacity-100 [&>*]:pointer-events-auto" : "opacity-0"
           )}
         >
           {/* Progress bar: a native <input type="range"> rather than a
@@ -913,7 +982,7 @@ export function VideoPlayer({
                 >
                   <Settings className="h-4 w-4" />
                   {/* Icon-only inline on phones; the open menu still shows the labels. */}
-                  <span className={cn(compact && "hidden sm:inline")}>{QUALITY_LABELS[currentQuality] ?? "Auto"}</span>
+                  <span className={cn(compact && "hidden sm:inline")}>{QUALITY_LABELS[quality] ?? "Auto"}</span>
                 </button>
                 {showQualityMenu && availableQualities.length > 0 && (
                   <div
@@ -925,22 +994,32 @@ export function VideoPlayer({
                       compact ? "max-h-32 sm:max-h-64" : "max-h-[min(20rem,70vh)]"
                     )}
                   >
-                    {["auto", ...availableQualities.filter((q) => q !== "auto")].map((q) => (
+                    {(["auto", ...offeredChoices(availableQualities)] as QualityChoice[]).map((q) => (
                       <button
                         key={q}
                         type="button"
                         role="menuitemradio"
-                        aria-checked={q === currentQuality}
+                        aria-checked={q === quality}
                         onClick={() => handleQualityChange(q)}
                         className={cn(
-                          "flex w-full items-center justify-center rounded-lg text-sm font-semibold",
+                          "flex w-full flex-col items-center justify-center rounded-lg text-sm font-semibold",
                           compact ? "min-h-9 sm:min-h-11" : "min-h-11",
-                          q === currentQuality
+                          q === quality
                             ? skinStyle.menuActive
                             : "text-white hover:bg-white/15"
                         )}
                       >
                         {QUALITY_LABELS[q] ?? q}
+                        {/* What is really playing: Auto's pick, or the connection holding a choice back. */}
+                        {q === quality &&
+                          currentQuality !== "auto" &&
+                          QUALITY_LABELS[currentQuality] &&
+                          (q === "auto" || isBelowChoice(q, currentQuality)) && (
+                            <span className="text-[11px] font-medium opacity-80">
+                              {q === "auto" ? "" : "now "}
+                              {QUALITY_LABELS[currentQuality]}
+                            </span>
+                          )}
                       </button>
                     ))}
                   </div>
